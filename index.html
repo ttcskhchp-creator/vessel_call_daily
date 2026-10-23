@@ -291,10 +291,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div style="display:flex;align-items:center;gap:4px" class="tiny">
           Từ: <input type="date" id="fromDate" class="field" style="padding:3px 5px">
           Đến: <input type="date" id="toDate" class="field" style="padding:3px 5px">
-          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu cũ từ Bucket">🔍 Tải Bucket</button>
+          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu từ Storage Bucket">🔍 Tải Bucket</button>
         </div>
         <button class="theme-toggle" id="themeToggle" style="padding:6px 10px">◐ Giao diện</button>
-        <button class="primary" id="refreshBtn" style="padding:6px 10px">↻ (<span id="countdown">60:00</span>)</button>
+        <button class="primary" id="refreshBtn" style="padding:6px 10px" title="Thời gian còn lại đến 00:00 tự động đồng bộ">↻ 00h00: (<span id="countdown">00:00:00</span>)</button>
       </div>
     </header>
 
@@ -480,7 +480,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <h2>Tra cứu lịch tàu</h2>
             <div class="muted">Danh sách chi tiết lượt tàu</div>
           </div>
-          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ Xuất CSV</button>
+          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ Xuất Báo Báo Excel/CSV</button>
         </div>
         <div class="panel">
           <div class="toolbar">
@@ -568,8 +568,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
         <div class="panel" style="padding:16px">
           <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Cảng Hải Phòng</p>
-          <p><b>API:</b> HTIT Port Window Public API</p>
-          <p><b>Storage:</b> Supabase Cloud Bucket (`port-documents`)</p>
+          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
@@ -633,10 +632,6 @@ let allCalls = [];
 let movementMode = 'all';
 let planningAreaFilter = 'ALL';
 
-// ĐẾM GIỜ AUTO RELOAD 60 PHÚT (3600 GIÂY) & TỰ ĐỘNG LƯU BUCKET (1800 GIÂY)
-let countdownVal = 3600; 
-let backupCountdownVal = 1800; // 30 phút sao lưu 1 lần
-
 let selectedShipForReport = null;
 let tooltipHideTimeout = null;
 
@@ -665,30 +660,28 @@ function formatDuration(ms) {
   return `${hrs}h ${mins}p`;
 }
 
-function resetCountdown() {
-  countdownVal = 3600; // RESET BỘ ĐẾM VỀ 60 PHÚT
-}
-
-function startAutoReloadTimer() {
+// --- BỘ ĐẾM GIỜ ĐỒNG BỘ TỰ ĐỘNG ĐẾN 00H00 NỬA ĐÊM ---
+function startMidnightCountdown() {
   setInterval(() => {
-    countdownVal--;
-    let m = Math.floor(countdownVal / 60);
-    let s = countdownVal % 60;
-    let dispStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    
+    let now = new Date();
+    let midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); // Đặt thời gian đến 00:00 ngày tiếp theo
+    let diffMs = midnight.getTime() - now.getTime();
+
+    if (diffMs <= 1000) {
+      // Đúng 00:00: Tự động lưu Bucket và Tải lại dữ liệu ngày mới
+      saveCurrentDataToSupabase(true);
+      loadData();
+      return;
+    }
+
+    let hrs = Math.floor(diffMs / (1000 * 60 * 60));
+    let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    let secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    let dispStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     let cdElem = $('countdown');
     if (cdElem) cdElem.textContent = dispStr;
-
-    if (countdownVal <= 0) {
-      loadData(); // TỰ ĐỘNG RELOAD TỰ ĐỘNG THEO CHU KỲ 60 PHÚT
-    }
-
-    // ĐẾM GIỜ TỰ ĐỘNG BUCKET STORAGE
-    backupCountdownVal--;
-    if (backupCountdownVal <= 0) {
-      saveCurrentDataToSupabase(true); // TỰ ĐỘNG LƯU SNAPSHOT BUCKET THEO CHU KỲ 30 PHÚT
-      backupCountdownVal = 1800;
-    }
   }, 1000);
 }
 
@@ -791,7 +784,7 @@ async function fetchHistoryFromBucket() {
   $('sideStatus').textContent = `Đang tải Bucket (${fDate})...`;
   try {
     const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
-    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate}.`); $('sideStatus').textContent = 'Trống'; return; }
+    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.`); $('sideStatus').textContent = 'Trống'; return; }
 
     const text = await data.text();
     const parsed = JSON.parse(text);
@@ -804,7 +797,7 @@ async function fetchHistoryFromBucket() {
       }
       renderAll();
       $('sideStatus').textContent = `Đã nạp ${allCalls.length} tàu (${fDate})`;
-      alert(`Nạp thành công dữ liệu ngày ${fDate}!`);
+      alert(`Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!`);
     }
   } catch(err) { alert('Lỗi: ' + err.message); }
 }
@@ -825,10 +818,10 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const blob = new Blob([jsonContent], { type: 'application/json' });
   await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
 
-  const savedText = `${nowStr} (${isAuto ? 'Auto' : 'Thủ công'})`;
+  const savedText = `${nowStr} (${isAuto ? 'Auto 00h00' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved', savedText);
   updateLastSavedDisplay(savedText);
-  if (!isAuto) alert('Đã lưu snapshot thành công!');
+  if (!isAuto) alert('Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!');
 }
 
 function updateLastSavedDisplay(str) {
@@ -843,15 +836,39 @@ function exportConfigAsCSVProtected() {
 }
 
 function exportConfigAsCSV() {
-  if (!allCalls || allCalls.length === 0) { alert('Không có dữ liệu!'); return; }
-  let csvRows = [`"KÍP","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`, `"STT","Tàu","Hãng","Terminal","Bến","LOA","DWT","ETB","ETD"`];
-  allCalls.forEach((c, i) => {
-    csvRows.push([i+1, `"${c.vessel}"`, `"${c.operator}"`, `"${c.terminal}"`, `"${c.berth}"`, c.loa, c.dwt, `"${c.etb}"`, `"${c.etd}"`].join(','));
+  let list = getFilteredCalls();
+  if (!list || list.length === 0) { alert('Không có dữ liệu trong khoảng thời gian đã chọn!'); return; }
+  
+  let csvRows = [
+    `"BÁO CÁO KẾ HOẠCH CẦU BẾN & ĐIỀU ĐỘNG TÀU - CẢNG HẢI PHÒNG"`,
+    `"KÍP TRỰC","${$('dispShift').textContent}","Trưởng điều hành: ${$('dispCommander').textContent}","An toàn hải: ${$('dispSafety').textContent}"`,
+    `"Thời gian xuất báo cáo: ${new Date().toLocaleString('vi-VN')}"`,
+    `""`,
+    `"STT","Tên Tàu","Hãng Tàu","Terminal / Cảng","Bến Cập","LOA (m)","DWT (Tấn)","Thời Gian Cập (ETB)","Thời Gian Rời (ETD)"`
+  ];
+
+  list.forEach((c, i) => {
+    csvRows.push([
+      i + 1,
+      `"${c.vessel}"`,
+      `"${c.operator || '—'}"`,
+      `"${c.terminal || '—'}"`,
+      `"${c.berth || '—'}"`,
+      c.loa || 0,
+      `"${c.dwt || '—'}"`,
+      `"${dt(c.etb)}"`,
+      `"${dt(c.etd)}"`
+    ].join(','));
   });
+
   const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `port_config_${getTodayString()}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Bao_Cao_Cau_Ben_${getTodayString()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function triggerImportConfig() {
@@ -886,7 +903,7 @@ function handleFileImport(e) {
       if (loaded.length > 0) {
         allCalls = filterAndDeduplicateCalls(loaded);
         renderAll();
-        alert(`Đã nạp ${allCalls.length} tàu!`);
+        alert(`Đã nạp ${allCalls.length} tàu từ file thành công!`);
       }
     } catch(err) { alert('Lỗi nạp file: ' + err.message); }
   };
@@ -897,17 +914,6 @@ function handleManualSave() {
   let pwd = prompt('Nhập mật khẩu xác thực (6868):');
   if (pwd === '6868') saveCurrentDataToSupabase(false);
   else if (pwd !== null) alert('Sai mật khẩu!');
-}
-
-function scheduleMidnightAutoSave() {
-  let now = new Date();
-  let midnight = new Date();
-  midnight.setHours(24, 0, 0, 0);
-  setTimeout(() => {
-    saveCurrentDataToSupabase(true);
-    loadData();
-    scheduleMidnightAutoSave();
-  }, midnight.getTime() - now.getTime());
 }
 
 async function loadData() {
@@ -946,7 +952,6 @@ async function loadData() {
     } catch(err) {}
   } finally {
     $('refreshBtn').disabled = false;
-    resetCountdown();
   }
 }
 
@@ -955,6 +960,7 @@ function isHaiPhongPort(term) {
   return t.includes('TÂN VŨ') || t.includes('TAN VU') || t.includes('HOÀNG DIỆU') || t.includes('CHÙA VẼ') || t.includes('HTIT') || t.includes('ĐÌNH VŨ');
 }
 
+// LỌC DỮ LIỆU ĐA NGÀY THEO KHOẢNG TỪ - ĐẾN
 function getFilteredCalls() {
   let fDate = $('fromDate').value;
   let tDate = $('toDate').value;
@@ -1056,6 +1062,7 @@ function renderTable(list) {
   `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
 }
 
+// RENDER GANTT KÈM MỐC THỜI GIAN KHUNG 12 TIẾNG TRÊN TRỤC NGANG
 function renderGantt() {
   let days = +$('days').value || 4;
   let start = new Date($('fromDate').value || getTodayString()); start.setHours(0,0,0,0);
@@ -1231,8 +1238,7 @@ $('themeToggle').onclick = () => {
 initDates();
 loadShiftConfigFromSupabase();
 loadData();
-startAutoReloadTimer(); // BẮT ĐẦU VÒNG LẶP AUTO RELOAD 60 PHÚT & BUCKET AUTO SAVE
-scheduleMidnightAutoSave();
+startMidnightCountdown(); // BẮT ĐẦU BỘ ĐẾM GIỜ ĐỒNG BỘ NỬA ĐÊM (00H00)
 </script>
 </body>
 </html>
