@@ -681,31 +681,51 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- XỬ LÝ LỌC TRÙNG LẶP & ƯU TIÊN ĐỦ NGÀY CẬP / RỜI ---
+// --- XỬ LÝ LỌC TRÙNG LẶP & ƯU TIÊN TOÀN CỤC THEO TÊN TÀU ---
 function filterAndDeduplicateCalls(rawList) {
   let map = new Map();
+
+  // Sắp xếp danh sách trước: ưu tiên bản ghi có đủ cả ETB & ETD, sau đó đến bản ghi có thời gian mới nhất
   let sorted = [...rawList].sort((a, b) => {
-    let scoreA = (a.etb ? 1 : 0) + (a.etd ? 1 : 0);
-    let scoreB = (b.etb ? 1 : 0) + (b.etd ? 1 : 0);
+    let scoreA = (a.etb ? 2 : 0) + (a.etd ? 2 : 0);
+    let scoreB = (b.etb ? 2 : 0) + (b.etd ? 2 : 0);
+    
+    if (scoreA === scoreB) {
+      let timeA = new Date(a.etb || a.etd || 0).getTime();
+      let timeB = new Date(b.etb || b.etd || 0).getTime();
+      return timeB - timeA;
+    }
     return scoreB - scoreA;
   });
 
   sorted.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
-    let berthKey = `${vName}_${(c.terminal||'').trim().toUpperCase()}_${(c.berth||'').trim().toUpperCase()}`;
+
+    // Dùng khóa hoàn toàn theo Tên Tàu (vessel) để đảm bảo toàn hệ thống chỉ hiển thị duy nhất 1 giá trị tên tàu, không lặp lại ở các bến khác nhau
+    let globalKey = vName;
     
-    if (!map.has(berthKey)) {
-      map.set(berthKey, c);
+    if (!map.has(globalKey)) {
+      map.set(globalKey, c);
     } else {
-      let existing = map.get(berthKey);
-      let existingScore = (existing.etb ? 1 : 0) + (existing.etd ? 1 : 0);
-      let currentScore = (c.etb ? 1 : 0) + (c.etd ? 1 : 0);
+      let existing = map.get(globalKey);
+      
+      let existingScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
+      let currentScore = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
+
       if (currentScore > existingScore) {
-        map.set(berthKey, c);
+        map.set(globalKey, c);
+      } else if (currentScore === existingScore) {
+        let existingTime = new Date(existing.etb || existing.etd || 0).getTime();
+        let currentTime = new Date(c.etb || c.etd || 0).getTime();
+        // Lấy dữ liệu mới nhất (theo thời gian cập/rời)
+        if (currentTime > existingTime) {
+          map.set(globalKey, c);
+        }
       }
     }
   });
+
   return Array.from(map.values());
 }
 
@@ -1020,7 +1040,6 @@ function renderGantt() {
   let list = getFilteredCalls();
   let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
 
-  // Tạo tiêu đề mốc thời gian 12 tiếng
   let headerHtml = `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
   for (let d = 0; d < days; d++) {
     let curDate = new Date(start.getTime() + d * 86400000);
