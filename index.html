@@ -28,7 +28,6 @@ button:hover{filter:brightness(.95)}
 .nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 10px;margin-bottom:5px}
 .nav{display:grid;gap:4px}
 
-/* THU GỌN TABS THÔNG MINH (HIỆN ĐẦY ĐỦ KHI HOVER/TRỎ ĐẾN) */
 .nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 .nav button span.icon{font-size:15px;min-width:20px;text-align:center}
@@ -55,7 +54,6 @@ button:hover{filter:brightness(.95)}
 .side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:10px 6px 0;color:#91adc2;font-size:9px;line-height:1.3}
 .main{min-width:0}
 
-/* HEADER THU GỌN LINH HOẠT */
 .topbar{min-height:65px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
 .crumb{font-size:10px;color:var(--muted);font-weight:700}
 .topbar h1{font-size:15px;margin:1px 0 0;font-weight:800;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:450px}
@@ -206,7 +204,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .port-link-box{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:10px;display:flex;align-items:center;justify-content:space-between}
 .port-link-box a{color:var(--cyan);font-weight:700;text-decoration:none}
 
-/* RESPONSIVE MOBILE & THU GỌN SIDEBAR THÔNG MINH */
 @media(max-width:950px){
   .app{grid-template-columns:60px minmax(0,1fr)}
   .brand div,.nav-label,.nav button span.txt,.side-foot,.side-shift-card,.side-controls-group{display:none}
@@ -215,7 +212,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   .nav button{justify-content:center;padding:10px;width:44px;height:44px}
   .nav button span.icon{font-size:18px;min-width:auto}
   
-  /* Rê chuột/Chạm vào hiện đầy đủ khi mở rộng sidebar */
   .side:hover{width:220px}
   .side:hover .brand div,.side:hover .nav-label,.side:hover .nav button span.txt,.side:hover .side-foot,.side:hover .side-shift-card,.side:hover .side-controls-group{display:block}
   .side:hover .nav button{justify-content:flex-start;width:100%;padding:9px 10px}
@@ -589,6 +585,9 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <div class="tt-item"><small>Đã ở cầu</small><b id="ttDocked">—</b></div>
     <div class="tt-item"><small>Còn lại</small><b id="ttRemaining">—</b></div>
   </div>
+  <button id="ttReportBtn" style="width:100%;margin-top:10px;padding:6px;font-size:10px" class="darkbtn">
+    ✉ Báo sai thông tin tàu này
+  </button>
 </div>
 
 <!-- SETUP MODAL -->
@@ -673,37 +672,38 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- XỬ LÝ LỌC TRÙNG LẶP TÀU (ƯU TIÊN ĐỦ NGÀY CẬP / RỜI & MỚI NHẤT) ---
+// --- XỬ LÝ LỌC TRÙNG LẶP & ƯU TIÊN ĐỦ NGÀY CẬP / RỜI ---
 function filterAndDeduplicateCalls(rawList) {
   let map = new Map();
-  rawList.forEach(c => {
+  
+  // Sắp xếp thô trước để ưu tiên bản ghi có đủ ETB & ETD lên trước
+  let sorted = [...rawList].sort((a, b) => {
+    let scoreA = (a.etb ? 1 : 0) + (a.etd ? 1 : 0);
+    let scoreB = (b.etb ? 1 : 0) + (b.etd ? 1 : 0);
+    return scoreB - scoreA;
+  });
+
+  sorted.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
     
-    let etbDate = c.etb ? c.etb.split('T')[0] : '';
-    let etdDate = c.etd ? c.etd.split('T')[0] : '';
-    let key = `${vName}_${etbDate}_${etdDate}`;
-
-    if (!map.has(key)) {
-      map.set(key, c);
+    // Nếu tàu xuất hiện ở các bến khác nhau nhưng cùng tên, ta định danh theo Tên + Terminal + Bến hoặc Tên tàu độc lập nếu là cập nhật mới
+    let berthKey = `${vName}_${(c.terminal||'').trim().toUpperCase()}_${(c.berth||'').trim().toUpperCase()}`;
+    
+    if (!map.has(berthKey)) {
+      map.set(berthKey, c);
     } else {
-      let existing = map.get(key);
+      let existing = map.get(berthKey);
       let existingScore = (existing.etb ? 1 : 0) + (existing.etd ? 1 : 0);
       let currentScore = (c.etb ? 1 : 0) + (c.etd ? 1 : 0);
       
-      // Ưu tiên bản ghi có đủ ngày cập/rời hơn hoặc có thời gian cập mới hơn
-      if (currentScore > existingScore || (currentScore === schematicScore(existing, c))) {
-        map.set(key, c);
+      // Nếu bản ghi hiện tại đầy đủ hơn hoặc mới hơn thì giữ lại
+      if (currentScore > existingScore) {
+        map.set(berthKey, c);
       }
     }
   });
   return Array.from(map.values());
-}
-
-function schematicScore(a, b) {
-  let ta = a.etb ? new Date(a.etb).getTime() : 0;
-  let tb = b.etb ? new Date(b.etb).getTime() : 0;
-  return tb > ta ? b : a;
 }
 
 // --- TẢI KÍP TRỰC TỪ SUPABASE ---
@@ -1097,6 +1097,7 @@ function renderStats() {
 }
 
 function showTooltip(e, s) {
+  selectedShipForReport = s;
   let tt = $('shipTooltip');
   $('ttName').textContent = s.vessel;
   $('ttOperator').textContent = s.operator || '—';
@@ -1109,6 +1110,16 @@ function showTooltip(e, s) {
   tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 200) + 'px';
 }
 function hideTooltip() { $('shipTooltip').style.display = 'none'; }
+
+// Xử lý sự kiện click nút Báo cáo trên Tooltip để chuyển sang tab Báo cáo
+$('ttReportBtn').onclick = () => {
+  if (selectedShipForReport) {
+    nav('report');
+    $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
+    $('repContent').value = `Báo cáo sai lệch thông tin tàu ${selectedShipForReport.vessel} (ETB: ${dt(selectedShipForReport.etb)}, ETD: ${dt(selectedShipForReport.etd)}).`;
+    hideTooltip();
+  }
+};
 
 setInterval(() => { $('liveClock').textContent = new Date().toTimeString().split(' ')[0]; }, 1000);
 function initDates() {
