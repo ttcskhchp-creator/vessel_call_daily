@@ -746,7 +746,7 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- CORE FUNCTION: LƯU DỮ LIỆU ĐỒNG BỘ LÊN DATABASE TABLE & STORAGE BUCKET ---
+// --- CƠ CHẾ LƯU DỮ LIỆU TỐI ƯU CÓ TỰ ĐỘNG XỬ LÝ LỖI (FALLBACK) ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) {
     if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
@@ -755,62 +755,104 @@ async function saveCurrentDataToSupabase(isAuto = false) {
 
   const todayStr = getTodayString();
   const nowStr = new Date().toLocaleString('vi-VN');
+  let dbSuccess = false;
 
-  // 1. Lưu vào Database Table (Upsert trùng tên tàu + ETB để ghi đè dữ liệu ngày mới nhất)
-  const payload = allCalls.map(c => ({
-    vessel: c.vessel,
-    operator: c.operator || '',
-    terminal: c.terminal || '',
-    berth: c.berth || '',
-    loa: c.loa || 0,
-    dwt: c.dwt ? Number(c.dwt) : null,
-    etb: c.etb ? new Date(c.etb).toISOString() : null,
-    etd: c.etd ? new Date(c.etd).toISOString() : null,
-    snapshot_date: todayStr
-  }));
+  // 1. Thử lưu vào Database Table với payload chuẩn có snapshot_date
+  try {
+    const payloadWithSnapshot = allCalls.map(c => ({
+      vessel: c.vessel,
+      operator: c.operator || '',
+      terminal: c.terminal || '',
+      berth: c.berth || '',
+      loa: c.loa || 0,
+      dwt: c.dwt ? Number(c.dwt) : null,
+      etb: c.etb ? new Date(c.etb).toISOString() : null,
+      etd: c.etd ? new Date(c.etd).toISOString() : null,
+      snapshot_date: todayStr
+    }));
 
-  const { error: dbError } = await supabaseClient
-    .from('port_calls_history')
-    .upsert(payload, { onConflict: 'vessel,etb' });
+    let { error: dbError } = await supabaseClient
+      .from('port_calls_history')
+      .upsert(payloadWithSnapshot, { onConflict: 'vessel,etb' });
 
-  if (dbError) {
-    console.error('Lỗi khi lưu Database:', dbError.message);
-    if (!isAuto) alert('Lỗi khi lưu dữ liệu lên Supabase Database: ' + dbError.message);
-    return;
+    // CƠ CHẾ TỰ ĐỘNG SỬA LỖI (Fallback): Nếu chưa chạy SQL tạo cột snapshot_date, hệ thống thử lại với payload tối giản
+    if (dbError && dbError.message.includes('snapshot_date')) {
+      console.warn('Đang thử lại với payload không có snapshot_date...');
+      const payloadSimple = allCalls.map(c => ({
+        vessel: c.vessel,
+        operator: c.operator || '',
+        terminal: c.terminal || '',
+        berth: c.berth || '',
+        loa: c.loa || 0,
+        dwt: c.dwt ? Number(c.dwt) : null,
+        etb: c.etb ? new Date(c.etb).toISOString() : null,
+        etd: c.etd ? new Date(c.etd).toISOString() : null
+      }));
+
+      let retryRes = await supabaseClient
+        .from('port_calls_history')
+        .upsert(payloadSimple, { onConflict: 'vessel,etb' });
+
+      dbError = retryRes.error;
+    }
+
+    if (!dbError) {
+      dbSuccess = true;
+    } else {
+      console.error('Lỗi Database:', dbError.message);
+    }
+  } catch (err) {
+    console.error('Lỗi ngoại lệ Database:', err);
   }
 
-  // 2. Upload file snapshot JSON lên Storage Bucket (Ghi đè file của ngày hôm đó nếu thực hiện lưu nhiều lần)
-  const jsonContent = JSON.stringify({
-    saved_at: nowStr,
-    date: todayStr,
-    total_calls: allCalls.length,
-    calls: allCalls
-  }, null, 2);
+  // 2. Lưu file snapshot JSON lên Storage Bucket (Luôn thực thi để đảm bảo dữ liệu không bị mất)
+  let bucketSuccess = false;
+  try {
+    const jsonContent = JSON.stringify({
+      saved_at: nowStr,
+      date: todayStr,
+      total_calls: allCalls.length,
+      calls: allCalls
+    }, null, 2);
 
-  const fileName = `daily_snapshot_${todayStr}.json`;
-  const blob = new Blob([jsonContent], { type: 'application/json' });
+    const fileName = `daily_snapshot_${todayStr}.json`;
+    const blob = new Blob([jsonContent], { type: 'application/json' });
 
-  const { error: bucketError } = await supabaseClient
-    .storage
-    .from('port-documents')
-    .upload(fileName, blob, {
-      contentType: 'application/json',
-      upsert: true // Ghi đè file mới nhất của ngày đó
-    });
+    const { error: bucketError } = await supabaseClient
+      .storage
+      .from('port-documents')
+      .upload(fileName, blob, {
+        contentType: 'application/json',
+        upsert: true
+      });
 
-  if (bucketError) {
-    console.warn('Cảnh báo Storage Bucket (Nếu chưa tạo bucket port-documents):', bucketError.message);
+    if (!bucketError) {
+      bucketSuccess = true;
+    } else {
+      console.error('Lỗi Storage Bucket:', bucketError.message);
+    }
+  } catch (err) {
+    console.error('Lỗi ngoại lệ Bucket:', err);
   }
 
-  // 3. Cập nhật giao diện thời gian lưu gần nhất
+  // 3. Cập nhật thời điểm lưu gần nhất
   const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 12h đêm' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
   updateLastSavedDisplay(savedStatusText);
 
+  // Phản hồi kết quả cho người dùng
   if (!isAuto) {
-    alert(`Đã lưu thành công ${allCalls.length} bản ghi dữ liệu vào Supabase Database & Storage Bucket!`);
+    if (dbSuccess && bucketSuccess) {
+      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào cả Supabase Database & Storage Bucket!`);
+    } else if (bucketSuccess) {
+      alert(`Đã lưu thành công file báo cáo ngày ${todayStr} vào Storage Bucket! (Lưu ý: Hãy chạy lệnh SQL ở Bước 1 để hoàn tất Database)`);
+    } else if (dbSuccess) {
+      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào Supabase Database!`);
+    } else {
+      alert(`Không thể lưu dữ liệu. Vui lòng kiểm tra lại SQL Editor trên Supabase.`);
+    }
   } else {
-    console.log(`[AUTO SAVE 12H ĐÊM] Đã tự động sao lưu dữ liệu ngày ${todayStr} thành công.`);
+    console.log(`[AUTO SAVE 12H ĐÊM] Kết quả: DB=${dbSuccess}, Bucket=${bucketSuccess}`);
   }
 }
 
@@ -833,18 +875,18 @@ function handleManualSave() {
 function scheduleMidnightAutoSave() {
   let now = new Date();
   let midnight = new Date();
-  midnight.setHours(24, 0, 0, 0); // Đặt thời điểm 12h đêm tiếp theo
+  midnight.setHours(24, 0, 0, 0);
 
   let timeUntilMidnight = midnight.getTime() - now.getTime();
   console.log(`Hệ thống hẹn giờ tự động lưu dữ liệu sau: ${(timeUntilMidnight/3600000).toFixed(2)} giờ nữa (vào 12h đêm).`);
 
   setTimeout(() => {
     saveCurrentDataToSupabase(true);
-    scheduleMidnightAutoSave(); // Lặp lại cho đêm tiếp theo
+    scheduleMidnightAutoSave();
   }, timeUntilMidnight);
 }
 
-// Load Data từ API
+// Load Data từ API Cảng vụ
 async function loadData() {
   $('refreshBtn').disabled = true;
   $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
@@ -1306,7 +1348,7 @@ setInterval(() => {
 // Event Bindings
 $('manualSaveBtn').onclick = handleManualSave;
 $('setupShiftBtn').onclick = openShiftModalWithPassword;
-$('closeModalBtn').onclick = closeShiftModal;
+$('closeModalBtn').onclick = closeModalBtn;
 $('saveModalBtn').onclick = saveShiftModal;
 $('refreshBtn').onclick = loadData;
 $('search').oninput = () => renderTable(getFilteredCalls());
