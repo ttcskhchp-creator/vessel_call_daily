@@ -78,78 +78,42 @@ button:hover{filter:brightness(.95)}
 .panel-head h3{font-size:14px;margin:0}
 .panel-body{padding:15px 17px}
 
-/* HEADER TOP WIDGETS LAYOUT (EXPANDED WEATHER + TIDE) */
-.header-widgets-grid{
-  display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
+.header-widgets-grid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:14px;margin-bottom:14px}
+.vivid-weather{background:linear-gradient(135deg,#163d63 0%,#205987 50%,#2fa3b5 100%);color:#ffffff;border-radius:14px;padding:20px 24px;box-shadow:0 8px 24px rgba(16,43,70,0.22);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+:root[data-theme="dark"] .vivid-weather{background:linear-gradient(135deg,#0d253d 0%,#153b5c 50%,#1a5b7d 100%)}
+.vivid-weather-bg-icon{position:absolute;right:-10px;top:-10px;font-size:130px;opacity:0.12;pointer-events:none;line-height:1}
+.weather-top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:12px}
+.weather-city{font-size:12px;font-weight:800;letter-spacing:0.6px;color:#8be4ec;text-transform:uppercase}
+.weather-hero{display:flex;align-items:center;gap:18px;margin-top:6px}
+.weather-hero-icon{font-size:48px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25))}
+.weather-hero-temp{font-size:42px;font-weight:900;letter-spacing:-1.5px}
+.weather-hero-cond{font-size:14px;font-weight:800;opacity:0.95}
 
-.vivid-weather{
-  background: linear-gradient(135deg, #163d63 0%, #205987 50%, #2fa3b5 100%);
-  color: #ffffff;border-radius: 14px;padding: 20px 24px;
-  box-shadow: 0 8px 24px rgba(16,43,70,0.22);position: relative;overflow: hidden;
-  display: flex;flex-direction: column;justify-content: space-between;
-}
-:root[data-theme="dark"] .vivid-weather{
-  background: linear-gradient(135deg, #0d253d 0%, #153b5c 50%, #1a5b7d 100%);
-}
-.vivid-weather-bg-icon{
-  position: absolute;right: -10px;top: -10px;font-size: 130px;opacity: 0.12;
-  pointer-events: none;line-height: 1;
-}
-.weather-top{display: flex;justify-content: space-between;align-items: flex-start;gap: 15px;margin-bottom: 12px}
-.weather-city{font-size: 12px;font-weight: 800;letter-spacing: 0.6px;color: #8be4ec;text-transform: uppercase}
-.weather-hero{display: flex;align-items: center;gap: 18px;margin-top: 6px}
-.weather-hero-icon{font-size: 48px;line-height: 1;filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25))}
-.weather-hero-temp{font-size: 42px;font-weight: 900;letter-spacing: -1.5px}
-.weather-hero-cond{font-size: 14px;font-weight: 800;opacity: 0.95}
+.weather-indicators-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;padding:10px 0;border-top:1px solid rgba(255,255,255,0.2);border-bottom:1px solid rgba(255,255,255,0.2)}
+.w-ind-item{background:rgba(0,0,0,0.12);border-radius:8px;padding:7px 10px;backdrop-filter:blur(4px)}
+.w-ind-item small{display:block;font-size:9px;opacity:0.8;font-weight:700}
+.w-ind-item strong{font-size:12px;font-weight:800;display:block;margin-top:2px;color:#ffffff}
+.weather-hourly{display:flex;gap:10px;overflow-x:auto;padding-top:4px}
+.w-hour-item{text-align:center;min-width:52px;background:rgba(255,255,255,0.1);padding:5px;border-radius:7px;font-size:10px}
+.w-hour-item small{display:block;opacity:0.8;font-size:9px}
 
-.weather-indicators-grid{
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 12px 0;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255,255,255,0.2);
-  border-bottom: 1px solid rgba(255,255,255,0.2);
-}
-.w-ind-item{background: rgba(0,0,0,0.12);border-radius: 8px;padding: 7px 10px;backdrop-filter: blur(4px)}
-.w-ind-item small{display: block;font-size: 9px;opacity: 0.8;font-weight: 700}
-.w-ind-item strong{font-size: 12px;font-weight: 800;display: block;margin-top: 2px;color: #ffffff}
+.vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:14px;padding:20px 22px;box-shadow:0 8px 24px rgba(16,43,70,0.22);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+:root[data-theme="dark"] .vivid-tide{background:linear-gradient(135deg,#092133 0%,#103b54 50%,#165675 100%)}
+.vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:110px;opacity:0.15;pointer-events:none;line-height:1}
+.tide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.tide-title{font-size:12px;font-weight:800;letter-spacing:0.5px;color:#8be4ec}
+.tide-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.tide-box{background:rgba(255,255,255,0.1);border-radius:10px;padding:10px;backdrop-filter:blur(4px)}
+.tide-box.high{border-left:3px solid #26bdc8}
+.tide-box.low{border-left:3px solid #ffb347}
+.tide-box small{display:block;font-size:10px;opacity:0.85;font-weight:700}
+.tide-box strong{font-size:20px;font-weight:900;display:block;margin:2px 0}
+.tide-box span{font-size:11px;opacity:0.95;font-weight:700}
 
-.weather-hourly{display: flex;gap: 10px;overflow-x: auto;padding-top: 4px}
-.w-hour-item{text-align: center;min-width: 52px;background: rgba(255,255,255,0.1);padding: 5px;border-radius: 7px;font-size: 10px}
-.w-hour-item small{display: block;opacity: 0.8;font-size: 9px}
-
-.vivid-tide{
-  background: linear-gradient(135deg, #0e3d59 0%, #185a7d 50%, #1f829c 100%);
-  color: #ffffff;border-radius: 14px;padding: 20px 22px;
-  box-shadow: 0 8px 24px rgba(16,43,70,0.22);position: relative;overflow: hidden;
-  display: flex;flex-direction: column;justify-content: space-between;
-}
-:root[data-theme="dark"] .vivid-tide{
-  background: linear-gradient(135deg, #092133 0%, #103b54 50%, #165675 100%);
-}
-.vivid-tide-bg-icon{
-  position: absolute;right: -10px;top: -10px;font-size: 110px;opacity: 0.15;
-  pointer-events: none;line-height: 1;
-}
-.tide-top{display: flex;justify-content: space-between;align-items: flex-start;gap: 10px;margin-bottom: 10px}
-.tide-title{font-size: 12px;font-weight: 800;letter-spacing: 0.5px;color: #8be4ec}
-.tide-grid{display: grid;grid-template-columns: 1fr 1fr;gap: 10px;margin-top: 6px}
-.tide-box{background: rgba(255,255,255,0.1);border-radius: 10px;padding: 10px;backdrop-filter: blur(4px)}
-.tide-box.high{border-left: 3px solid #26bdc8}
-.tide-box.low{border-left: 3px solid #ffb347}
-.tide-box small{display: block;font-size: 10px;opacity: 0.85;font-weight: 700}
-.tide-box strong{font-size: 20px;font-weight: 900;display: block;margin: 2px 0}
-.tide-box span{font-size: 11px;opacity: 0.95;font-weight: 700}
-
-.tide-progress-wrap{margin-top: 10px}
-.tide-progress-labels{display: flex;justify-content: space-between;font-size: 10px;font-weight: 700;margin-bottom: 4px;opacity: 0.9}
-.tide-progress-bar{height: 8px;background: rgba(0,0,0,0.25);border-radius: 6px;overflow: hidden;position: relative}
-.tide-progress-fill{height: 100%;background: linear-gradient(90deg, #ffb347, #26bdc8);border-radius: 6px;width: 65%}
+.tide-progress-wrap{margin-top:10px}
+.tide-progress-labels{display:flex;justify-content:space-between;font-size:10px;font-weight:700;margin-bottom:4px;opacity:0.9}
+.tide-progress-bar{height:8px;background:rgba(0,0,0,0.25);border-radius:6px;overflow:hidden;position:relative}
+.tide-progress-fill{height:100%;background:linear-gradient(90deg,#ffb347,#26bdc8);border-radius:6px;width:65%}
 
 .movement-tools{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .movement-tools button{padding:6px 11px;font-size:11px}
@@ -285,7 +249,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
       </div>
 
-      <!-- NHÓM NÚT ĐIỀU KHIỂN ĐÃ ĐƯỢC CHUYỂN SANG DƯỚI KHỐI TRỰC ĐIỀU HÀNH -->
+      <!-- NHÓM NÚT ĐIỀU KHIỂN DƯỚI KHỐI TRỰC ĐIỀU HÀNH -->
       <div class="side-controls-group">
         <button id="setupShiftBtn" class="side-btn setup">Setup kíp trực 🔒</button>
         <button id="manualSaveBtn" class="side-btn save">Lưu dữ liệu 💾</button>
@@ -370,7 +334,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
-                <div class="tide-title">TRẠM HÒN DÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
+                <div class="tide-title">TRẠM HÒN ĐÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
                 <div style="font-size:11px;opacity:0.9;margin-top:2px">Đặc tính: <b>Nhật triều thuần nhất</b></div>
               </div>
               <span style="font-size:10px;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;font-weight:800;color:#8be4ec">Chuẩn 0 Hải Đồ</span>
@@ -734,7 +698,47 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- TRUY XUẤT DỮ LIỆU LỊCH SỬ TỪ SUPABASE THEO KHOẢNG THỜI GIAN KHÔNG GIỚI HẠN ---
+// --- TẢI HOẶC LƯU KÍP TRỰC LÊN SUPABASE DATABASE ---
+async function loadShiftConfigFromSupabase() {
+  let today = getTodayString();
+  try {
+    let { data, error } = await supabaseClient
+      .from('shift_configs')
+      .select('*')
+      .eq('shift_date', today)
+      .single();
+
+    if (data && !error) {
+      $('dispShift').textContent = data.shift_name || 'Ca 1 (06:00 - 14:00)';
+      $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
+      $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
+    }
+  } catch(e) {
+    console.log('Chưa có cấu hình kíp trực trên Supabase cho ngày hôm nay.');
+  }
+}
+
+async function saveShiftConfigToSupabase(shiftData) {
+  let today = getTodayString();
+  try {
+    let { error } = await supabaseClient
+      .from('shift_configs')
+      .upsert({
+        shift_date: today,
+        shift_name: shiftData.shift,
+        commander: shiftData.commander,
+        safety: shiftData.safety,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'shift_date' });
+
+    if (error) console.error('Lỗi lưu kíp trực lên Supabase:', error.message);
+    else console.log('Đã đồng bộ kíp trực lên Supabase thành công.');
+  } catch(err) {
+    console.error('Lỗi ngoại lệ kíp trực:', err);
+  }
+}
+
+// --- TRUY XUẤT HOẶC FALLBACK DỮ LIỆU TÀU TỪ SUPABASE KHI SERVER MẤT KẾT NỐI ---
 async function fetchHistoryFromSupabase() {
   let fDate = $('fromDate').value;
   let tDate = $('toDate').value;
@@ -749,7 +753,6 @@ async function fetchHistoryFromSupabase() {
   let startIso = new Date(fDate + 'T00:00:00.000Z').toISOString();
   let endIso = new Date(tDate + 'T23:59:59.999Z').toISOString();
 
-  // Truy vấn trực tiếp từ bảng port_calls_history của Supabase
   const { data, error } = await supabaseClient
     .from('port_calls_history')
     .select('*')
@@ -783,7 +786,7 @@ async function fetchHistoryFromSupabase() {
   }
 }
 
-// --- CƠ CHẾ LƯU DỮ LIỆU ĐỒNG BỘ LÊN DATABASE & STORAGE BUCKET ---
+// --- LƯU DỮ LIỆU TÀU LÊN DATABASE & STORAGE BUCKET ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) {
     if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
@@ -794,7 +797,6 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const nowStr = new Date().toLocaleString('vi-VN');
   let dbSuccess = false;
 
-  // 1. Thử lưu vào Database Table
   try {
     const payloadWithSnapshot = allCalls.map(c => ({
       vessel: c.vessel,
@@ -836,7 +838,6 @@ async function saveCurrentDataToSupabase(isAuto = false) {
     console.error('Lỗi Database:', err);
   }
 
-  // 2. Lưu file JSON lên Storage Bucket
   let bucketSuccess = false;
   try {
     const jsonContent = JSON.stringify({
@@ -872,7 +873,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
     if (dbSuccess || bucketSuccess) {
       alert(`Đã lưu thành công ${allCalls.length} bản ghi vào Supabase Cloud!`);
     } else {
-      alert(`Không thể lưu dữ liệu. Vui lòng kiểm tra lại SQL Editor trên Supabase.`);
+      alert(`Không thể lưu dữ liệu.`);
     }
   }
 }
@@ -882,7 +883,7 @@ function updateLastSavedDisplay(str) {
   $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
 }
 
-// --- XUẤT / NẠP FILE CẤU HÌNH (CONFIG IMPORT/EXPORT) ---
+// --- XUẤT / NẠP FILE CẤU HÌNH ---
 function exportConfigData() {
   if (!allCalls || allCalls.length === 0) {
     alert('Không có dữ liệu để xuất file!');
@@ -933,11 +934,11 @@ function handleFileImport(e) {
           $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1 (06:00 - 14:00)';
           $('dispCommander').textContent = parsed.shift_info.commander || 'Chưa thiết lập';
           $('dispSafety').textContent = parsed.shift_info.safety || 'Chưa thiết lập';
-          localStorage.setItem('hp_shift_info', JSON.stringify(parsed.shift_info));
+          saveShiftConfigToSupabase(parsed.shift_info);
         }
 
         renderAll();
-        alert(`Nạp file cấu hình thành công! Đã khôi phục ${allCalls.length} lượt tàu và thông tin kíp trực.`);
+        alert(`Nạp file cấu hình thành công! Đã khôi phục ${allCalls.length} lượt tàu.`);
       } else {
         alert('Cấu trúc file JSON không hợp lệ!');
       }
@@ -948,7 +949,6 @@ function handleFileImport(e) {
   reader.readAsText(file);
 }
 
-// Mật khẩu xác thực cho thao tác thủ công
 function handleManualSave() {
   let pwd = prompt('Nhập mật khẩu xác nhận (6868) để lưu dữ liệu hiện tại lên Supabase Cloud:');
   if (pwd === '6868') {
@@ -958,7 +958,6 @@ function handleManualSave() {
   }
 }
 
-// --- BỘ HẸN GIỜ TỰ ĐỘNG LƯU VÀO 12H ĐÊM (00:00 AM) ---
 function scheduleMidnightAutoSave() {
   let now = new Date();
   let midnight = new Date();
@@ -971,7 +970,7 @@ function scheduleMidnightAutoSave() {
   }, timeUntilMidnight);
 }
 
-// Load Data từ API Cảng vụ
+// --- TẢI DỮ LIỆU TÀU (CÓ TÍCH HỢP TỰ ĐỘNG FALLBACK KHI SERVER TRỰC TIẾP MẤT KẾT NỐI) ---
 async function loadData() {
   $('refreshBtn').disabled = true;
   $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
@@ -992,11 +991,41 @@ async function loadData() {
       }));
 
       renderAll();
-      $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Supabase Ready)';
+      $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Live API)';
     }
   } catch(e) {
-    console.error(e);
-    $('sideStatus').textContent = 'Lỗi kết nối API Cảng vụ';
+    console.warn('Server trực tiếp mất kết nối, đang chuyển sang chế độ dự phòng Supabase Database...');
+    $('sideStatus').textContent = 'Server mất kết nối. Đang lấy dữ liệu từ Supabase...';
+    
+    // Tự động Fallback: Lấy dữ liệu gần đây nhất từ Supabase khi Server trực tiếp chết
+    try {
+      let today = getTodayString();
+      let startIso = new Date(today + 'T00:00:00.000Z').toISOString();
+      let { data, error } = await supabaseClient
+        .from('port_calls_history')
+        .select('*')
+        .gte('etb', startIso)
+        .limit(200);
+
+      if (data && data.length > 0 && !error) {
+        allCalls = data.map(c => ({
+          vessel: c.vessel || '',
+          operator: c.operator || '',
+          terminal: c.terminal || '',
+          berth: c.berth || '',
+          loa: Number(c.loa) || 0,
+          dwt: c.dwt ?? '',
+          etb: c.etb || '',
+          etd: c.etd || ''
+        }));
+        renderAll();
+        $('sideStatus').textContent = `Đang chạy chế độ Offline (Nạp ${allCalls.length} từ Supabase)`;
+      } else {
+        $('sideStatus').textContent = 'Không có dữ liệu dự phòng trên Supabase';
+      }
+    } catch(err) {
+      $('sideStatus').textContent = 'Lỗi kết nối toàn bộ hệ thống';
+    }
   } finally {
     $('refreshBtn').disabled = false;
     resetCountdown();
@@ -1344,7 +1373,6 @@ function hideTooltip() {
   $('shipTooltip').style.display = 'none';
 }
 
-// Clock & Date Setup
 setInterval(() => {
   let d = new Date();
   $('liveClock').textContent = d.toTimeString().split(' ')[0];
@@ -1359,7 +1387,7 @@ function initDates() {
 }
 
 function openShiftModalWithPassword() {
-  let pwd = prompt('Vui lòng nhập mật khẩu xác thực để cấu hình kíp trực:');
+  let pwd = prompt('Vui lòng nhập mật khẩu xác thực (6868) để cấu hình kíp trực:');
   if (pwd === '6868') {
     openShiftModal();
   } else if (pwd !== null) {
@@ -1378,7 +1406,9 @@ function saveShiftModal() {
   $('dispShift').textContent = shiftData.shift;
   $('dispCommander').textContent = shiftData.commander;
   $('dispSafety').textContent = shiftData.safety;
-  localStorage.setItem('hp_shift_info', JSON.stringify(shiftData));
+  
+  // Lưu lên Supabase Database
+  saveShiftConfigToSupabase(shiftData);
   closeShiftModal();
 }
 
@@ -1423,16 +1453,6 @@ function restoreState() {
   let lastPage = localStorage.getItem('hp_last_page') || 'overview';
   nav(lastPage, false);
 
-  let savedShift = localStorage.getItem('hp_shift_info');
-  if (savedShift) {
-    try {
-      let s = JSON.parse(savedShift);
-      if (s.shift) $('dispShift').textContent = s.shift;
-      if (s.commander) $('dispCommander').textContent = s.commander;
-      if (s.safety) $('dispSafety').textContent = s.safety;
-    } catch(e){}
-  }
-
   let lastSaved = localStorage.getItem('hp_last_saved_timestamp');
   updateLastSavedDisplay(lastSaved);
 }
@@ -1440,6 +1460,7 @@ function restoreState() {
 // Initialize Application
 initDates();
 restoreState();
+loadShiftConfigFromSupabase(); // Tự động nạp kíp trực từ Supabase Database khi khởi động
 loadData();
 scheduleMidnightAutoSave();
 </script>
