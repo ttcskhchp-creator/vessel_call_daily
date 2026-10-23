@@ -689,7 +689,7 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- TẢI HOẶC LƯU KÍP TRỰC LÊN SUPABASE DATABASE ---
+// --- TẢI / LƯU KÍP TRỰC TỪ SUPABASE ---
 async function loadShiftConfigFromSupabase() {
   let today = getTodayString();
   try {
@@ -722,7 +722,16 @@ async function saveShiftConfigToSupabase(shiftData) {
   } catch(err) {}
 }
 
-// --- TẢI DỮ LIỆU TỪ STORAGE BUCKET (DÙNG CHO CÁC NGÀY ĐÃ QUA ĐỂ GIÚP DATABASE SIÊU NHẸ) ---
+// --- TRUY XUẤT DỮ LIỆU NGÀY CŨ TỪ STORAGE BUCKET (YÊU CẦU MẬT KHẨU 6868) ---
+function fetchHistoryFromBucketProtected() {
+  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để tải dữ liệu ngày cũ từ Storage Bucket:');
+  if (pwd === '6868') {
+    fetchHistoryFromBucket();
+  } else if (pwd !== null) {
+    alert('Mật khẩu không chính xác!');
+  }
+}
+
 async function fetchHistoryFromBucket() {
   let fDate = $('fromDate').value;
   if (!fDate) {
@@ -767,10 +776,10 @@ async function fetchHistoryFromBucket() {
   }
 }
 
-// --- TỰ ĐỘNG LƯU SNAPSHOT LÊN STORAGE BUCKET (12H ĐÊM HOẶC THỦ CÔNG) ---
+// --- TỰ ĐỘNG SAO LƯU DỮ LIỆU LÊN STORAGE BUCKET ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) {
-    if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
+    if (!isAuto) console.log('Chưa có dữ liệu để sao lưu tự động.');
     return;
   }
 
@@ -797,16 +806,18 @@ async function saveCurrentDataToSupabase(isAuto = false) {
     .from('port-documents')
     .upload(fileName, blob, { contentType: 'application/json', upsert: true });
 
-  const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 12h đêm' : 'Thủ công'})`;
+  const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 00:00' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
   updateLastSavedDisplay(savedStatusText);
 
   if (!isAuto) {
     if (!bucketError) {
-      alert(`Đã sao lưu thành công tệp snapshot ngày ${todayStr} lên Storage Bucket! Database được giữ siêu nhẹ.`);
+      alert(`Đã sao lưu thành công tệp snapshot ngày ${todayStr} lên Storage Bucket!`);
     } else {
       alert('Lỗi lưu Storage Bucket: ' + bucketError.message);
     }
+  } else {
+    console.log(`[AUTO-SAVE 00:00] Đã tự động sao lưu thành công ngày ${todayStr}`);
   }
 }
 
@@ -815,7 +826,16 @@ function updateLastSavedDisplay(str) {
   $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
 }
 
-// --- XUẤT FILE CẤU HÌNH DẠNG CSV (MỞ TRỰC TIẾP BẰNG EXCEL) ---
+// --- XUẤT FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
+function exportConfigAsCSVProtected() {
+  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để xuất file:');
+  if (pwd === '6868') {
+    exportConfigAsCSV();
+  } else if (pwd !== null) {
+    alert('Mật khẩu không chính xác!');
+  }
+}
+
 function exportConfigAsCSV() {
   if (!allCalls || allCalls.length === 0) {
     alert('Không có dữ liệu để xuất!');
@@ -823,7 +843,6 @@ function exportConfigAsCSV() {
   }
 
   let csvRows = [];
-  // Ghi phần thông tin kíp trực lên đầu file CSV
   csvRows.push(`"THÔNG TIN KÍP TRỰC","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`);
   csvRows.push(`"DANH SÁCH LƯỢT TÀU","","",""`);
   csvRows.push(`"STT","Tên Tàu","Hãng Tàu","Terminal","Bến","LOA (m)","DWT","ETB","ETD"`);
@@ -843,7 +862,7 @@ function exportConfigAsCSV() {
     csvRows.push(row.join(','));
   });
 
-  const csvString = "\uFEFF" + csvRows.join('\n'); // Thêm BOM hỗ trợ tiếng Việt trên Excel
+  const csvString = "\uFEFF" + csvRows.join('\n');
   const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const downloadAnchor = document.createElement('a');
@@ -854,7 +873,7 @@ function exportConfigAsCSV() {
   downloadAnchor.remove();
 }
 
-// --- NẠP FILE CẤU HÌNH DẠNG CSV/EXCEL ---
+// --- NẠP FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
 function triggerImportConfig() {
   let pwd = prompt('Nhập mật khẩu xác nhận (6868) để nạp file cấu hình:');
   if (pwd === '6868') {
@@ -878,7 +897,7 @@ function handleFileImport(e) {
       for (let i = 3; i < lines.length; i++) {
         let line = lines[i].trim();
         if (!line) continue;
-        let cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Phân tách CSV chuẩn hỗ trợ dấu phẩy trong tên
+        let cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
         if (cols.length >= 9) {
           loadedCalls.push({
             vessel: cols[1].replace(/["']/g, ''),
@@ -898,7 +917,7 @@ function handleFileImport(e) {
         renderAll();
         alert(`Đã nạp thành công ${allCalls.length} lượt tàu từ file CSV/Excel!`);
       } else {
-        alert('Không đọc được dữ liệu từ file CSV. Hãy đảm bảo đúng định dạng hệ thống xuất.');
+        alert('Không đọc được dữ liệu từ file.');
       }
     } catch(err) {
       alert('Lỗi xử lý file: ' + err.message);
@@ -916,19 +935,21 @@ function handleManualSave() {
   }
 }
 
+// --- HẸN GIỜ TỰ ĐỘNG LƯU VÀ NẠP VÀO 00:00 (12H ĐÊM) MỖI NGÀY ---
 function scheduleMidnightAutoSave() {
   let now = new Date();
   let midnight = new Date();
-  midnight.setHours(24, 0, 0, 0);
+  midnight.setHours(24, 0, 0, 0); // Thời điểm 00:00:00 đêm
 
   let timeUntilMidnight = midnight.getTime() - now.getTime();
   setTimeout(() => {
-    saveCurrentDataToSupabase(true);
-    scheduleMidnightAutoSave();
+    saveCurrentDataToSupabase(true); // Tự động lưu snapshot ngày cũ lên Bucket
+    loadData(); // Tự động nạp dữ liệu mới cho ngày mới
+    scheduleMidnightAutoSave(); // Lặp lại cho ngày tiếp theo
   }, timeUntilMidnight);
 }
 
-// Load Data từ API Cảng vụ
+// Load Data từ API Cảng vụ (Có Fallback Storage Bucket khi mất kết nối)
 async function loadData() {
   $('refreshBtn').disabled = true;
   $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
@@ -952,7 +973,7 @@ async function loadData() {
       $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Live API)';
     }
   } catch(e) {
-    console.warn('Mất kết nối server trực tiếp, đang tải dữ liệu snapshot từ Storage Bucket...');
+    console.warn('Mất kết nối server, đang tải dữ liệu snapshot từ Storage Bucket...');
     $('sideStatus').textContent = 'Server mất kết nối. Đang lấy từ Storage Bucket...';
     
     try {
@@ -1367,10 +1388,10 @@ setInterval(() => {
 // Event Bindings
 $('manualSaveBtn').onclick = handleManualSave;
 $('setupShiftBtn').onclick = openShiftModalWithPassword;
-$('exportConfigBtn').onclick = exportConfigAsCSV;
+$('exportConfigBtn').onclick = exportConfigAsCSVProtected;
 $('importConfigBtn').onclick = triggerImportConfig;
 $('importFileInput').onchange = handleFileImport;
-$('fetchHistoryBtn').onclick = fetchHistoryFromBucket;
+$('fetchHistoryBtn').onclick = fetchHistoryFromBucketProtected;
 
 $('closeModalBtn').onclick = closeShiftModal;
 $('saveModalBtn').onclick = saveShiftModal;
@@ -1405,7 +1426,7 @@ initDates();
 restoreState();
 loadShiftConfigFromSupabase();
 loadData();
-scheduleMidnightAutoSave();
+scheduleMidnightAutoSave(); // Kích hoạt bộ hẹn giờ tự động sao lưu và nạp dữ liệu vào 00:00 mỗi ngày
 </script>
 </body>
 </html>
