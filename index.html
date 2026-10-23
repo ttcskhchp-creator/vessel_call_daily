@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</title>
 <!-- Tích hợp Supabase JS Client SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,225 +15,245 @@
   --bg:#0b1623;--card:#122337;--ink:#e4edf6;--muted:#9db0c4;--line:#2b4055;--navy:#102b46;--navy2:#245477;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);font:14px/1.45 Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);overflow-x:hidden}
+body{margin:0;background:var(--bg);font:13px/1.42 Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);overflow-x:hidden}
 button,input,select,textarea{font:inherit}
-button{cursor:pointer;border:0;border-radius:8px;padding:9px 13px;font-weight:700;font-size:12px;background:#eaf0f6;color:#25445f;transition:all .15s}
+button{cursor:pointer;border:0;border-radius:8px;padding:8px 12px;font-weight:700;font-size:12px;background:#eaf0f6;color:#25445f;transition:all .15s}
 button:hover{filter:brightness(.95)}
-.app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
-.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:20px 12px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow-y:auto}
-.brand{display:flex;gap:11px;align-items:center;padding:0 8px}
-.brand small{display:block;font-size:8px;letter-spacing:1.2px;color:#9dc9e3;font-weight:800;text-transform:uppercase}
-.brand strong{font-size:13px;color:#fff;line-height:1.2;display:block}
-.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#82a3bd;padding:0 12px;margin-bottom:7px}
-.nav{display:grid;gap:5px}
-.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600}
+
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;transition:all .2s ease}
+.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:16px 10px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20}
+.brand{display:flex;gap:10px;align-items:center;padding:0 6px}
+.brand small{display:block;font-size:7px;letter-spacing:1px;color:#9dc9e3;font-weight:800;text-transform:uppercase}
+.brand strong{font-size:12px;color:#fff;line-height:1.2;display:block}
+.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 10px;margin-bottom:5px}
+.nav{display:grid;gap:4px}
+
+/* THU GỌN TABS THÔNG MINH (HIỆN ĐẦY ĐỦ KHI HOVER/TRỎ ĐẾN) */
+.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
+.nav button span.icon{font-size:15px;min-width:20px;text-align:center}
+.nav button span.txt{transition:opacity .15s}
 
 .side-shift-card{
   background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.4);
-  border-radius: 11px;padding: 12px;margin-top: 5px;
+  border-radius: 10px;padding: 10px;margin-top: 4px;
 }
-.side-shift-title{font-size: 10px;font-weight: 800;color: var(--cyan);letter-spacing: 0.5px;margin-bottom: 8px;display:flex;align-items:center;gap:5px}
-.side-shift-item{margin-bottom: 8px}
+.side-shift-title{font-size: 9px;font-weight: 800;color: var(--cyan);letter-spacing: 0.5px;margin-bottom: 6px;display:flex;align-items:center;gap:5px}
+.side-shift-item{margin-bottom: 6px}
 .side-shift-item:last-child{margin-bottom:0}
-.side-shift-item small{display: block;color: #82a3bd;font-size: 9px;font-weight: 700;margin-bottom: 1px}
-.side-shift-item strong{font-size: 11px;color: #ffffff;word-break: break-word}
+.side-shift-item small{display: block;color: #82a3bd;font-size: 8px;font-weight: 700;margin-bottom: 1px}
+.side-shift-item strong{font-size: 10px;color: #ffffff;word-break: break-word}
 .side-shift-item span.phone{color: var(--cyan);font-weight: 800}
 
-.side-controls-group{display:grid;gap:6px;margin-top:8px}
-.side-btn{width:100%;padding:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px}
+.side-controls-group{display:grid;gap:5px;margin-top:6px}
+.side-btn{width:100%;padding:8px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:7px}
 .side-btn.save{background:var(--green);color:#fff}
 .side-btn.setup{background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2)}
 .side-btn.export{background:#1f5e82;color:#fff}
 .side-btn.import{background:#6c5ce7;color:#fff}
 
-.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:12px 9px 0;color:#91adc2;font-size:10px;line-height:1.35}
+.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:10px 6px 0;color:#91adc2;font-size:9px;line-height:1.3}
 .main{min-width:0}
-.topbar{min-height:75px;padding:12px 28px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
-.crumb{font-size:11px;color:var(--muted);font-weight:700}
-.topbar h1{font-size:17px;margin:2px 0 0;font-weight:800;color:var(--navy2)}
+
+/* HEADER THU GỌN LINH HOẠT */
+.topbar{min-height:65px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.crumb{font-size:10px;color:var(--muted);font-weight:700}
+.topbar h1{font-size:15px;margin:1px 0 0;font-weight:800;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:450px}
 :root[data-theme="dark"] .topbar h1{color:var(--cyan)}
-.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .primary{background:var(--cyan);color:#073343}
 .darkbtn{background:var(--navy2);color:#fff}
-.content{padding:23px 28px 35px;max-width:1800px;margin:auto}
-.page{display:block;width:100%;animation:pageIn .16s ease-out}
+.content{padding:16px 20px 30px;max-width:1800px;margin:auto}
+.page{display:block;width:100%;animation:pageIn .15s ease-out}
 .page.hidden{display:none!important}
 @keyframes pageIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
-.page-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:17px}
-.page-head h2{margin:0 0 4px;font-size:22px}
+.page-head{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.page-head h2{margin:0 0 3px;font-size:20px}
 .muted{color:var(--muted)}
 .tiny{font-size:11px}
-.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:16px 0}
-.kpi,.panel{background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:0 3px 12px #18314a05}
-.kpi{padding:15px}
-.kpi-top{display:flex;justify-content:space-between;gap:5px;color:var(--muted);font-size:11px;font-weight:700}
-.kpi-value{font-size:25px;font-weight:850;letter-spacing:-.5px;margin:8px 0 2px}
-.kpi-note{font-size:10px;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:14px}
+
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0}
+.kpi,.panel{background:var(--card);border:1px solid var(--line);border-radius:11px;box-shadow:0 3px 10px #18314a05}
+.kpi{padding:12px}
+.kpi-top{display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:10px;font-weight:700}
+.kpi-value{font-size:22px;font-weight:850;letter-spacing:-.5px;margin:6px 0 2px}
+.kpi-note{font-size:9px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:12px}
 .panel{overflow:hidden;min-width:0}
-.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 17px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.panel-head h3{font-size:14px;margin:0}
-.panel-body{padding:15px 17px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 15px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h3{font-size:13px;margin:0}
+.panel-body{padding:12px 15px}
 
-.header-widgets-grid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:14px;margin-bottom:14px}
-.vivid-weather{background:linear-gradient(135deg,#163d63 0%,#205987 50%,#2fa3b5 100%);color:#ffffff;border-radius:14px;padding:20px 24px;box-shadow:0 8px 24px rgba(16,43,70,0.22);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.header-widgets-grid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;margin-bottom:12px}
+.vivid-weather{background:linear-gradient(135deg,#163d63 0%,#205987 50%,#2fa3b5 100%);color:#ffffff;border-radius:12px;padding:16px 20px;box-shadow:0 6px 20px rgba(16,43,70,0.2);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
 :root[data-theme="dark"] .vivid-weather{background:linear-gradient(135deg,#0d253d 0%,#153b5c 50%,#1a5b7d 100%)}
-.vivid-weather-bg-icon{position:absolute;right:-10px;top:-10px;font-size:130px;opacity:0.12;pointer-events:none;line-height:1}
-.weather-top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:12px}
-.weather-city{font-size:12px;font-weight:800;letter-spacing:0.6px;color:#8be4ec;text-transform:uppercase}
-.weather-hero{display:flex;align-items:center;gap:18px;margin-top:6px}
-.weather-hero-icon{font-size:48px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25))}
-.weather-hero-temp{font-size:42px;font-weight:900;letter-spacing:-1.5px}
-.weather-hero-cond{font-size:14px;font-weight:800;opacity:0.95}
+.vivid-weather-bg-icon{position:absolute;right:-10px;top:-10px;font-size:110px;opacity:0.12;pointer-events:none;line-height:1}
+.weather-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.weather-city{font-size:11px;font-weight:800;letter-spacing:0.5px;color:#8be4ec;text-transform:uppercase}
+.weather-hero{display:flex;align-items:center;gap:14px;margin-top:4px}
+.weather-hero-icon{font-size:40px;line-height:1}
+.weather-hero-temp{font-size:36px;font-weight:900;letter-spacing:-1px}
+.weather-hero-cond{font-size:13px;font-weight:800;opacity:0.95}
 
-.weather-indicators-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;padding:10px 0;border-top:1px solid rgba(255,255,255,0.2);border-bottom:1px solid rgba(255,255,255,0.2)}
-.w-ind-item{background:rgba(0,0,0,0.12);border-radius:8px;padding:7px 10px;backdrop-filter:blur(4px)}
-.w-ind-item small{display:block;font-size:9px;opacity:0.8;font-weight:700}
-.w-ind-item strong{font-size:12px;font-weight:800;display:block;margin-top:2px;color:#ffffff}
-.weather-hourly{display:flex;gap:10px;overflow-x:auto;padding-top:4px}
-.w-hour-item{text-align:center;min-width:52px;background:rgba(255,255,255,0.1);padding:5px;border-radius:7px;font-size:10px}
-.w-hour-item small{display:block;opacity:0.8;font-size:9px}
+.weather-indicators-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;padding:8px 0;border-top:1px solid rgba(255,255,255,0.2);border-bottom:1px solid rgba(255,255,255,0.2)}
+.w-ind-item{background:rgba(0,0,0,0.12);border-radius:7px;padding:6px 8px}
+.w-ind-item small{display:block;font-size:8px;opacity:0.8;font-weight:700}
+.w-ind-item strong{font-size:11px;font-weight:800;display:block;margin-top:2px;color:#ffffff}
+.weather-hourly{display:flex;gap:8px;overflow-x:auto;padding-top:2px}
+.w-hour-item{text-align:center;min-width:48px;background:rgba(255,255,255,0.1);padding:4px;border-radius:6px;font-size:9px}
+.w-hour-item small{display:block;opacity:0.8;font-size:8px}
 
-.vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:14px;padding:20px 22px;box-shadow:0 8px 24px rgba(16,43,70,0.22);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:12px;padding:16px 18px;box-shadow:0 6px 20px rgba(16,43,70,0.2);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
 :root[data-theme="dark"] .vivid-tide{background:linear-gradient(135deg,#092133 0%,#103b54 50%,#165675 100%)}
-.vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:110px;opacity:0.15;pointer-events:none;line-height:1}
-.tide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
-.tide-title{font-size:12px;font-weight:800;letter-spacing:0.5px;color:#8be4ec}
-.tide-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
-.tide-box{background:rgba(255,255,255,0.1);border-radius:10px;padding:10px;backdrop-filter:blur(4px)}
+.vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:100px;opacity:0.15;pointer-events:none;line-height:1}
+.tide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.tide-title{font-size:11px;font-weight:800;letter-spacing:0.4px;color:#8be4ec}
+.tide-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.tide-box{background:rgba(255,255,255,0.1);border-radius:8px;padding:8px}
 .tide-box.high{border-left:3px solid #26bdc8}
 .tide-box.low{border-left:3px solid #ffb347}
-.tide-box small{display:block;font-size:10px;opacity:0.85;font-weight:700}
-.tide-box strong{font-size:20px;font-weight:900;display:block;margin:2px 0}
-.tide-box span{font-size:11px;opacity:0.95;font-weight:700}
+.tide-box small{display:block;font-size:9px;opacity:0.85;font-weight:700}
+.tide-box strong{font-size:18px;font-weight:900;display:block;margin:2px 0}
+.tide-box span{font-size:10px;opacity:0.95;font-weight:700}
 
-.tide-progress-wrap{margin-top:10px}
-.tide-progress-labels{display:flex;justify-content:space-between;font-size:10px;font-weight:700;margin-bottom:4px;opacity:0.9}
-.tide-progress-bar{height:8px;background:rgba(0,0,0,0.25);border-radius:6px;overflow:hidden;position:relative}
-.tide-progress-fill{height:100%;background:linear-gradient(90deg,#ffb347,#26bdc8);border-radius:6px;width:65%}
+.tide-progress-wrap{margin-top:8px}
+.tide-progress-labels{display:flex;justify-content:space-between;font-size:9px;font-weight:700;margin-bottom:3px;opacity:0.9}
+.tide-progress-bar{height:7px;background:rgba(0,0,0,0.25);border-radius:5px;overflow:hidden}
+.tide-progress-fill{height:100%;background:linear-gradient(90deg,#ffb347,#26bdc8);border-radius:5px;width:65%}
 
-.movement-tools{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.movement-tools button{padding:6px 11px;font-size:11px}
+.movement-tools{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.movement-tools button{padding:5px 9px;font-size:10px}
 .movement-tools button.active{background:var(--navy2);color:#fff}
-.timeline{display:grid;gap:10px}
-.trow{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:start}
-.t-time{font-weight:800;font-size:12px;color:var(--navy2);padding-top:3px}
+.timeline{display:grid;gap:8px}
+.trow{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:start}
+.t-time{font-weight:800;font-size:11px;color:var(--navy2);padding-top:2px}
 :root[data-theme="dark"] .t-time{color:var(--cyan)}
-.t-card{border-left:3px solid var(--cyan);padding:2px 0 8px 11px;display:flex;justify-content:space-between;gap:10px;align-items:center}
-.t-card strong{font-size:12px}
-.tag-vivid{font-size:10px;border-radius:6px;padding:4px 8px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.t-card{border-left:3px solid var(--cyan);padding:2px 0 6px 10px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.t-card strong{font-size:11px}
+.tag-vivid{font-size:9px;border-radius:5px;padding:3px 6px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}
 .tag-vivid.arriving{background:#e8f6f1;color:#126e55}
 .tag-vivid.departing{background:#fff0f0;color:#a82e2e}
 .tag-vivid.urgent{background:#fff3d9;color:#8f5c00}
 
-.berth-group{margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.berth-group{margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:10px}
 .berth-group:last-child{border-bottom:0;padding-bottom:0}
-.berth-group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.berth-group-title{font-weight:800;font-size:13px;color:var(--navy2)}
+.berth-group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.berth-group-title{font-weight:800;font-size:12px;color:var(--navy2)}
 :root[data-theme="dark"] .berth-group-title{color:var(--cyan)}
-.berth-row{display:grid;grid-template-columns:45px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}
-.berth-name{font-weight:800;font-size:11px;color:var(--muted)}
-.berth-ships{display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
-.ship-chip{background:linear-gradient(135deg,#1f6d9c,#134c70);color:#fff;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 5px rgba(0,0,0,0.1);cursor:pointer}
+.berth-row{display:grid;grid-template-columns:40px 1fr;gap:8px;align-items:center;padding:5px 0;border-top:1px dashed var(--line)}
+.berth-name{font-weight:800;font-size:10px;color:var(--muted)}
+.berth-ships{display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px}
+.ship-chip{background:linear-gradient(135deg,#1f6d9c,#134c70);color:#fff;border-radius:5px;padding:4px 8px;font-size:10px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
 .ship-chip.large{background:linear-gradient(135deg,#c48612,#916005)}
-.ship-chip .chip-time{font-size:9px;opacity:.85;font-weight:normal}
-.empty-berth{color:var(--muted);font-size:11px;font-style:italic}
+.ship-chip .chip-time{font-size:8px;opacity:.85;font-weight:normal}
+.empty-berth{color:var(--muted);font-size:10px;font-style:italic}
 
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line)}
-.field{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);min-width:120px;font-size:12px;color:var(--ink)}
-.field.search{flex:1;min-width:180px}
-.table-wrap{overflow:auto;max-height:65vh}
-table{border-collapse:collapse;width:100%;min-width:850px;font-size:12px}
-th{background:rgba(0,0,0,0.03);color:var(--muted);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.35px;padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.field{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--card);min-width:100px;font-size:11px;color:var(--ink)}
+.field.search{flex:1;min-width:150px}
+.table-wrap{overflow:auto;max-height:60vh}
+table{border-collapse:collapse;width:100%;min-width:800px;font-size:11px}
+th{background:rgba(0,0,0,0.03);color:var(--muted);text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px;padding:9px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px;border-bottom:1px solid var(--line);white-space:nowrap}
 tbody tr:hover{background:rgba(38,189,200,0.04)}
 .vessel{font-weight:800;color:var(--navy2)}
 :root[data-theme="dark"] .vessel{color:var(--cyan)}
-.badge{display:inline-block;border-radius:5px;padding:3px 6px;background:#e7f2fc;color:#1b6599;font-weight:800;font-size:10px}
-.empty{padding:28px;text-align:center;color:var(--muted)}
+.badge{display:inline-block;border-radius:4px;padding:2px 5px;background:#e7f2fc;color:#1b6599;font-weight:800;font-size:9px}
+.empty{padding:24px;text-align:center;color:var(--muted)}
 
-.chart-list{display:grid;gap:12px}
-.barrow{display:grid;grid-template-columns:130px 1fr 35px;gap:10px;align-items:center;font-size:12px}
-.barbg{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
-.barfill{height:100%;background:var(--cyan);border-radius:6px}
+.chart-list{display:grid;gap:10px}
+.barrow{display:grid;grid-template-columns:120px 1fr 30px;gap:8px;align-items:center;font-size:11px}
+.barbg{height:8px;background:var(--line);border-radius:5px;overflow:hidden}
+.barfill{height:100%;background:var(--cyan);border-radius:5px}
 .barfill.gold{background:var(--amber)}
-.hourly-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-.hour-cell{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card)}
-.hour-cell-top{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
-.hour-cell b{font-size:13px}
-.hour-meter{height:4px;background:var(--line);border-radius:4px;margin-top:6px;overflow:hidden}
-.hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:4px}
+.hourly-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.hour-cell{border:1px solid var(--line);border-radius:7px;padding:6px;background:var(--card)}
+.hour-cell-top{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.hour-cell b{font-size:12px}
+.hour-meter{height:3px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
+.hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:3px}
 
-.gantt{overflow:auto;padding:15px}
-.gantt-head,.gantt-row{display:grid;grid-template-columns:155px minmax(650px,1fr);min-width:800px}
-.gantt-head{font-size:10px;color:var(--muted);padding-bottom:9px}
-.gantt-row{min-height:48px;border-top:1px solid var(--line);align-items:center}
-.berth-label{font-size:11px;font-weight:800;padding-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.track{height:34px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:5px}
-.shipbar{position:absolute;top:4px;height:26px;border-radius:5px;padding:4px 7px;color:#fff;font-size:10px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:35px;cursor:pointer;z-index:2;box-shadow:0 2px 4px rgba(0,0,0,0.15)}
+.gantt{overflow:auto;padding:12px}
+.gantt-head,.gantt-row{display:grid;grid-template-columns:140px minmax(600px,1fr);min-width:750px}
+.gantt-head{font-size:9px;color:var(--muted);padding-bottom:8px}
+.gantt-row{min-height:44px;border-top:1px solid var(--line);align-items:center}
+.berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:30px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
+.shipbar{position:absolute;top:3px;height:24px;border-radius:4px;padding:3px 6px;color:#fff;font-size:9px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:30px;cursor:pointer;z-index:2}
 .shipbar.large{background:#d99a24}
 
-#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.25);pointer-events:none;max-width:320px;font-size:12px}
-#shipTooltip strong{font-size:14px;color:var(--navy2);display:block;margin-bottom:2px}
+#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:none;max-width:300px;font-size:11px}
+#shipTooltip strong{font-size:13px;color:var(--navy2);display:block;margin-bottom:2px}
 :root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
-#shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px}
-#shipTooltip .tt-item small{display:block;color:var(--muted);font-size:9px}
-#shipTooltip .tt-item b{font-size:11px}
+#shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:6px}
+#shipTooltip .tt-item small{display:block;color:var(--muted);font-size:8px}
+#shipTooltip .tt-item b{font-size:10px}
 
-.report-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:800px;margin:auto}
-.form-group{margin-bottom:15px}
-.form-group label{display:block;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:5px}
-.form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--card);color:var(--ink)}
+.report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-weight:700;font-size:10px;color:var(--muted);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px;background:var(--card);color:var(--ink)}
 
 .modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center}
 .modal-shade.open{display:flex}
-.modal{background:var(--card);border-radius:14px;width:min(450px,92vw);padding:22px;box-shadow:0 10px 30px rgba(0,0,0,0.25)}
-.modal h3{margin:0 0 15px;font-size:17px}
-.modal-form{display:grid;gap:12px}
-.modal-form label{display:block;font-size:11px;font-weight:700;color:var(--muted)}
-.modal-form input{width:100%;margin-top:4px}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.modal{background:var(--card);border-radius:12px;width:min(420px,90vw);padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2)}
+.modal h3{margin:0 0 12px;font-size:16px}
+.modal-form{display:grid;gap:10px}
+.modal-form label{display:block;font-size:10px;font-weight:700;color:var(--muted)}
+.modal-form input{width:100%;margin-top:3px}
+.modal-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:15px}
 
-.port-link-box{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:11px;display:flex;align-items:center;justify-content:space-between}
+.port-link-box{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:10px;display:flex;align-items:center;justify-content:space-between}
 .port-link-box a{color:var(--cyan);font-weight:700;text-decoration:none}
 
-@media(max-width:1250px){.header-widgets-grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:800px){
-  .app{grid-template-columns:68px minmax(0,1fr)}
-  .side{padding:16px 7px}
-  .brand div,.nav-label,.nav button span:last-child,.side-foot,.side-shift-card,.side-controls-group{display:none}
-  .nav button{justify-content:center;padding:12px 5px}
+/* RESPONSIVE MOBILE & THU GỌN SIDEBAR THÔNG MINH */
+@media(max-width:950px){
+  .app{grid-template-columns:60px minmax(0,1fr)}
+  .brand div,.nav-label,.nav button span.txt,.side-foot,.side-shift-card,.side-controls-group{display:none}
+  .side{padding:12px 4px;align-items:center}
+  .brand{padding:0;justify-content:center}
+  .nav button{justify-content:center;padding:10px;width:44px;height:44px}
+  .nav button span.icon{font-size:18px;min-width:auto}
+  
+  /* Rê chuột/Chạm vào hiện đầy đủ khi mở rộng sidebar */
+  .side:hover{width:220px}
+  .side:hover .brand div,.side:hover .nav-label,.side:hover .nav button span.txt,.side:hover .side-foot,.side:hover .side-shift-card,.side:hover .side-controls-group{display:block}
+  .side:hover .nav button{justify-content:flex-start;width:100%;padding:9px 10px}
+  .side:hover .brand{justify-content:flex-start}
+
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .weather-indicators-grid{grid-template-columns:repeat(2,1fr)}
+  .header-widgets-grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .topbar{padding:10px 14px}
+  .content{padding:12px 14px 24px}
 }
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="side">
+  <aside class="side" id="sidebarNav">
     <div class="brand">
       <div>
-        <small>Operations & Customer Service Center</small>
-        <strong>Trung tâm Khai thác & DVKH</strong>
+        <small>Operations Center</small>
+        <strong>Cảng Hải Phòng</strong>
       </div>
     </div>
     <div>
       <div class="nav-label">Không gian làm việc</div>
       <nav class="nav">
-        <button class="active" data-page="overview"><span>▦</span><span>Toàn cảnh</span></button>
-        <button data-page="planning"><span>▤</span><span>Kế hoạch cầu</span></button>
-        <button data-page="search"><span>⌕</span><span>Tra cứu tàu</span></button>
-        <button data-page="stats"><span>▥</span><span>Thống kê</span></button>
-        <button data-page="report"><span>✉</span><span>Báo cáo & Góp ý</span></button>
-        <button data-page="resources"><span>↗</span><span>Nguồn & Liên hệ</span></button>
+        <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt">Toàn cảnh</span></button>
+        <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt">Kế hoạch cầu</span></button>
+        <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt">Tra cứu tàu</span></button>
+        <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt">Thống kê</span></button>
+        <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt">Báo cáo & Góp ý</span></button>
+        <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt">Nguồn & Liên hệ</span></button>
       </nav>
     </div>
 
     <div class="side-shift-card">
-      <div class="side-shift-title">⚡ BỘ PHẬN TRỰC ĐIỀU HÀNH</div>
+      <div class="side-shift-title">⚡ BỘ PHẬN TRỰC</div>
       <div class="side-shift-item">
-        <small>CA TRỰC VẬN HÀNH</small>
+        <small>CA TRỰC</small>
         <strong id="dispShift">Ca 1 (06:00 - 14:00)</strong>
       </div>
       <div class="side-shift-item">
@@ -241,41 +261,40 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <strong id="dispCommander">Nguyễn Văn A - <span class="phone">0912.345.678</span></strong>
       </div>
       <div class="side-shift-item">
-        <small>AN TOÀN - HÀNG HẢI</small>
+        <small>AN TOÀN HẢI</small>
         <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
       </div>
 
       <div class="side-controls-group">
-        <button id="setupShiftBtn" class="side-btn setup">Setup kíp trực 🔒</button>
-        <button id="manualSaveBtn" class="side-btn save">Lưu dữ liệu 💾</button>
-        <button id="exportConfigBtn" class="side-btn export">Xuất file CSV/Excel 📤</button>
-        <button id="importConfigBtn" class="side-btn import">Nạp file CSV/Excel 📥</button>
+        <button id="setupShiftBtn" class="side-btn setup" title="Setup kíp trực">Setup trực 🔒</button>
+        <button id="manualSaveBtn" class="side-btn save" title="Lưu dữ liệu">Lưu Bucket 💾</button>
+        <button id="exportConfigBtn" class="side-btn export" title="Xuất file">Xuất Excel 📤</button>
+        <button id="importConfigBtn" class="side-btn import" title="Nạp file">Nạp Excel 📥</button>
         <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
       </div>
     </div>
 
     <div class="side-foot">
-      <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b><br>
-      <span style="opacity:0.75;font-size:9px">Operations & Customer Service Center</span><br><br>
+      <b>Cảng Hải Phòng</b><br>
       <span id="sideStatus">Đang kết nối Supabase...</span><br>
-      <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa có lịch sử lưu</span>
+      <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
     </div>
   </aside>
 
   <section class="main">
     <header class="topbar">
       <div>
-        <div class="crumb">CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG / <span id="crumb">TOÀN CẢNH</span></div>
-        <h1 id="topTitle">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</h1>
+        <div class="crumb">CẢNG HẢI PHÒNG / <span id="crumb">TOÀN CẢNH</span></div>
+        <h1 id="topTitle" title="Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng">Trung tâm Khai thác & DVKH</h1>
       </div>
       <div class="actions">
-        <div style="display:flex;align-items:center;gap:6px" class="tiny">
-          Từ: <input type="date" id="fromDate" class="field" style="padding:4px 6px">
-          Đến: <input type="date" id="toDate" class="field" style="padding:4px 6px">
-          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:6px 10px">🔍 Tải dữ liệu ngày cũ (Bucket)</button>
+        <div style="display:flex;align-items:center;gap:4px" class="tiny">
+          Từ: <input type="date" id="fromDate" class="field" style="padding:3px 5px">
+          Đến: <input type="date" id="toDate" class="field" style="padding:3px 5px">
+          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu cũ từ Bucket">🔍 Tải Bucket</button>
         </div>
-        <button class="theme-toggle" id="themeToggle">◐ Giao diện tối</button>
-        <button class="primary" id="refreshBtn">↻ Cập nhật (<span id="countdown">30:00</span>)</button>
+        <button class="theme-toggle" id="themeToggle" style="padding:6px 10px">◐ Giao diện</button>
+        <button class="primary" id="refreshBtn" style="padding:6px 10px">↻ (<span id="countdown">30:00</span>)</button>
       </div>
     </header>
 
@@ -286,40 +305,35 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-weather-bg-icon">☀️</div>
             <div class="weather-top">
               <div>
-                <div class="weather-city">CẢNG HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI & DỰ BÁO</div>
+                <div class="weather-city">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
                 <div class="weather-hero">
                   <span class="weather-hero-icon">🌤️</span>
                   <span class="weather-hero-temp">28°C</span>
                   <div>
-                    <div class="weather-hero-cond">Nắng nhẹ · Bầu trời quang đãng</div>
-                    <div style="font-size:11px;opacity:0.85">Cảm giác như 30°C · Điều kiện xếp dỡ an toàn</div>
+                    <div class="weather-hero-cond">Nắng nhẹ · Quang đãng</div>
+                    <div style="font-size:10px;opacity:0.85">An toàn xếp dỡ hàng hóa</div>
                   </div>
                 </div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:18px;font-weight:900" id="liveClock">14:14:00</div>
-                <div style="font-size:10px;opacity:0.85" id="currentFullDate">Thứ Sáu, 23/10/2026</div>
-                <div style="font-size:10px;color:#8be4ec;margin-top:4px;font-weight:800" id="topLastSaved">Lưu gần nhất: Chưa ghi nhận</div>
+                <div style="font-size:16px;font-weight:900" id="liveClock">14:14:00</div>
+                <div style="font-size:9px;opacity:0.85" id="currentFullDate">23/10/2026</div>
+                <div style="font-size:9px;color:#8be4ec;margin-top:2px;font-weight:800" id="topLastSaved">Lưu: Chưa có</div>
               </div>
             </div>
 
             <div class="weather-indicators-grid">
-              <div class="w-ind-item"><small>HƯỚNG & TỐC ĐỘ GIÓ</small><strong>🧭 Đông Nam (SE) · 4.2 m/s (Cấp 3)</strong></div>
-              <div class="w-ind-item"><small>TẦM NHÌN XA TRÊN BIỂN</small><strong>👁️ > 10 km (Rất tốt)</strong></div>
-              <div class="w-ind-item"><small>ĐỘ ẨM KHÔNG KHÍ</small><strong>💧 75% RH</strong></div>
-              <div class="w-ind-item"><small>ÁP SUẤT KHÍ QUYỂN</small><strong>🌡️ 1013 hPa</strong></div>
-              <div class="w-ind-item"><small>CHỈ SỐ BỨC XẠ UV</small><strong>☀️ 4 (Trung bình)</strong></div>
-              <div class="w-ind-item"><small>BÌNH MINH / HOÀNG HÔN</small><strong>🌅 05:52 / 🌄 17:28</strong></div>
+              <div class="w-ind-item"><small>GIÓ</small><strong>🧭 SE · 4.2 m/s</strong></div>
+              <div class="w-ind-item"><small>TẦM NHÌN</small><strong>👁️ > 10 km</strong></div>
+              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong>💧 75%</strong></div>
             </div>
 
             <div class="weather-hourly">
-              <div class="w-hour-item"><small>Bây giờ</small><b>☀️ 28°C</b></div>
-              <div class="w-hour-item"><small>15:00</small><b>🌤️ 28°C</b></div>
-              <div class="w-hour-item"><small>18:00</small><b>🌥️ 26°C</b></div>
-              <div class="w-hour-item"><small>21:00</small><b>🌙 24°C</b></div>
-              <div class="w-hour-item"><small>00:00</small><b>🌙 23°C</b></div>
-              <div class="w-hour-item"><small>03:00</small><b>🌌 22°C</b></div>
-              <div class="w-hour-item"><small>06:00</small><b>🌅 23°C</b></div>
+              <div class="w-hour-item"><small>Bây giờ</small><b>☀️ 28°</b></div>
+              <div class="w-hour-item"><small>15:00</small><b>🌤️ 28°</b></div>
+              <div class="w-hour-item"><small>18:00</small><b>🌥️ 26°</b></div>
+              <div class="w-hour-item"><small>21:00</small><b>🌙 24°</b></div>
+              <div class="w-hour-item"><small>00:00</small><b>🌙 23°</b></div>
             </div>
           </div>
 
@@ -327,29 +341,29 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
-                <div class="tide-title">TRẠM HÒN DÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
-                <div style="font-size:11px;opacity:0.9;margin-top:2px">Đặc tính: <b>Nhật triều thuần nhất</b></div>
+                <div class="tide-title">TRẠM HÒN ĐÁU · THỦY TRIỀU</div>
+                <div style="font-size:10px;opacity:0.9">Nhật triều thuần nhất</div>
               </div>
-              <span style="font-size:10px;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;font-weight:800;color:#8be4ec">Chuẩn 0 Hải Đồ</span>
+              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec">Chuẩn 0</span>
             </div>
 
             <div class="tide-grid">
               <div class="tide-box high">
-                <small>▲ NƯỚC LỚN (TRIỀU CƯỜNG)</small>
+                <small>▲ NƯỚC LỚN</small>
                 <strong>2.76 m</strong>
-                <span>🕒 15:17 (Chiều)</span>
+                <span>🕒 15:17</span>
               </div>
               <div class="tide-box low">
-                <small>▼ NƯỚC RÒNG (TRIỀU KIỆT)</small>
+                <small>▼ NƯỚC RÒNG</small>
                 <strong>1.49 m</strong>
-                <span>🕒 02:59 (Sáng)</span>
+                <span>🕒 02:59</span>
               </div>
             </div>
 
             <div class="tide-progress-wrap">
               <div class="tide-progress-labels">
                 <span>Ròng: 1.49m</span>
-                <span style="color:#8be4ec">Hiện tại: ~2.62m (Nước đang rút)</span>
+                <span style="color:#8be4ec">Đang rút (~2.62m)</span>
                 <span>Lớn: 2.76m</span>
               </div>
               <div class="tide-progress-bar">
@@ -361,66 +375,66 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 
         <div class="kpis">
           <div class="kpi">
-            <div class="kpi-top">Tàu đang làm hàng</div>
+            <div class="kpi-top">Đang làm hàng</div>
             <div class="kpi-value" id="kWorking">—</div>
-            <div class="kpi-note">Tại các cầu bến</div>
+            <div class="kpi-note">Tại cầu bến</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tàu đến trong 24h <span>↘</span></div>
+            <div class="kpi-top">Đến trong 24h</div>
             <div class="kpi-value" id="kArrivals">—</div>
-            <div class="kpi-note" id="kArrNote">Theo ETB trong 24 giờ</div>
+            <div class="kpi-note">Theo ETB</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tàu rời trong 24h <span>↗</span></div>
+            <div class="kpi-top">Rời trong 24h</div>
             <div class="kpi-value" id="kDepartures">—</div>
-            <div class="kpi-note" id="kDepNote">Theo ETD trong 24 giờ</div>
+            <div class="kpi-note">Theo ETD</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tổng LOA ở cảng <span>↔</span></div>
+            <div class="kpi-top">Tổng LOA</div>
             <div class="kpi-value" id="kLoa">—</div>
-            <div class="kpi-note">Chỉ tính Cảng Hải Phòng (HD, CV, HTIT, TV, ĐV)</div>
+            <div class="kpi-note">Cảng HP</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tàu ≥ 300 m / 72h</div>
+            <div class="kpi-top">Tàu ≥ 300m</div>
             <div class="kpi-value" id="kLarge">—</div>
-            <div class="kpi-note" id="kLargeNote">Tàu kích thước lớn</div>
+            <div class="kpi-note">Cỡ lớn</div>
           </div>
         </div>
 
         <div class="grid2">
           <section class="panel">
             <div class="panel-head">
-              <h3>Cầu bến Cảng Tân Vũ (Tiêu điểm)</h3>
+              <h3>Cảng Tân Vũ (Tiêu điểm)</h3>
               <span class="muted tiny" id="tanvuCount">Đang cập nhật...</span>
             </div>
             <div class="panel-body">
               <div id="tanvuBerthsLayout">
-                <div class="empty">Đang tải dữ liệu cầu bến Tân Vũ...</div>
+                <div class="empty">Đang tải cầu bến Tân Vũ...</div>
               </div>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <h3>Bảng điều động tàu</h3>
+              <h3>Điều động tàu</h3>
               <button data-goto="search">Xem tất cả →</button>
             </div>
             <div class="panel-body">
               <div class="movement-tools">
                 <button class="active" onclick="filterMovement('all', this)">Tất cả</button>
-                <button onclick="filterMovement('arriving', this)">Tàu cập cầu</button>
-                <button onclick="filterMovement('departing', this)">Tàu rời cầu</button>
+                <button onclick="filterMovement('arriving', this)">Cập cầu</button>
+                <button onclick="filterMovement('departing', this)">Rời cầu</button>
               </div>
               <div class="timeline" id="movement">
-                <div class="empty">Chưa có dữ liệu điều động.</div>
+                <div class="empty">Chưa có dữ liệu.</div>
               </div>
             </div>
           </section>
         </div>
 
         <div class="port-link-box">
-          <span>Đơn vị chủ quản: <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b></span>
-          <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">Mở haiphongport.com.vn ↗</a>
+          <span>Đơn vị: <b>Trung tâm Khai thác & DVKH - Cảng Hải Phòng</b></span>
+          <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">haiphongport.com.vn ↗</a>
         </div>
       </section>
 
@@ -429,24 +443,24 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div class="page-head">
           <div>
             <h2>Kế hoạch cầu bến</h2>
-            <div class="muted">Sơ đồ chiếm bến theo khoảng thời gian được chọn</div>
+            <div class="muted">Sơ đồ chiếm bến trực quan</div>
           </div>
           <span class="status" id="planningCount">Chưa có dữ liệu</span>
         </div>
         <div class="panel">
           <div class="toolbar" style="background:var(--card)">
-            <input id="planningSearch" class="field search" placeholder="🔍 Tìm kiếm tên tàu, hãng tàu hoặc bến...">
+            <input id="planningSearch" class="field search" placeholder="🔍 Tìm kiếm tàu, hãng, bến...">
             <label class="tiny" style="display:flex;align-items:center;gap:4px">
-              Cửa sổ xem:
-              <select id="days" class="field" style="padding:6px 10px">
+              Cửa sổ:
+              <select id="days" class="field" style="padding:5px 8px">
                 <option value="2">2 ngày</option>
                 <option value="4" selected>4 ngày</option>
                 <option value="7">7 ngày</option>
               </select>
             </label>
           </div>
-          <div class="toolbar" style="border-top:0;padding-top:0;gap:6px">
-            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)">Tất cả khu vực</button>
+          <div class="toolbar" style="border-top:0;padding-top:0;gap:5px">
+            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)">Tất cả</button>
             <button class="tiny" onclick="filterPlanningArea('TÂN VŨ', this)">Tân Vũ</button>
             <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
             <button class="tiny" onclick="filterPlanningArea('HOÀNG DIỆU', this)">Hoàng Diệu</button>
@@ -454,23 +468,23 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
           </div>
           <div class="gantt" id="fullGantt">
-            <div class="empty">Chưa có dữ liệu để dựng Gantt.</div>
+            <div class="empty">Chưa có dữ liệu Gantt.</div>
           </div>
         </div>
       </section>
 
-      <!-- MÀN HÌNH 3: TRA CỨU TÀU -->
+      <!-- MÀN HÌNH 3: TRA CỨU -->
       <section id="page-search" class="page hidden">
         <div class="page-head">
           <div>
             <h2>Tra cứu lịch tàu</h2>
-            <div class="muted">Tìm kiếm và kiểm tra danh sách chi tiết các lượt tàu</div>
+            <div class="muted">Danh sách chi tiết lượt tàu</div>
           </div>
           <button id="exportBtn">⇩ Xuất CSV</button>
         </div>
         <div class="panel">
           <div class="toolbar">
-            <input id="search" class="field search" placeholder="Tìm tàu, hãng hoặc cảng...">
+            <input id="search" class="field search" placeholder="Tìm tên tàu, hãng...">
           </div>
           <div class="table-wrap">
             <table>
@@ -491,82 +505,56 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-stats" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Thống kê & Báo cáo khai thác</h2>
-            <div class="muted" id="statsSubtitle">Phân tích tần suất và sản lượng lượt tàu</div>
+            <h2>Thống kê & Báo cáo</h2>
+            <div class="muted" id="statsSubtitle">Phân tích tần suất lượt tàu</div>
           </div>
         </div>
         <div class="grid2">
           <section class="panel">
-            <div class="panel-head"><h3>Lượt tàu theo đơn vị Terminal</h3></div>
-            <div class="panel-body"><div class="chart-list" id="statTerminals"><div class="empty">Chưa có dữ liệu</div></div></div>
+            <div class="panel-head"><h3>Theo Terminal</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statTerminals"><div class="empty">Trống</div></div></div>
           </section>
           <section class="panel">
-            <div class="panel-head"><h3>Lượt tàu theo hãng vận tải</h3></div>
-            <div class="panel-body"><div class="chart-list" id="statOperators"><div class="empty">Chưa có dữ liệu</div></div></div>
+            <div class="panel-head"><h3>Theo Hãng tàu</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statOperators"><div class="empty">Trống</div></div></div>
           </section>
         </div>
-        <div class="grid2" style="margin-top:14px">
+        <div class="grid2" style="margin-top:12px">
           <section class="panel">
-            <div class="panel-head"><h3>Phân khúc chiều dài tàu (LOA)</h3></div>
-            <div class="panel-body"><div class="chart-list" id="statLoaBins"><div class="empty">Chưa có dữ liệu</div></div></div>
+            <div class="panel-head"><h3>Phân khúc LOA</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statLoaBins"><div class="empty">Trống</div></div></div>
           </section>
           <section class="panel">
-            <div class="panel-head"><h3>Tần suất giờ tàu cập bến trong ngày</h3></div>
+            <div class="panel-head"><h3>Tần suất giờ cập</h3></div>
             <div class="panel-body"><div class="hourly-grid" id="statHours"></div></div>
           </section>
         </div>
-        <section class="panel" style="margin-top:14px">
-          <div class="panel-head"><h3>Top các tàu có kích thước lớn nhất (LOA)</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Tên tàu</th><th>Terminal · Bến</th><th>ETB</th><th>ETD</th><th>LOA (m)</th></tr></thead>
-              <tbody id="statTopShips"><tr><td colspan="6" class="empty">Chưa có dữ liệu</td></tr></tbody>
-            </table>
-          </div>
-        </section>
       </section>
 
       <!-- MÀN HÌNH 5: BÁO CÁO -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Phản ánh & Báo cáo sai lệch dữ liệu</h2>
-            <div class="muted">Gửi phản ánh trực tiếp tới Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</div>
+            <h2>Phản ánh & Báo cáo sai lệch</h2>
+            <div class="muted">Gửi phản ánh tới Trung tâm Khai thác & DVKH</div>
           </div>
         </div>
         <div class="report-card">
+          <div class="form-group"><label>Họ tên (*)</label><input id="repName" placeholder="Nhập tên..."></div>
+          <div class="form-group"><label>SĐT / Email (*)</label><input id="repContact" placeholder="Nhập liên hệ..."></div>
+          <div class="form-group"><label>Đơn vị</label><input id="repCompany" placeholder="Hãng tàu / Đại lý..."></div>
           <div class="form-group">
-            <label>Họ và tên người báo cáo (*)</label>
-            <input id="repName" placeholder="Nhập họ và tên...">
-          </div>
-          <div class="form-group">
-            <label>Số điện thoại liên hệ / Email (*)</label>
-            <input id="repContact" placeholder="Nhập số điện thoại hoặc email...">
-          </div>
-          <div class="form-group">
-            <label>Đơn vị / Hãng tàu / Đại lý</label>
-            <input id="repCompany" placeholder="Ví dụ: Hãng tàu Maersk, Đại lý A...">
-          </div>
-          <div class="form-group">
-            <label>Loại nội dung phản ánh</label>
+            <label>Nội dung phản ánh</label>
             <select id="repType">
-              <option>Sai thông tin thời gian (ETB / ETD)</option>
-              <option>Sai tên tàu / LOA / Trọng tải DWT</option>
-              <option>Sai vị trí cầu bến neo đậu</option>
-              <option>Nội dung góp ý khác</option>
+              <option>Sai thời gian ETB/ETD</option>
+              <option>Sai tên tàu / LOA / DWT</option>
+              <option>Sai vị trí cầu bến</option>
+              <option>Góp ý khác</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Tên Tàu / Cầu bến liên quan</label>
-            <input id="repVessel" placeholder="Ví dụ: Tàu WAN HAI A19 - Cảng Tân Vũ B1">
-          </div>
-          <div class="form-group">
-            <label>Nội dung chi tiết phản ánh (*)</label>
-            <textarea id="repContent" rows="5" placeholder="Mô tả chi tiết nội dung dữ liệu bị sai lệch hoặc thông tin cần điều chỉnh..."></textarea>
-          </div>
-          <button id="sendEmailBtn" class="primary" style="width:100%;padding:12px;font-size:14px">
-            ✉ Gửi phản ánh về ttdvkh@haiphongport.com.vn
-          </button>
+          <div class="form-group"><label>Tàu / Cầu bến liên quan</label><input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1"></div>
+          <div class="form-group"><label>Chi tiết (*)</label><textarea id="repContent" rows="4" placeholder="Mô tả nội dung..."></textarea></div>
+          <button id="sendEmailBtn" class="primary" style="width:100%;padding:10px">✉ Gửi phản ánh</button>
         </div>
       </section>
 
@@ -574,15 +562,15 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Nguồn dữ liệu & Liên hệ</h2>
-            <div class="muted">Thông tin tích hợp hệ thống</div>
+            <h2>Nguồn & Liên hệ</h2>
+            <div class="muted">Thông tin hệ thống</div>
           </div>
         </div>
-        <div class="panel" style="padding:20px">
-          <p><b>Đơn vị quản lý:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng (Operations & Customer Service Center)</p>
-          <p><b>Cơ sở dữ liệu lịch sử:</b> Supabase Cloud Database & Storage Bucket (`port-documents` Active)</p>
-          <p><b>Liên hệ hỗ trợ:</b> Email: ttdvkh@haiphongport.com.vn | Hotline: 1800.5555.22 (Nhánh 3)</p>
-          <p><b>Trang chủ Cảng Hải Phòng:</b> <a href="https://haiphongport.com.vn" target="_blank">https://haiphongport.com.vn</a></p>
+        <div class="panel" style="padding:16px">
+          <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Cảng Hải Phòng</p>
+          <p><b>API:</b> HTIT Port Window Public API</p>
+          <p><b>Storage:</b> Supabase Cloud Bucket (`port-documents`)</p>
+          <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
     </main>
@@ -594,22 +582,19 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <strong id="ttName">—</strong>
   <div id="ttOperator" class="muted tiny"></div>
   <div class="tt-grid">
-    <div class="tt-item"><small>Kích thước (LOA)</small><b id="ttLoa">—</b></div>
-    <div class="tt-item"><small>Trọng tải (DWT)</small><b id="ttDwt">—</b></div>
-    <div class="tt-item"><small>Thời gian Cập (ETB)</small><b id="ttEtb">—</b></div>
-    <div class="tt-item"><small>Thời gian Rời (ETD)</small><b id="ttEtd">—</b></div>
-    <div class="tt-item"><small>Đã ở cầu đến nay</small><b id="ttDocked">—</b></div>
-    <div class="tt-item"><small>Thời gian còn lại</small><b id="ttRemaining">—</b></div>
+    <div class="tt-item"><small>LOA</small><b id="ttLoa">—</b></div>
+    <div class="tt-item"><small>DWT</small><b id="ttDwt">—</b></div>
+    <div class="tt-item"><small>ETB</small><b id="ttEtb">—</b></div>
+    <div class="tt-item"><small>ETD</small><b id="ttEtd">—</b></div>
+    <div class="tt-item"><small>Đã ở cầu</small><b id="ttDocked">—</b></div>
+    <div class="tt-item"><small>Còn lại</small><b id="ttRemaining">—</b></div>
   </div>
-  <button id="ttReportBtn" style="width:100%;margin-top:10px;padding:5px;font-size:10px" class="darkbtn">
-    ✉ Báo sai thông tin tàu này
-  </button>
 </div>
 
-<!-- SETUP SHIFT MODAL -->
+<!-- SETUP MODAL -->
 <div id="modalShade" class="modal-shade">
   <div class="modal">
-    <h3>Thiết lập Bộ phận Trực điều hành</h3>
+    <h3>Thiết lập Bộ phận Trực</h3>
     <div class="modal-form">
       <div>
         <label>Ca trực</label>
@@ -620,17 +605,17 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </select>
       </div>
       <div>
-        <label>Trưởng Điều hành (Tên & Số ĐT)</label>
-        <input id="mCommander" class="field" placeholder="Ví dụ: Nguyễn Văn A - 0912.345.678">
+        <label>Trưởng điều hành</label>
+        <input id="mCommander" class="field" placeholder="Tên - SĐT">
       </div>
       <div>
-        <label>Cán bộ Trực An toàn - Hàng hải (Tên & Số ĐT)</label>
-        <input id="mSafety" class="field" placeholder="Ví dụ: Trần Văn B - 0988.765.432">
+        <label>An toàn hải</label>
+        <input id="mSafety" class="field" placeholder="Tên - SĐT">
       </div>
     </div>
     <div class="modal-actions">
       <button id="closeModalBtn">Hủy</button>
-      <button id="saveModalBtn" class="primary">Lưu cấu hình</button>
+      <button id="saveModalBtn" class="primary">Lưu</button>
     </div>
   </div>
 </div>
@@ -665,11 +650,11 @@ function dt(v){
 }
 
 function formatDuration(ms) {
-  if (isNaN(ms) || ms <= 0) return '0 giờ 0 phút';
+  if (isNaN(ms) || ms <= 0) return '0 giờ';
   let totalMin = Math.floor(ms / 60000);
   let hrs = Math.floor(totalMin / 60);
   let mins = totalMin % 60;
-  return `${hrs} giờ ${mins} phút`;
+  return `${hrs}h ${mins}p`;
 }
 
 function nav(page, saveState = true){
@@ -688,7 +673,40 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- TẢI / LƯU KÍP TRỰC TỪ SUPABASE ---
+// --- XỬ LÝ LỌC TRÙNG LẶP TÀU (ƯU TIÊN ĐỦ NGÀY CẬP / RỜI & MỚI NHẤT) ---
+function filterAndDeduplicateCalls(rawList) {
+  let map = new Map();
+  rawList.forEach(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    if (!vName) return;
+    
+    let etbDate = c.etb ? c.etb.split('T')[0] : '';
+    let etdDate = c.etd ? c.etd.split('T')[0] : '';
+    let key = `${vName}_${etbDate}_${etdDate}`;
+
+    if (!map.has(key)) {
+      map.set(key, c);
+    } else {
+      let existing = map.get(key);
+      let existingScore = (existing.etb ? 1 : 0) + (existing.etd ? 1 : 0);
+      let currentScore = (c.etb ? 1 : 0) + (c.etd ? 1 : 0);
+      
+      // Ưu tiên bản ghi có đủ ngày cập/rời hơn hoặc có thời gian cập mới hơn
+      if (currentScore > existingScore || (currentScore === schematicScore(existing, c))) {
+        map.set(key, c);
+      }
+    }
+  });
+  return Array.from(map.values());
+}
+
+function schematicScore(a, b) {
+  let ta = a.etb ? new Date(a.etb).getTime() : 0;
+  let tb = b.etb ? new Date(b.etb).getTime() : 0;
+  return tb > ta ? b : a;
+}
+
+// --- TẢI KÍP TRỰC TỪ SUPABASE ---
 async function loadShiftConfigFromSupabase() {
   let today = getTodayString();
   try {
@@ -699,7 +717,7 @@ async function loadShiftConfigFromSupabase() {
       .single();
 
     if (data && !error) {
-      $('dispShift').textContent = data.shift_name || 'Ca 1 (06:00 - 14:00)';
+      $('dispShift').textContent = data.shift_name || 'Ca 1';
       $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
       $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
     }
@@ -721,9 +739,9 @@ async function saveShiftConfigToSupabase(shiftData) {
   } catch(err) {}
 }
 
-// --- TRUY XUẤT DỮ LIỆU NGÀY CŨ TỪ STORAGE BUCKET (YÊU CẦU MẬT KHẨU 6868) ---
+// --- TẢI DỮ LIỆU CŨ TỪ BUCKET (MẬT KHẨU 6868) ---
 function fetchHistoryFromBucketProtected() {
-  let pwd = prompt('Nhập mật khẩu xác nhận để tải dữ liệu ngày cũ từ Storage Bucket:');
+  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
   if (pwd === '6868') {
     fetchHistoryFromBucket();
   } else if (pwd !== null) {
@@ -734,22 +752,20 @@ function fetchHistoryFromBucketProtected() {
 async function fetchHistoryFromBucket() {
   let fDate = $('fromDate').value;
   if (!fDate) {
-    alert('Vui lòng chọn ngày cần truy xuất tại ô "Từ:" !');
+    alert('Vui lòng chọn ngày tại ô "Từ:" !');
     return;
   }
 
-  $('sideStatus').textContent = `Đang tải dữ liệu từ Storage Bucket (${fDate})...`;
-  const fileName = `daily_snapshot_${fDate}.json`;
-
+  $('sideStatus').textContent = `Đang tải Bucket (${fDate})...`;
   try {
     const { data, error } = await supabaseClient
       .storage
       .from('port-documents')
-      .download(fileName);
+      .download(`daily_snapshot_${fDate}.json`);
 
     if (error || !data) {
-      alert(`Không tìm thấy file snapshot lưu trữ trên Storage Bucket cho ngày ${fDate}.`);
-      $('sideStatus').textContent = 'Không có dữ liệu trong Bucket';
+      alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage.`);
+      $('sideStatus').textContent = 'Trống';
       return;
     }
 
@@ -757,31 +773,24 @@ async function fetchHistoryFromBucket() {
     const parsed = JSON.parse(text);
 
     if (parsed.calls && Array.isArray(parsed.calls)) {
-      allCalls = parsed.calls;
+      allCalls = filterAndDeduplicateCalls(parsed.calls);
       if (parsed.shift_info) {
         $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1';
         $('dispCommander').textContent = parsed.shift_info.commander || '—';
         $('dispSafety').textContent = parsed.shift_info.safety || '—';
       }
       renderAll();
-      $('sideStatus').textContent = `Đã tải ${allCalls.length} lượt tàu từ Storage Bucket (${fDate})`;
-      alert(`Đã nạp thành công báo cáo snapshot ngày ${fDate} từ Storage Bucket!`);
-    } else {
-      alert('Cấu trúc file trong Storage Bucket không hợp lệ.');
+      $('sideStatus').textContent = `Đã nạp ${allCalls.length} tàu (${fDate})`;
+      alert(`Nạp thành công dữ liệu ngày ${fDate}!`);
     }
   } catch(err) {
-    alert('Lỗi truy xuất Storage Bucket: ' + err.message);
-    $('sideStatus').textContent = 'Lỗi Bucket';
+    alert('Lỗi: ' + err.message);
   }
 }
 
-// --- TỰ ĐỘNG SAO LƯU DỮ LIỆU LÊN STORAGE BUCKET ---
+// --- TỰ ĐỘNG SAO LƯU 00:00 ---
 async function saveCurrentDataToSupabase(isAuto = false) {
-  if (!allCalls || allCalls.length === 0) {
-    if (!isAuto) console.log('Chưa có dữ liệu để sao lưu tự động.');
-    return;
-  }
-
+  if (!allCalls || allCalls.length === 0) return;
   const todayStr = getTodayString();
   const nowStr = new Date().toLocaleString('vi-VN');
 
@@ -797,37 +806,24 @@ async function saveCurrentDataToSupabase(isAuto = false) {
     calls: allCalls
   }, null, 2);
 
-  const fileName = `daily_snapshot_${todayStr}.json`;
   const blob = new Blob([jsonContent], { type: 'application/json' });
+  await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
 
-  const { error: bucketError } = await supabaseClient
-    .storage
-    .from('port-documents')
-    .upload(fileName, blob, { contentType: 'application/json', upsert: true });
+  const savedText = `${nowStr} (${isAuto ? '00:00' : 'Thủ công'})`;
+  localStorage.setItem('hp_last_saved', savedText);
+  updateLastSavedDisplay(savedText);
 
-  const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 00:00' : 'Thủ công'})`;
-  localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
-  updateLastSavedDisplay(savedStatusText);
-
-  if (!isAuto) {
-    if (!bucketError) {
-      alert(`Đã sao lưu thành công tệp snapshot ngày ${todayStr} lên Storage Bucket!`);
-    } else {
-      alert('Lỗi lưu Storage Bucket: ' + bucketError.message);
-    }
-  } else {
-    console.log(`[AUTO-SAVE 00:00] Đã tự động sao lưu thành công ngày ${todayStr}`);
-  }
+  if (!isAuto) alert('Đã lưu snapshot lên Storage thành công!');
 }
 
 function updateLastSavedDisplay(str) {
-  $('topLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
-  $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
+  $('topLastSaved').textContent = 'Lưu: ' + (str || 'Chưa');
+  $('sideLastSaved').textContent = 'Lưu: ' + (str || 'Chưa');
 }
 
-// --- XUẤT FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
+// --- XUẤT CSV/EXCEL (MẬT KHẨU 6868) ---
 function exportConfigAsCSVProtected() {
-  let pwd = prompt('Nhập mật khẩu xác nhận để xuất file:');
+  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
   if (pwd === '6868') {
     exportConfigAsCSV();
   } else if (pwd !== null) {
@@ -837,68 +833,39 @@ function exportConfigAsCSVProtected() {
 
 function exportConfigAsCSV() {
   if (!allCalls || allCalls.length === 0) {
-    alert('Không có dữ liệu để xuất!');
+    alert('Không có dữ liệu!');
     return;
   }
-
-  let csvRows = [];
-  csvRows.push(`"THÔNG TIN KÍP TRỰC","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`);
-  csvRows.push(`"DANH SÁCH LƯỢT TÀU","","",""`);
-  csvRows.push(`"STT","Tên Tàu","Hãng Tàu","Terminal","Bến","LOA (m)","DWT","ETB","ETD"`);
-
-  allCalls.forEach((c, index) => {
-    let row = [
-      index + 1,
-      `"${c.vessel || ''}"`,
-      `"${c.operator || ''}"`,
-      `"${c.terminal || ''}"`,
-      `"${c.berth || ''}"`,
-      c.loa || 0,
-      c.dwt || 0,
-      `"${c.etb || ''}"`,
-      `"${c.etd || ''}"`
-    ];
-    csvRows.push(row.join(','));
+  let csvRows = [`"KÍP","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`, `"STT","Tàu","Hãng","Terminal","Bến","LOA","DWT","ETB","ETD"`];
+  allCalls.forEach((c, i) => {
+    csvRows.push([i+1, `"${c.vessel}"`, `"${c.operator}"`, `"${c.terminal}"`, `"${c.berth}"`, c.loa, c.dwt, `"${c.etb}"`, `"${c.etd}"`].join(','));
   });
-
-  const csvString = "\uFEFF" + csvRows.join('\n');
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", url);
-  downloadAnchor.setAttribute("download", `port_config_${getTodayString()}.csv`);
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
+  const a = document.createElement('a');
+  a.href = url; a.download = `port_config_${getTodayString()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
-// --- NẠP FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
+// --- NẠP CSV/EXCEL (MẬT KHẨU 6868) ---
 function triggerImportConfig() {
-  let pwd = prompt('Nhập mật khẩu xác nhận để nạp file cấu hình:');
-  if (pwd === '6868') {
-    $('importFileInput').click();
-  } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác!');
-  }
+  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  if (pwd === '6868') { $('importFileInput').click(); }
+  else if (pwd !== null) { alert('Mật khẩu không chính xác!'); }
 }
 
 function handleFileImport(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
-      const text = evt.target.result;
-      const lines = text.split('\n');
-      let loadedCalls = [];
-
-      for (let i = 3; i < lines.length; i++) {
-        let line = lines[i].trim();
-        if (!line) continue;
-        let cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+      const lines = evt.target.result.split('\n');
+      let loaded = [];
+      for (let i = 2; i < lines.length; i++) {
+        let cols = lines[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
         if (cols.length >= 9) {
-          loadedCalls.push({
+          loaded.push({
             vessel: cols[1].replace(/["']/g, ''),
             operator: cols[2].replace(/["']/g, ''),
             terminal: cols[3].replace(/["']/g, ''),
@@ -910,54 +877,42 @@ function handleFileImport(e) {
           });
         }
       }
-
-      if (loadedCalls.length > 0) {
-        allCalls = loadedCalls;
+      if (loaded.length > 0) {
+        allCalls = filterAndDeduplicateCalls(loaded);
         renderAll();
-        alert(`Đã nạp thành công ${allCalls.length} lượt tàu từ file CSV/Excel!`);
-      } else {
-        alert('Không đọc được dữ liệu từ file.');
+        alert(`Đã nạp ${allCalls.length} tàu (đã lọc trùng)!`);
       }
-    } catch(err) {
-      alert('Lỗi xử lý file: ' + err.message);
-    }
+    } catch(err) { alert('Lỗi nạp file: ' + err.message); }
   };
   reader.readAsText(file, 'UTF-8');
 }
 
 function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác nhận để lưu dữ liệu lên Storage Bucket:');
-  if (pwd === '6868') {
-    saveCurrentDataToSupabase(false);
-  } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác!');
-  }
+  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  if (pwd === '6868') { saveCurrentDataToSupabase(false); }
+  else if (pwd !== null) { alert('Mật khẩu không chính xác!'); }
 }
 
-// --- HẸN GIỜ TỰ ĐỘNG LƯU VÀ NẠP VÀO 00:00 (12H ĐÊM) MỖI NGÀY ---
 function scheduleMidnightAutoSave() {
   let now = new Date();
   let midnight = new Date();
-  midnight.setHours(24, 0, 0, 0); // Thời điểm 00:00:00 đêm
-
-  let timeUntilMidnight = midnight.getTime() - now.getTime();
+  midnight.setHours(24, 0, 0, 0);
   setTimeout(() => {
-    saveCurrentDataToSupabase(true); // Tự động lưu snapshot ngày cũ lên Bucket
-    loadData(); // Tự động nạp dữ liệu mới cho ngày mới
-    scheduleMidnightAutoSave(); // Lặp lại cho ngày tiếp theo
-  }, timeUntilMidnight);
+    saveCurrentDataToSupabase(true);
+    loadData();
+    scheduleMidnightAutoSave();
+  }, midnight.getTime() - now.getTime());
 }
 
-// Load Data từ API Cảng vụ (Có Fallback Storage Bucket khi mất kết nối)
+// TẢI API CẢNG VỤ
 async function loadData() {
   $('refreshBtn').disabled = true;
-  $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
+  $('sideStatus').textContent = 'Đang tải API...';
   try {
     let r = await fetch(API, { cache: 'no-store' });
-    if (!r.ok) throw Error('HTTP ' + r.status);
     let d = await r.json();
     if (Array.isArray(d.calls)) {
-      allCalls = d.calls.map(c => ({
+      allCalls = filterAndDeduplicateCalls(d.calls.map(c => ({
         vessel: c.vessel || '',
         operator: c.operator || '',
         terminal: c.terminal || '',
@@ -966,30 +921,24 @@ async function loadData() {
         dwt: c.dwt ?? '',
         etb: c.etb || '',
         etd: c.etd || ''
-      }));
-
+      })));
       renderAll();
-      $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Live API)';
+      $('sideStatus').textContent = `Đồng bộ ${allCalls.length} tàu`;
     }
   } catch(e) {
-    console.warn('Mất kết nối server, đang tải dữ liệu snapshot từ Storage Bucket...');
-    $('sideStatus').textContent = 'Server mất kết nối. Đang lấy từ Storage Bucket...';
-    
+    $('sideStatus').textContent = 'Lỗi API, lấy Bucket...';
     try {
       let today = getTodayString();
       const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
       if (data) {
-        const text = await data.text();
-        const parsed = JSON.parse(text);
+        let parsed = JSON.parse(await data.text());
         if (parsed.calls) {
-          allCalls = parsed.calls;
+          allCalls = filterAndDeduplicateCalls(parsed.calls);
           renderAll();
-          $('sideStatus').textContent = `Đang chạy chế độ Offline (Nạp ${allCalls.length} từ Storage Bucket)`;
+          $('sideStatus').textContent = `Offline (${allCalls.length} tàu)`;
         }
       }
-    } catch(err) {
-      $('sideStatus').textContent = 'Lỗi kết nối toàn bộ hệ thống';
-    }
+    } catch(err) {}
   } finally {
     $('refreshBtn').disabled = false;
     resetCountdown();
@@ -998,22 +947,20 @@ async function loadData() {
 
 function isHaiPhongPort(term) {
   let t = (term || '').toUpperCase();
-  return t.includes('TÂN VŨ') || t.includes('TAN VU') || 
-         t.includes('HOÀNG DIỆU') || t.includes('HOANG DIEU') || 
-         t.includes('CHÙA VẼ') || t.includes('CHUA VE') || 
-         t.includes('HTIT') || t.includes('ĐÌNH VŨ') || t.includes('DINH VU');
+  return t.includes('TÂN VŨ') || t.includes('TAN VU') || t.includes('HOÀNG DIỆU') || t.includes('CHÙA VẼ') || t.includes('HTIT') || t.includes('ĐÌNH VŨ');
 }
 
 function getFilteredCalls() {
   let fDate = $('fromDate').value;
   let tDate = $('toDate').value;
-  return allCalls.filter(c => {
+  let filtered = allCalls.filter(c => {
     let shipDate = (c.etb || c.etd || '').split('T')[0];
     if (!shipDate) return true;
     if (fDate && shipDate < fDate) return false;
     if (tDate && shipDate > tDate) return false;
     return true;
   });
+  return filterAndDeduplicateCalls(filtered);
 }
 
 function renderAll() {
@@ -1027,69 +974,48 @@ function renderAll() {
   });
   $('kWorking').textContent = working.length;
 
-  let totalHpLoa = list.filter(c => isHaiPhongPort(c.terminal))
-                      .reduce((sum, c) => sum + (c.loa || 0), 0);
-  $('kLoa').textContent = totalHpLoa.toLocaleString('vi-VN') + ' m';
+  let totalLoa = list.filter(c => isHaiPhongPort(c.terminal)).reduce((s, c) => s + (c.loa || 0), 0);
+  $('kLoa').textContent = totalLoa.toLocaleString('vi-VN') + 'm';
 
   let in24 = now + 86400000;
-  let arr = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24);
-  let dep = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24);
-  $('kArrivals').textContent = arr.length;
-  $('kDepartures').textContent = dep.length;
-
-  let large = list.filter(c => c.loa >= 300);
-  $('kLarge').textContent = large.length;
+  $('kArrivals').textContent = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24).length;
+  $('kDepartures').textContent = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24).length;
+  $('kLarge').textContent = list.filter(c => c.loa >= 300).length;
 
   renderTanVuLayout(list);
   renderMovement(list);
   renderTable(list);
 
-  let currentPage = localStorage.getItem('hp_last_page') || 'overview';
-  if(currentPage === 'planning') renderGantt();
-  if(currentPage === 'stats') renderStats();
+  let p = localStorage.getItem('hp_last_page') || 'overview';
+  if(p === 'planning') renderGantt();
+  if(p === 'stats') renderStats();
 }
 
 function renderTanVuLayout(list) {
   let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
-  $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu trong khoảng thời gian';
+  $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu';
 
   let berthMap = {};
   tanVuShips.forEach(c => {
-    let bName = c.berth || 'B1';
-    if (!berthMap[bName]) berthMap[bName] = [];
-    berthMap[bName].push(c);
+    let b = c.berth || 'B1';
+    if (!berthMap[b]) berthMap[b] = [];
+    berthMap[b].push(c);
   });
-
   ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
 
-  let html = `<div class="berth-group">
-    <div class="berth-group-head">
-      <span class="berth-group-title">CẢNG TÂN VŨ (HẢI PHÒNG)</span>
-      <span class="muted tiny">${tanVuShips.length} tàu đang cập/kế hoạch</span>
-    </div>`;
-
+  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">CẢNG TÂN VŨ</span></div>`;
   Object.keys(berthMap).sort().forEach(bName => {
     let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
-    html += `<div class="berth-row">
-      <div class="berth-name">${bName}</div>
-      <div class="berth-ships">`;
-    
+    html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
     if (ships.length === 0) {
-      html += `<span class="empty-berth">Trống · Không có tàu</span>`;
+      html += `<span class="empty-berth">Trống</span>`;
     } else {
       ships.forEach(s => {
-        let isLarge = s.loa >= 300;
-        html += `<div class="ship-chip ${isLarge ? 'large' : ''}" 
-                  onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                  onmouseleave="hideTooltip()">
-                  <span>${esc(s.vessel)}</span>
-                  <span class="chip-time">${s.loa}m · ${dt(s.etb)}</span>
-                 </div>`;
+        html += `<div class="ship-chip ${s.loa >= 300 ? 'large' : ''}" onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseleave="hideTooltip()"><span>${esc(s.vessel)}</span><span class="chip-time">${s.loa}m</span></div>`;
       });
     }
     html += `</div></div>`;
   });
-
   html += `</div>`;
   $('tanvuBerthsLayout').innerHTML = html;
 }
@@ -1097,54 +1023,22 @@ function renderTanVuLayout(list) {
 function renderMovement(list) {
   let now = Date.now();
   let items = [];
-
   list.forEach(c => {
-    if (c.etb && (movementMode === 'all' || movementMode === 'arriving')) {
-      items.push({ c, type: 'arriving', time: new Date(c.etb).getTime() });
-    }
-    if (c.etd && (movementMode === 'all' || movementMode === 'departing')) {
-      items.push({ c, type: 'departing', time: new Date(c.etd).getTime() });
-    }
+    if (c.etb && (movementMode === 'all' || movementMode === 'arriving')) items.push({c, type: 'arriving', time: new Date(c.etb).getTime()});
+    if (c.etd && (movementMode === 'all' || movementMode === 'departing')) items.push({c, type: 'departing', time: new Date(c.etd).getTime()});
   });
-
   items.sort((a,b) => Math.abs(a.time - now) - Math.abs(b.time - now));
-  let topItems = items.slice(0, 10);
 
-  $('movement').innerHTML = topItems.map(item => {
+  $('movement').innerHTML = items.slice(0, 8).map(item => {
     let diff = item.time - now;
-    let isPast = diff < 0;
-    let absDiff = Math.abs(diff);
-    let durStr = formatDuration(absDiff);
-
-    let statusTag = '';
-    if (item.type === 'arriving') {
-      statusTag = isPast 
-        ? `<span class="tag-vivid arriving">⚓ Đã cập ${durStr} trước</span>`
-        : `<span class="tag-vivid urgent">⏳ Sắp cập (còn ${durStr})</span>`;
-    } else {
-      statusTag = isPast 
-        ? `<span class="tag-vivid departing">🚢 Đã rời ${durStr} trước</span>`
-        : `<span class="tag-vivid urgent">⏳ Sắp rời (còn ${durStr})</span>`;
-    }
-
-    return `
-      <div class="trow">
-        <div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div>
-        <div class="t-card">
-          <div>
-            <strong>${esc(item.c.vessel)}</strong>
-            <div class="muted tiny">${esc(item.c.terminal)} · ${esc(item.c.berth)} · LOA ${item.c.loa}m</div>
-          </div>
-          ${statusTag}
-        </div>
-      </div>
-    `;
-  }).join('') || '<div class="empty">Không có tàu phù hợp bộ lọc.</div>';
+    let tag = item.type === 'arriving' ? (diff < 0 ? `<span class="tag-vivid arriving">Đã cập</span>` : `<span class="tag-vivid urgent">Sắp cập</span>`) : (diff < 0 ? `<span class="tag-vivid departing">Đã rời</span>` : `<span class="tag-vivid urgent">Sắp rời</span>`);
+    return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${tag}</div></div>`;
+  }).join('') || '<div class="empty">Không có dữ liệu.</div>';
 }
 
-function filterMovement(mode, btn) {
-  movementMode = mode;
-  document.querySelectorAll('.movement-tools button').forEach(b => b.classList.remove('active'));
+function filterMovement(m, btn) {
+  movementMode = m;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderMovement(getFilteredCalls());
 }
@@ -1152,35 +1046,16 @@ function filterMovement(mode, btn) {
 function renderTable(list) {
   let q = ($('search')?.value || '').toLowerCase();
   let filtered = list.filter(c => !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q));
-  
   $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td class="vessel">${esc(c.vessel)}</td>
-      <td><span class="badge">${esc(c.operator)}</span></td>
-      <td>${c.loa || '—'}</td>
-      <td>${c.dwt ? Number(c.dwt).toLocaleString('vi-VN') : '—'}</td>
-      <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
-      <td>${dt(c.etb)}</td>
-      <td>${dt(c.etd)}</td>
-    </tr>
+    <tr><td>${i+1}</td><td class="vessel">${esc(c.vessel)}</td><td><span class="badge">${esc(c.operator)}</span></td><td>${c.loa}</td><td>${c.dwt}</td><td>${esc(c.terminal)} · ${esc(c.berth)}</td><td>${dt(c.etb)}</td><td>${dt(c.etd)}</td></tr>
   `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
 }
 
 function renderGantt() {
   let days = +$('days').value || 4;
-  let fDateStr = $('fromDate').value || getTodayString();
-  let start = new Date(fDateStr); start.setHours(0,0,0,0);
+  let start = new Date($('fromDate').value || getTodayString()); start.setHours(0,0,0,0);
   let end = new Date(start.getTime() + days * 86400000);
-
-  let q = ($('planningSearch')?.value || '').toLowerCase();
-  let list = getFilteredCalls().filter(c => {
-    let matchQuery = !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q);
-    let matchArea = (planningAreaFilter === 'ALL') || (c.terminal || '').toUpperCase().includes(planningAreaFilter);
-    return matchQuery && matchArea;
-  });
-
-  $('planningCount').textContent = `${list.length} lượt tàu trong lịch trình`;
+  let list = getFilteredCalls();
 
   let terms = {};
   list.forEach(c => {
@@ -1189,33 +1064,21 @@ function renderGantt() {
     terms[key].push(c);
   });
 
-  let axis = Array.from({length: 8}, (_, i) => {
-    let d = new Date(start.getTime() + (end - start) * i / 8);
-    return d.toLocaleDateString('vi-VN', {weekday: 'short', day: '2-digit'}) + ' ' + String(d.getHours()).padStart(2, '0') + ':00';
-  });
-
-  let out = `<div class="gantt-head"><div>TERMINAL / BẾN</div><div style="display:flex;justify-content:space-between">${axis.map(x=>`<span>${x}</span>`).join('')}</div></div>`;
-
+  let out = '';
   for (let [name, ships] of Object.entries(terms)) {
     out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
-    for (let c of ships) {
+    ships.forEach(c => {
       let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
       let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
-      let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end - start) * 100));
-      let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end - start) * 100));
+      let left = Math.max(0, Math.min(100, (a - start) / (end - start) * 100));
+      let right = Math.max(left + 2, Math.min(100, (b - start) / (end - start) * 100));
       if (a < end.getTime() && b >= start.getTime()) {
-        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" 
-                     style="left:${left}%;width:${Math.max(3, right - left)}%"
-                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
-                     onmouseleave="hideTooltip()">
-                     ${esc(c.vessel)} (${c.loa}m)
-                </div>`;
+        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" style="left:${left}%;width:${right-left}%" onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseleave="hideTooltip()">${esc(c.vessel)}</div>`;
       }
-    }
+    });
     out += `</div></div>`;
   }
-
-  $('fullGantt').innerHTML = out || '<div class="empty">Không có tàu phù hợp với tìm kiếm hoặc khu vực đã chọn.</div>';
+  $('fullGantt').innerHTML = out || '<div class="empty">Không có dữ liệu Gantt.</div>';
 }
 
 function filterPlanningArea(area, btn) {
@@ -1227,205 +1090,65 @@ function filterPlanningArea(area, btn) {
 
 function renderStats() {
   let list = getFilteredCalls();
-  let fDateStr = $('fromDate').value || 'Mở';
-  let tDateStr = $('toDate').value || 'Đóng';
-  $('statsSubtitle').textContent = `Phân tích chi tiết ${list.length} lượt tàu trong khoảng thời gian từ ${fDateStr} đến ${tDateStr}`;
-
   let termMap = {};
-  list.forEach(c => { let t = c.terminal || 'Chưa rõ'; termMap[t] = (termMap[t] || 0) + 1; });
-  let sortedTerms = Object.entries(termMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
-  let maxTerm = Math.max(1, ...sortedTerms.map(x => x[1]));
-  $('statTerminals').innerHTML = sortedTerms.map(([k,v]) => `
-    <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>
-  `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
-
-  let opMap = {};
-  list.forEach(c => { let o = c.operator || 'Chưa rõ'; opMap[o] = (opMap[o] || 0) + 1; });
-  let sortedOps = Object.entries(opMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
-  let maxOp = Math.max(1, ...sortedOps.map(x => x[1]));
-  $('statOperators').innerHTML = sortedOps.map(([k,v]) => `
-    <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxOp*100}%"></div></div><b>${v}</b></div>
-  `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
-
-  let bins = {'< 100m':0, '100-150m':0, '150-200m':0, '200-250m':0, '250-300m':0, '≥ 300m':0};
-  list.forEach(c => {
-    let l = c.loa || 0;
-    if(l < 100) bins['< 100m']++;
-    else if(l < 150) bins['100-150m']++;
-    else if(l < 200) bins['150-200m']++;
-    else if(l < 250) bins['200-250m']++;
-    else if(l < 300) bins['250-300m']++;
-    else bins['≥ 300m']++;
-  });
-  let maxBin = Math.max(1, ...Object.values(bins));
-  $('statLoaBins').innerHTML = Object.entries(bins).map(([k,v]) => `
-    <div class="barrow"><span>${k}</span><div class="barbg"><div class="barfill ${k==='≥ 300m'?'gold':''}" style="width:${v/maxBin*100}%"></div></div><b>${v}</b></div>
-  `).join('');
-
-  let hours = Array(24).fill(0);
-  list.forEach(c => {
-    if(c.etb) {
-      let d = new Date(c.etb);
-      if(!isNaN(d)) hours[d.getHours()]++;
-    }
-  });
-  let maxHour = Math.max(1, ...hours);
-  $('statHours').innerHTML = hours.map((v, i) => `
-    <div class="hour-cell">
-      <div class="hour-cell-top"><span>${String(i).padStart(2,'0')}:00</span><b>${v}</b></div>
-      <div class="hour-meter"><i style="width:${v/maxHour*100}%"></i></div>
-    </div>
-  `).join('');
-
-  let topShips = [...list].filter(c => c.loa > 0).sort((a,b) => b.loa - a.loa).slice(0, 10);
-  $('statTopShips').innerHTML = topShips.length ? topShips.map((c, i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td class="vessel">${esc(c.vessel)}</td>
-      <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
-      <td>${dt(c.etb)}</td>
-      <td>${dt(c.etd)}</td>
-      <td><b>${c.loa} m</b></td>
-    </tr>
-  `).join('') : '<tr><td colspan="6" class="empty">Không có dữ liệu tàu</td></tr>';
+  list.forEach(c => { let t = c.terminal || 'Khác'; termMap[t] = (termMap[t] || 0) + 1; });
+  let maxTerm = Math.max(1, ...Object.values(termMap));
+  $('statTerminals').innerHTML = Object.entries(termMap).map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>`).join('');
 }
 
-function showTooltip(e, ship) {
-  selectedShipForReport = ship;
+function showTooltip(e, s) {
   let tt = $('shipTooltip');
-  $('ttName').textContent = ship.vessel || 'Chưa rõ tên tàu';
-  $('ttOperator').textContent = 'Hãng tàu: ' + (ship.operator || '—');
-  $('ttLoa').textContent = (ship.loa || '—') + ' m';
-  $('ttDwt').textContent = ship.dwt ? Number(ship.dwt).toLocaleString('vi-VN') + ' T' : '—';
-  $('ttEtb').textContent = dt(ship.etb);
-  $('ttEtd').textContent = dt(ship.etd);
-
-  let now = Date.now();
-  let t1 = ship.etb ? new Date(ship.etb).getTime() : 0;
-  let t2 = ship.etd ? new Date(ship.etd).getTime() : 0;
-
-  if (t1 > 0 && now >= t1) {
-    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
-    $('ttDocked').textContent = formatDuration(dockedMs);
-  } else {
-    $('ttDocked').textContent = 'Chưa cập';
-  }
-
-  if (t2 > 0 && t2 > now) {
-    $('ttRemaining').textContent = formatDuration(t2 - now);
-  } else if (t2 > 0 && now >= t2) {
-    $('ttRemaining').textContent = 'Đã rời bến';
-  } else {
-    $('ttRemaining').textContent = '—';
-  }
-
+  $('ttName').textContent = s.vessel;
+  $('ttOperator').textContent = s.operator || '—';
+  $('ttLoa').textContent = s.loa + 'm';
+  $('ttDwt').textContent = s.dwt || '—';
+  $('ttEtb').textContent = dt(s.etb);
+  $('ttEtd').textContent = dt(s.etd);
   tt.style.display = 'block';
-  moveTooltip(e);
+  tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
+  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 200) + 'px';
 }
+function hideTooltip() { $('shipTooltip').style.display = 'none'; }
 
-function moveTooltip(e) {
-  let tt = $('shipTooltip');
-  let x = e.clientX + 15;
-  let y = e.clientY + 15;
-  if (x + 320 > window.innerWidth) x = e.clientX - 330;
-  if (y + 240 > window.innerHeight) y = e.clientY - 250;
-  tt.style.left = x + 'px';
-  tt.style.top = y + 'px';
-}
-
-function hideTooltip() {
-  $('shipTooltip').style.display = 'none';
-}
-
-setInterval(() => {
-  let d = new Date();
-  $('liveClock').textContent = d.toTimeString().split(' ')[0];
-}, 1000);
-
+setInterval(() => { $('liveClock').textContent = new Date().toTimeString().split(' ')[0]; }, 1000);
 function initDates() {
   let today = getTodayString();
   if(!$('fromDate').value) $('fromDate').value = today;
   if(!$('toDate').value) $('toDate').value = today;
-  let now = new Date();
-  $('currentFullDate').textContent = now.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+  $('currentFullDate').textContent = new Date().toLocaleDateString('vi-VN');
 }
 
 function openShiftModalWithPassword() {
-  let pwd = prompt('Vui lòng nhập mật khẩu xác thực (6868) để cấu hình kíp trực:');
-  if (pwd === '6868') {
-    openShiftModal();
-  } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác!');
-  }
+  let pwd = prompt('Nhập mật khẩu (6868):');
+  if (pwd === '6868') $('modalShade').classList.add('open');
+  else if (pwd !== null) alert('Sai mật khẩu!');
 }
 
-function openShiftModal() { $('modalShade').classList.add('open'); }
-function closeShiftModal() { $('modalShade').classList.remove('open'); }
-function saveShiftModal() {
-  const shiftData = {
-    shift: $('mShift').value,
-    commander: $('mCommander').value || 'Chưa thiết lập',
-    safety: $('mSafety').value || 'Chưa thiết lập'
-  };
-  $('dispShift').textContent = shiftData.shift;
-  $('dispCommander').textContent = shiftData.commander;
-  $('dispSafety').textContent = shiftData.safety;
-  
-  saveShiftConfigToSupabase(shiftData);
-  closeShiftModal();
-}
-
-function resetCountdown() { countdownVal = 1800; }
-setInterval(() => {
-  countdownVal--;
-  if (countdownVal <= 0) { loadData(); resetCountdown(); }
-  let m = Math.floor(countdownVal / 60);
-  let s = countdownVal % 60;
-  $('countdown').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}, 1000);
-
-// Event Bindings
 $('manualSaveBtn').onclick = handleManualSave;
 $('setupShiftBtn').onclick = openShiftModalWithPassword;
 $('exportConfigBtn').onclick = exportConfigAsCSVProtected;
 $('importConfigBtn').onclick = triggerImportConfig;
 $('importFileInput').onchange = handleFileImport;
 $('fetchHistoryBtn').onclick = fetchHistoryFromBucketProtected;
-
-$('closeModalBtn').onclick = closeShiftModal;
-$('saveModalBtn').onclick = saveShiftModal;
+$('closeModalBtn').onclick = () => $('modalShade').classList.remove('open');
+$('saveModalBtn').onclick = () => {
+  saveShiftConfigToSupabase({ shift: $('mShift').value, commander: $('mCommander').value, safety: $('mSafety').value });
+  $('dispShift').textContent = $('mShift').value;
+  $('modalShade').classList.remove('open');
+};
 $('refreshBtn').onclick = loadData;
-$('search').oninput = () => renderTable(getFilteredCalls());
-$('planningSearch').oninput = () => renderGantt();
-$('days').onchange = () => renderGantt();
-$('fromDate').onchange = () => renderAll();
-$('toDate').onchange = () => renderAll();
+$('fromDate').onchange = renderAll;
+$('toDate').onchange = renderAll;
 $('themeToggle').onclick = () => {
   let dark = document.documentElement.dataset.theme !== 'dark';
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   localStorage.setItem('hp_theme', dark ? 'dark' : 'light');
-  $('themeToggle').textContent = dark ? '☼ Giao diện sáng' : '◐ Giao diện tối';
 };
 
-function restoreState() {
-  let savedTheme = localStorage.getItem('hp_theme');
-  if(savedTheme === 'dark') {
-    document.documentElement.dataset.theme = 'dark';
-    $('themeToggle').textContent = '☼ Giao diện sáng';
-  }
-  let lastPage = localStorage.getItem('hp_last_page') || 'overview';
-  nav(lastPage, false);
-
-  let lastSaved = localStorage.getItem('hp_last_saved_timestamp');
-  updateLastSavedDisplay(lastSaved);
-}
-
-// Initialize Application
 initDates();
-restoreState();
 loadShiftConfigFromSupabase();
 loadData();
-scheduleMidnightAutoSave(); // Kích hoạt bộ hẹn giờ tự động sao lưu và nạp dữ liệu vào 00:00 mỗi ngày
+scheduleMidnightAutoSave();
 </script>
 </body>
 </html>
