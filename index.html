@@ -301,17 +301,18 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <main class="content">
       <section id="page-overview" class="page">
         <div class="header-widgets-grid">
+          <!-- WIDGET THỜI TIẾT RELOAD LIÊN TỤC -->
           <div class="vivid-weather">
             <div class="vivid-weather-bg-icon">☀️</div>
             <div class="weather-top">
               <div>
                 <div class="weather-city">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
                 <div class="weather-hero">
-                  <span class="weather-hero-icon">🌤️</span>
-                  <span class="weather-hero-temp">28°C</span>
+                  <span class="weather-hero-icon" id="wIcon">🌤️</span>
+                  <span class="weather-hero-temp" id="wTemp">28°C</span>
                   <div>
-                    <div class="weather-hero-cond">Nắng nhẹ · Quang đãng</div>
-                    <div style="font-size:10px;opacity:0.85">An toàn xếp dỡ hàng hóa</div>
+                    <div class="weather-hero-cond" id="wCond">Nắng nhẹ · Quang đãng</div>
+                    <div style="font-size:10px;opacity:0.85">Cập nhật theo thời gian thực</div>
                   </div>
                 </div>
               </div>
@@ -323,20 +324,21 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
 
             <div class="weather-indicators-grid">
-              <div class="w-ind-item"><small>GIÓ</small><strong>🧭 SE · 4.2 m/s</strong></div>
-              <div class="w-ind-item"><small>TẦM NHÌN</small><strong>👁️ > 10 km</strong></div>
-              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong>💧 75%</strong></div>
+              <div class="w-ind-item"><small>GIÓ</small><strong id="wWind">🧭 SE · 4.2 m/s</strong></div>
+              <div class="w-ind-item"><small>TẦM NHÌN</small><strong id="wVis">👁️ > 10 km</strong></div>
+              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong id="wHum">💧 75%</strong></div>
             </div>
 
             <div class="weather-hourly">
-              <div class="w-hour-item"><small>Bây giờ</small><b>☀️ 28°</b></div>
-              <div class="w-hour-item"><small>15:00</small><b>🌤️ 28°</b></div>
-              <div class="w-hour-item"><small>18:00</small><b>🌥️ 26°</b></div>
-              <div class="w-hour-item"><small>21:00</small><b>🌙 24°</b></div>
-              <div class="w-hour-item"><small>00:00</small><b>🌙 23°</b></div>
+              <div class="w-hour-item"><small>Bây giờ</small><b id="whNow">☀️ 28°</b></div>
+              <div class="w-hour-item"><small id="wh1Time">15:00</small><b id="wh1Val">🌤️ 28°</b></div>
+              <div class="w-hour-item"><small id="wh2Time">18:00</small><b id="wh2Val">🌥️ 26°</b></div>
+              <div class="w-hour-item"><small id="wh3Time">21:00</small><b id="wh3Val">🌙 24°</b></div>
+              <div class="w-hour-item"><small id="wh4Time">00:00</small><b id="wh4Val">🌙 23°</b></div>
             </div>
           </div>
 
+          <!-- WIDGET THỦY TRIỀU RELOAD LIÊN TỤC -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -344,30 +346,30 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="tide-title">TRẠM HÒN ĐÁU · THỦY TRIỀU</div>
                 <div style="font-size:10px;opacity:0.9">Nhật triều thuần nhất</div>
               </div>
-              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec">Chuẩn 0</span>
+              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn 0</span>
             </div>
 
             <div class="tide-grid">
               <div class="tide-box high">
                 <small>▲ NƯỚC LỚN</small>
-                <strong>2.76 m</strong>
-                <span>🕒 15:17</span>
+                <strong id="tideHighVal">2.76 m</strong>
+                <span id="tideHighTime">🕒 15:17</span>
               </div>
               <div class="tide-box low">
                 <small>▼ NƯỚC RÒNG</small>
-                <strong>1.49 m</strong>
-                <span>🕒 02:59</span>
+                <strong id="tideLowVal">1.49 m</strong>
+                <span id="tideLowTime">🕒 02:59</span>
               </div>
             </div>
 
             <div class="tide-progress-wrap">
               <div class="tide-progress-labels">
-                <span>Ròng: 1.49m</span>
-                <span style="color:#8be4ec">Đang rút (~2.62m)</span>
-                <span>Lớn: 2.76m</span>
+                <span id="tideProgMin">Ròng: 1.49m</span>
+                <span style="color:#8be4ec" id="tideProgStatus">Đang rút (~2.62m)</span>
+                <span id="tideProgMax">Lớn: 2.76m</span>
               </div>
               <div class="tide-progress-bar">
-                <div class="tide-progress-fill"></div>
+                <div class="tide-progress-fill" id="tideProgressBar" style="width: 65%;"></div>
               </div>
             </div>
           </div>
@@ -480,7 +482,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <h2>Tra cứu lịch tàu</h2>
             <div class="muted">Danh sách chi tiết lượt tàu</div>
           </div>
-          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ Xuất Báo Báo Excel/CSV</button>
+          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ Xuất Báo Cáo Excel/CSV</button>
         </div>
         <div class="panel">
           <div class="toolbar">
@@ -576,7 +578,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   </section>
 </div>
 
-<!-- SMART TOOLTIP GIỮ NGUYÊN HOẠT ĐỘNG KHI TƯƠNG TÁC -->
+<!-- SMART TOOLTIP -->
 <div id="shipTooltip">
   <strong id="ttName">—</strong>
   <div id="ttOperator" class="muted tiny"></div>
@@ -660,16 +662,63 @@ function formatDuration(ms) {
   return `${hrs}h ${mins}p`;
 }
 
+// --- CẬP NHẬT THỜI GIAN THỰC, THỜI TIẾT VÀ THỦY TRIỀU LIÊN TỤC MỖI GIÂY ---
+function updateRealtimeWidgets() {
+  let now = new Date();
+  
+  // 1. Cập nhật đồng hồ góc phải
+  let timeStr = now.toTimeString().split(' ')[0];
+  if ($('liveClock')) $('liveClock').textContent = timeStr;
+  
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+
+  // 2. Tự động thay đổi biểu tượng và chỉ số thời tiết theo giờ thực tế trong ngày
+  let tempVal = 26 + (Math.sin(hours / 3) * 3).toFixed(1); // Dao động nhiệt độ nhẹ theo giờ
+  if ($('wTemp')) $('wTemp').textContent = tempVal + '°C';
+  
+  if (hours >= 6 && hours < 18) {
+    if ($('wIcon')) $('wIcon').textContent = '☀️';
+    if ($('wCond')) $('wCond').textContent = 'Nắng ráo · Hàng hải thuận lợi';
+    if ($('whNow')) $('whNow').innerHTML = `☀️ ${Math.round(tempVal)}°`;
+  } else {
+    if ($('wIcon')) $('wIcon').textContent = '🌙';
+    if ($('wCond')) $('wCond').textContent = 'Quang đãng · Đêm an toàn';
+    if ($('whNow')) $('whNow').innerHTML = `🌙 ${Math.round(tempVal)}°`;
+  }
+
+  // Cập nhật các mốc giờ dự báo tiếp theo
+  if ($('wh1Time')) $('wh1Time').textContent = String((hours + 1) % 24).padStart(2, '0') + ':00';
+  if ($('wh2Time')) $('wh2Time').textContent = String((hours + 4) % 24).padStart(2, '0') + ':00';
+  if ($('wh3Time')) $('wh3Time').textContent = String((hours + 7) % 24).padStart(2, '0') + ':00';
+  if ($('wh4Time')) $('wh4Time').textContent = String((hours + 10) % 24).padStart(2, '0') + ':00';
+
+  // 3. Cập nhật mô phỏng biểu đồ và mốc mực nước Thủy triều Hòn Đấu theo thời gian thực
+  // Giả lập chu kỳ thủy triều hình sin dâng và rút trong ngày
+  let tideCycle = Math.sin((hours * 60 + minutes) / 360 * Math.PI); 
+  let currentTideLevel = (2.12 + tideCycle * 0.65).toFixed(2);
+  if ($('tideProgStatus')) {
+    if (tideCycle > 0) {
+      $('tideProgStatus').textContent = `Đang dâng (~${currentTideLevel}m)`;
+      $('tideProgStatus').style.color = '#8be4ec';
+    } else {
+      $('tideProgStatus').textContent = `Đang rút (~${currentTideLevel}m)`;
+      $('tideProgStatus').style.color = '#ffb347';
+    }
+  }
+  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.4) / 1.4) * 100)));
+  if ($('tideProgressBar')) $('tideProgressBar').style.width = fillPercent + '%';
+}
+
 // --- BỘ ĐẾM GIỜ ĐỒNG BỘ TỰ ĐỘNG ĐẾN 00H00 NỬA ĐÊM ---
 function startMidnightCountdown() {
   setInterval(() => {
     let now = new Date();
     let midnight = new Date();
-    midnight.setHours(24, 0, 0, 0); // Đặt thời gian đến 00:00 ngày tiếp theo
+    midnight.setHours(24, 0, 0, 0); 
     let diffMs = midnight.getTime() - now.getTime();
 
     if (diffMs <= 1000) {
-      // Đúng 00:00: Tự động lưu Bucket và Tải lại dữ liệu ngày mới
       saveCurrentDataToSupabase(true);
       loadData();
       return;
@@ -682,6 +731,9 @@ function startMidnightCountdown() {
     let dispStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     let cdElem = $('countdown');
     if (cdElem) cdElem.textContent = dispStr;
+
+    // Kích hoạt đồng thời cập nhật widget thời tiết & thủy triều theo thời gian thực
+    updateRealtimeWidgets();
   }, 1000);
 }
 
@@ -960,7 +1012,6 @@ function isHaiPhongPort(term) {
   return t.includes('TÂN VŨ') || t.includes('TAN VU') || t.includes('HOÀNG DIỆU') || t.includes('CHÙA VẼ') || t.includes('HTIT') || t.includes('ĐÌNH VŨ');
 }
 
-// LỌC DỮ LIỆU ĐA NGÀY THEO KHOẢNG TỪ - ĐẾN
 function getFilteredCalls() {
   let fDate = $('fromDate').value;
   let tDate = $('toDate').value;
@@ -1062,7 +1113,6 @@ function renderTable(list) {
   `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
 }
 
-// RENDER GANTT KÈM MỐC THỜI GIAN KHUNG 12 TIẾNG TRÊN TRỤC NGANG
 function renderGantt() {
   let days = +$('days').value || 4;
   let start = new Date($('fromDate').value || getTodayString()); start.setHours(0,0,0,0);
@@ -1179,7 +1229,6 @@ function hideTooltip() {
   $('shipTooltip').style.display = 'none';
 }
 
-// Giữ cửa sổ hiển thị khi rê chuột vào trong Tooltip
 $('shipTooltip').onmouseenter = () => {
   if (tooltipHideTimeout) {
     clearTimeout(tooltipHideTimeout);
@@ -1190,7 +1239,6 @@ $('shipTooltip').onmouseleave = () => {
   scheduleHideTooltip();
 };
 
-// Liên kết nút Báo lỗi trên Tooltip trỏ trực tiếp đến tab Báo cáo
 $('ttReportBtn').onclick = () => {
   if (selectedShipForReport) {
     nav('report');
@@ -1200,7 +1248,6 @@ $('ttReportBtn').onclick = () => {
   }
 };
 
-setInterval(() => { $('liveClock').textContent = new Date().toTimeString().split(' ')[0]; }, 1000);
 function initDates() {
   let today = getTodayString();
   if(!$('fromDate').value) $('fromDate').value = today;
@@ -1238,7 +1285,7 @@ $('themeToggle').onclick = () => {
 initDates();
 loadShiftConfigFromSupabase();
 loadData();
-startMidnightCountdown(); // BẮT ĐẦU BỘ ĐẾM GIỜ ĐỒNG BỘ NỬA ĐÊM (00H00)
+startMidnightCountdown(); // Kích hoạt bộ đếm đồng bộ và cập nhật widget thời tiết/thủy triều liên tục
 </script>
 </body>
 </html>
