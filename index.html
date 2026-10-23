@@ -580,7 +580,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
         <div class="panel" style="padding:20px">
           <p><b>Đơn vị quản lý:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng (Operations & Customer Service Center)</p>
-          <p><b>Hệ thống API:</b> HTIT Port Window Public API (region: hp)</p>
           <p><b>Cơ sở dữ liệu lịch sử:</b> Supabase Cloud Database & Storage Bucket (`port-documents` Active)</p>
           <p><b>Liên hệ hỗ trợ:</b> Email: ttdvkh@haiphongport.com.vn | Hotline: 1800.5555.22 (Nhánh 3)</p>
           <p><b>Trang chủ Cảng Hải Phòng:</b> <a href="https://haiphongport.com.vn" target="_blank">https://haiphongport.com.vn</a></p>
@@ -724,7 +723,7 @@ async function saveShiftConfigToSupabase(shiftData) {
 
 // --- TRUY XUẤT DỮ LIỆU NGÀY CŨ TỪ STORAGE BUCKET (YÊU CẦU MẬT KHẨU 6868) ---
 function fetchHistoryFromBucketProtected() {
-  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để tải dữ liệu ngày cũ từ Storage Bucket:');
+  let pwd = prompt('Nhập mật khẩu xác nhận để tải dữ liệu ngày cũ từ Storage Bucket:');
   if (pwd === '6868') {
     fetchHistoryFromBucket();
   } else if (pwd !== null) {
@@ -828,7 +827,7 @@ function updateLastSavedDisplay(str) {
 
 // --- XUẤT FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
 function exportConfigAsCSVProtected() {
-  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để xuất file:');
+  let pwd = prompt('Nhập mật khẩu xác nhận để xuất file:');
   if (pwd === '6868') {
     exportConfigAsCSV();
   } else if (pwd !== null) {
@@ -875,7 +874,7 @@ function exportConfigAsCSV() {
 
 // --- NẠP FILE CSV/EXCEL (YÊU CẦU MẬT KHẨU 6868) ---
 function triggerImportConfig() {
-  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để nạp file cấu hình:');
+  let pwd = prompt('Nhập mật khẩu xác nhận để nạp file cấu hình:');
   if (pwd === '6868') {
     $('importFileInput').click();
   } else if (pwd !== null) {
@@ -927,7 +926,7 @@ function handleFileImport(e) {
 }
 
 function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để lưu dữ liệu lên Storage Bucket:');
+  let pwd = prompt('Nhập mật khẩu xác nhận để lưu dữ liệu lên Storage Bucket:');
   if (pwd === '6868') {
     saveCurrentDataToSupabase(false);
   } else if (pwd !== null) {
