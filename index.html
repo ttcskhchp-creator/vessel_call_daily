@@ -294,7 +294,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu cũ từ Bucket">🔍 Tải Bucket</button>
         </div>
         <button class="theme-toggle" id="themeToggle" style="padding:6px 10px">◐ Giao diện</button>
-        <button class="primary" id="refreshBtn" style="padding:6px 10px">↻ (<span id="countdown">30:00</span>)</button>
+        <button class="primary" id="refreshBtn" style="padding:6px 10px">↻ (<span id="countdown">60:00</span>)</button>
       </div>
     </header>
 
@@ -568,6 +568,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
         <div class="panel" style="padding:16px">
           <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Cảng Hải Phòng</p>
+          <p><b>API:</b> HTIT Port Window Public API</p>
           <p><b>Storage:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
@@ -631,7 +632,11 @@ const API='https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3w
 let allCalls = [];
 let movementMode = 'all';
 let planningAreaFilter = 'ALL';
-let countdownVal = 1800;
+
+// ĐẾM GIỜ AUTO RELOAD 60 PHÚT (3600 GIÂY) & TỰ ĐỘNG LƯU BUCKET (1800 GIÂY)
+let countdownVal = 3600; 
+let backupCountdownVal = 1800; // 30 phút sao lưu 1 lần
+
 let selectedShipForReport = null;
 let tooltipHideTimeout = null;
 
@@ -661,7 +666,30 @@ function formatDuration(ms) {
 }
 
 function resetCountdown() {
-  countdownVal = 1800;
+  countdownVal = 3600; // RESET BỘ ĐẾM VỀ 60 PHÚT
+}
+
+function startAutoReloadTimer() {
+  setInterval(() => {
+    countdownVal--;
+    let m = Math.floor(countdownVal / 60);
+    let s = countdownVal % 60;
+    let dispStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    
+    let cdElem = $('countdown');
+    if (cdElem) cdElem.textContent = dispStr;
+
+    if (countdownVal <= 0) {
+      loadData(); // TỰ ĐỘNG RELOAD TỰ ĐỘNG THEO CHU KỲ 60 PHÚT
+    }
+
+    // ĐẾM GIỜ TỰ ĐỘNG BUCKET STORAGE
+    backupCountdownVal--;
+    if (backupCountdownVal <= 0) {
+      saveCurrentDataToSupabase(true); // TỰ ĐỘNG LƯU SNAPSHOT BUCKET THEO CHU KỲ 30 PHÚT
+      backupCountdownVal = 1800;
+    }
+  }, 1000);
 }
 
 function nav(page, saveState = true){
@@ -684,7 +712,6 @@ document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.da
 function filterAndDeduplicateCalls(rawList) {
   let map = new Map();
 
-  // Sắp xếp danh sách trước: ưu tiên bản ghi có đủ cả ETB & ETD, sau đó đến bản ghi có thời gian mới nhất
   let sorted = [...rawList].sort((a, b) => {
     let scoreA = (a.etb ? 2 : 0) + (a.etd ? 2 : 0);
     let scoreB = (b.etb ? 2 : 0) + (b.etd ? 2 : 0);
@@ -701,7 +728,6 @@ function filterAndDeduplicateCalls(rawList) {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
 
-    // Dùng khóa hoàn toàn theo Tên Tàu (vessel) để đảm bảo toàn hệ thống chỉ hiển thị duy nhất 1 giá trị tên tàu, không lặp lại ở các bến khác nhau
     let globalKey = vName;
     
     if (!map.has(globalKey)) {
@@ -717,7 +743,6 @@ function filterAndDeduplicateCalls(rawList) {
       } else if (currentScore === existingScore) {
         let existingTime = new Date(existing.etb || existing.etd || 0).getTime();
         let currentTime = new Date(c.etb || c.etd || 0).getTime();
-        // Lấy dữ liệu mới nhất (theo thời gian cập/rời)
         if (currentTime > existingTime) {
           map.set(globalKey, c);
         }
@@ -800,7 +825,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const blob = new Blob([jsonContent], { type: 'application/json' });
   await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
 
-  const savedText = `${nowStr} (${isAuto ? '00:00' : 'Thủ công'})`;
+  const savedText = `${nowStr} (${isAuto ? 'Auto' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved', savedText);
   updateLastSavedDisplay(savedText);
   if (!isAuto) alert('Đã lưu snapshot thành công!');
@@ -1031,7 +1056,6 @@ function renderTable(list) {
   `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
 }
 
-// RENDER GANTT KÈM MỐC THỜI GIAN KHUNG 12 TIẾNG TRÊN TRỤC NGANG
 function renderGantt() {
   let days = +$('days').value || 4;
   let start = new Date($('fromDate').value || getTodayString()); start.setHours(0,0,0,0);
@@ -1207,6 +1231,7 @@ $('themeToggle').onclick = () => {
 initDates();
 loadShiftConfigFromSupabase();
 loadData();
+startAutoReloadTimer(); // BẮT ĐẦU VÒNG LẶP AUTO RELOAD 60 PHÚT & BUCKET AUTO SAVE
 scheduleMidnightAutoSave();
 </script>
 </body>
