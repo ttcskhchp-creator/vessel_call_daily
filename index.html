@@ -29,7 +29,6 @@ button:hover{filter:brightness(.95)}
 .nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 
-/* SIDEBAR SHIFT BOX & CONTROL BUTTONS */
 .side-shift-card{
   background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.4);
   border-radius: 11px;padding: 12px;margin-top: 5px;
@@ -41,7 +40,6 @@ button:hover{filter:brightness(.95)}
 .side-shift-item strong{font-size: 11px;color: #ffffff;word-break: break-word}
 .side-shift-item span.phone{color: var(--cyan);font-weight: 800}
 
-/* CONTROL BUTTONS GROUPED UNDER SHIFT BOX */
 .side-controls-group{display:grid;gap:6px;margin-top:8px}
 .side-btn{width:100%;padding:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px}
 .side-btn.save{background:var(--green);color:#fff}
@@ -213,7 +211,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 </head>
 <body>
 <div class="app">
-  <!-- SIDEBAR NAVIGATION -->
   <aside class="side">
     <div class="brand">
       <div>
@@ -233,7 +230,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </nav>
     </div>
 
-    <!-- KHỐI BỘ PHẬN TRỰC ĐIỀU HÀNH TẠI SIDEBAR TRÁI -->
     <div class="side-shift-card">
       <div class="side-shift-title">⚡ BỘ PHẬN TRỰC ĐIỀU HÀNH</div>
       <div class="side-shift-item">
@@ -249,13 +245,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
       </div>
 
-      <!-- NHÓM NÚT ĐIỀU KHIỂN DƯỚI KHỐI TRỰC ĐIỀU HÀNH -->
       <div class="side-controls-group">
         <button id="setupShiftBtn" class="side-btn setup">Setup kíp trực 🔒</button>
         <button id="manualSaveBtn" class="side-btn save">Lưu dữ liệu 💾</button>
-        <button id="exportConfigBtn" class="side-btn export">Xuất file cấu hình 📤</button>
-        <button id="importConfigBtn" class="side-btn import">Nạp file cấu hình 📥</button>
-        <input type="file" id="importFileInput" accept=".json" style="display:none">
+        <button id="exportConfigBtn" class="side-btn export">Xuất file CSV/Excel 📤</button>
+        <button id="importConfigBtn" class="side-btn import">Nạp file CSV/Excel 📥</button>
+        <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
       </div>
     </div>
 
@@ -267,7 +262,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     </div>
   </aside>
 
-  <!-- MAIN CONTENT AREA -->
   <section class="main">
     <header class="topbar">
       <div>
@@ -278,7 +272,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div style="display:flex;align-items:center;gap:6px" class="tiny">
           Từ: <input type="date" id="fromDate" class="field" style="padding:4px 6px">
           Đến: <input type="date" id="toDate" class="field" style="padding:4px 6px">
-          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:6px 10px">🔍 Truy xuất Supabase</button>
+          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:6px 10px">🔍 Tải dữ liệu ngày cũ (Bucket)</button>
         </div>
         <button class="theme-toggle" id="themeToggle">◐ Giao diện tối</button>
         <button class="primary" id="refreshBtn">↻ Cập nhật (<span id="countdown">30:00</span>)</button>
@@ -286,7 +280,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     </header>
 
     <main class="content">
-      <!-- MÀN HÌNH 1: TOÀN CẢNH -->
       <section id="page-overview" class="page">
         <div class="header-widgets-grid">
           <div class="vivid-weather">
@@ -334,7 +327,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
-                <div class="tide-title">TRẠM HÒN ĐÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
+                <div class="tide-title">TRẠM HÒN DÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
                 <div style="font-size:11px;opacity:0.9;margin-top:2px">Đặc tính: <b>Nhật triều thuần nhất</b></div>
               </div>
               <span style="font-size:10px;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;font-weight:800;color:#8be4ec">Chuẩn 0 Hải Đồ</span>
@@ -431,7 +424,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 2: KẾ HOẠCH CẦU (GANTT CHART) -->
+      <!-- MÀN HÌNH 2: KẾ HOẠCH CẦU -->
       <section id="page-planning" class="page hidden">
         <div class="page-head">
           <div>
@@ -494,7 +487,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 4: THỐNG KÊ & BÁO CÁO -->
+      <!-- MÀN HÌNH 4: THỐNG KÊ -->
       <section id="page-stats" class="page hidden">
         <div class="page-head">
           <div>
@@ -533,7 +526,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </section>
       </section>
 
-      <!-- MÀN HÌNH 5: BÁO CÁO & GÓP Ý -->
+      <!-- MÀN HÌNH 5: BÁO CÁO -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
@@ -577,7 +570,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 6: NGUỒN & LIÊN HỆ -->
+      <!-- MÀN HÌNH 6: NGUỒN -->
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
@@ -644,7 +637,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 </div>
 
 <script>
-// --- KHỞI TẠO CREDENTIALS SUPABASE CỦA BẠN ---
 const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ZQdpAmhE4LLfsbKGsRiHIw_ShoTsfIe';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -681,7 +673,6 @@ function formatDuration(ms) {
   return `${hrs} giờ ${mins} phút`;
 }
 
-// Router & State Persistence
 function nav(page, saveState = true){
   document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
   const target = $('page-' + page);
@@ -713,15 +704,13 @@ async function loadShiftConfigFromSupabase() {
       $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
       $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
     }
-  } catch(e) {
-    console.log('Chưa có cấu hình kíp trực trên Supabase cho ngày hôm nay.');
-  }
+  } catch(e) {}
 }
 
 async function saveShiftConfigToSupabase(shiftData) {
   let today = getTodayString();
   try {
-    let { error } = await supabaseClient
+    await supabaseClient
       .from('shift_configs')
       .upsert({
         shift_date: today,
@@ -730,63 +719,55 @@ async function saveShiftConfigToSupabase(shiftData) {
         safety: shiftData.safety,
         updated_at: new Date().toISOString()
       }, { onConflict: 'shift_date' });
-
-    if (error) console.error('Lỗi lưu kíp trực lên Supabase:', error.message);
-    else console.log('Đã đồng bộ kíp trực lên Supabase thành công.');
-  } catch(err) {
-    console.error('Lỗi ngoại lệ kíp trực:', err);
-  }
+  } catch(err) {}
 }
 
-// --- TRUY XUẤT HOẶC FALLBACK DỮ LIỆU TÀU TỪ SUPABASE KHI SERVER MẤT KẾT NỐI ---
-async function fetchHistoryFromSupabase() {
+// --- TẢI DỮ LIỆU TỪ STORAGE BUCKET (DÙNG CHO CÁC NGÀY ĐÃ QUA ĐỂ GIÚP DATABASE SIÊU NHẸ) ---
+async function fetchHistoryFromBucket() {
   let fDate = $('fromDate').value;
-  let tDate = $('toDate').value;
-
-  if (!fDate || !tDate) {
-    alert('Vui lòng chọn khoảng thời gian Từ ngày và Đến ngày!');
+  if (!fDate) {
+    alert('Vui lòng chọn ngày cần truy xuất tại ô "Từ:" !');
     return;
   }
 
-  $('sideStatus').textContent = 'Đang truy vấn Supabase...';
-  
-  let startIso = new Date(fDate + 'T00:00:00.000Z').toISOString();
-  let endIso = new Date(tDate + 'T23:59:59.999Z').toISOString();
+  $('sideStatus').textContent = `Đang tải dữ liệu từ Storage Bucket (${fDate})...`;
+  const fileName = `daily_snapshot_${fDate}.json`;
 
-  const { data, error } = await supabaseClient
-    .from('port_calls_history')
-    .select('*')
-    .gte('etb', startIso)
-    .lte('etb', endIso);
+  try {
+    const { data, error } = await supabaseClient
+      .storage
+      .from('port-documents')
+      .download(fileName);
 
-  if (error) {
-    alert('Lỗi khi truy xuất dữ liệu từ Supabase: ' + error.message);
-    $('sideStatus').textContent = 'Lỗi truy vấn SQL';
-    return;
-  }
+    if (error || !data) {
+      alert(`Không tìm thấy file snapshot lưu trữ trên Storage Bucket cho ngày ${fDate}.`);
+      $('sideStatus').textContent = 'Không có dữ liệu trong Bucket';
+      return;
+    }
 
-  if (data && data.length > 0) {
-    allCalls = data.map(c => ({
-      vessel: c.vessel || '',
-      operator: c.operator || '',
-      terminal: c.terminal || '',
-      berth: c.berth || '',
-      loa: Number(c.loa) || 0,
-      dwt: c.dwt ?? '',
-      etb: c.etb || '',
-      etd: c.etd || ''
-    }));
+    const text = await data.text();
+    const parsed = JSON.parse(text);
 
-    renderAll();
-    $('sideStatus').textContent = `Đã nạp ${data.length} lượt tàu từ Supabase (${fDate} ➔ ${tDate})`;
-    alert(`Đã nạp thành công ${data.length} lượt tàu lịch sử trong khoảng thời gian từ ${fDate} đến ${tDate}!`);
-  } else {
-    alert(`Không tìm thấy bản ghi lịch sử nào trong Supabase cho khoảng thời gian từ ${fDate} đến ${tDate}.`);
-    $('sideStatus').textContent = 'Không có dữ liệu trong dải ngày';
+    if (parsed.calls && Array.isArray(parsed.calls)) {
+      allCalls = parsed.calls;
+      if (parsed.shift_info) {
+        $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1';
+        $('dispCommander').textContent = parsed.shift_info.commander || '—';
+        $('dispSafety').textContent = parsed.shift_info.safety || '—';
+      }
+      renderAll();
+      $('sideStatus').textContent = `Đã tải ${allCalls.length} lượt tàu từ Storage Bucket (${fDate})`;
+      alert(`Đã nạp thành công báo cáo snapshot ngày ${fDate} từ Storage Bucket!`);
+    } else {
+      alert('Cấu trúc file trong Storage Bucket không hợp lệ.');
+    }
+  } catch(err) {
+    alert('Lỗi truy xuất Storage Bucket: ' + err.message);
+    $('sideStatus').textContent = 'Lỗi Bucket';
   }
 }
 
-// --- LƯU DỮ LIỆU TÀU LÊN DATABASE & STORAGE BUCKET ---
+// --- TỰ ĐỘNG LƯU SNAPSHOT LÊN STORAGE BUCKET (12H ĐÊM HOẶC THỦ CÔNG) ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) {
     if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
@@ -795,85 +776,36 @@ async function saveCurrentDataToSupabase(isAuto = false) {
 
   const todayStr = getTodayString();
   const nowStr = new Date().toLocaleString('vi-VN');
-  let dbSuccess = false;
 
-  try {
-    const payloadWithSnapshot = allCalls.map(c => ({
-      vessel: c.vessel,
-      operator: c.operator || '',
-      terminal: c.terminal || '',
-      berth: c.berth || '',
-      loa: c.loa || 0,
-      dwt: c.dwt ? Number(c.dwt) : null,
-      etb: c.etb ? new Date(c.etb).toISOString() : null,
-      etd: c.etd ? new Date(c.etd).toISOString() : null,
-      snapshot_date: todayStr
-    }));
+  const jsonContent = JSON.stringify({
+    saved_at: nowStr,
+    date: todayStr,
+    shift_info: {
+      shift: $('dispShift').textContent,
+      commander: $('dispCommander').textContent,
+      safety: $('dispSafety').textContent
+    },
+    total_calls: allCalls.length,
+    calls: allCalls
+  }, null, 2);
 
-    let { error: dbError } = await supabaseClient
-      .from('port_calls_history')
-      .upsert(payloadWithSnapshot, { onConflict: 'vessel,etb' });
+  const fileName = `daily_snapshot_${todayStr}.json`;
+  const blob = new Blob([jsonContent], { type: 'application/json' });
 
-    if (dbError && dbError.message.includes('snapshot_date')) {
-      const payloadSimple = allCalls.map(c => ({
-        vessel: c.vessel,
-        operator: c.operator || '',
-        terminal: c.terminal || '',
-        berth: c.berth || '',
-        loa: c.loa || 0,
-        dwt: c.dwt ? Number(c.dwt) : null,
-        etb: c.etb ? new Date(c.etb).toISOString() : null,
-        etd: c.etd ? new Date(c.etd).toISOString() : null
-      }));
-
-      let retryRes = await supabaseClient
-        .from('port_calls_history')
-        .upsert(payloadSimple, { onConflict: 'vessel,etb' });
-
-      dbError = retryRes.error;
-    }
-
-    if (!dbError) dbSuccess = true;
-  } catch (err) {
-    console.error('Lỗi Database:', err);
-  }
-
-  let bucketSuccess = false;
-  try {
-    const jsonContent = JSON.stringify({
-      saved_at: nowStr,
-      date: todayStr,
-      shift_info: {
-        shift: $('dispShift').textContent,
-        commander: $('dispCommander').textContent,
-        safety: $('dispSafety').textContent
-      },
-      total_calls: allCalls.length,
-      calls: allCalls
-    }, null, 2);
-
-    const fileName = `daily_snapshot_${todayStr}.json`;
-    const blob = new Blob([jsonContent], { type: 'application/json' });
-
-    const { error: bucketError } = await supabaseClient
-      .storage
-      .from('port-documents')
-      .upload(fileName, blob, { contentType: 'application/json', upsert: true });
-
-    if (!bucketError) bucketSuccess = true;
-  } catch (err) {
-    console.error('Lỗi Bucket:', err);
-  }
+  const { error: bucketError } = await supabaseClient
+    .storage
+    .from('port-documents')
+    .upload(fileName, blob, { contentType: 'application/json', upsert: true });
 
   const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 12h đêm' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
   updateLastSavedDisplay(savedStatusText);
 
   if (!isAuto) {
-    if (dbSuccess || bucketSuccess) {
-      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào Supabase Cloud!`);
+    if (!bucketError) {
+      alert(`Đã sao lưu thành công tệp snapshot ngày ${todayStr} lên Storage Bucket! Database được giữ siêu nhẹ.`);
     } else {
-      alert(`Không thể lưu dữ liệu.`);
+      alert('Lỗi lưu Storage Bucket: ' + bucketError.message);
     }
   }
 }
@@ -883,33 +815,46 @@ function updateLastSavedDisplay(str) {
   $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
 }
 
-// --- XUẤT / NẠP FILE CẤU HÌNH ---
-function exportConfigData() {
+// --- XUẤT FILE CẤU HÌNH DẠNG CSV (MỞ TRỰC TIẾP BẰNG EXCEL) ---
+function exportConfigAsCSV() {
   if (!allCalls || allCalls.length === 0) {
-    alert('Không có dữ liệu để xuất file!');
+    alert('Không có dữ liệu để xuất!');
     return;
   }
 
-  const configObj = {
-    version: '1.0',
-    exported_at: new Date().toLocaleString('vi-VN'),
-    shift_info: {
-      shift: $('dispShift').textContent,
-      commander: $('dispCommander').textContent,
-      safety: $('dispSafety').textContent
-    },
-    calls: allCalls
-  };
+  let csvRows = [];
+  // Ghi phần thông tin kíp trực lên đầu file CSV
+  csvRows.push(`"THÔNG TIN KÍP TRỰC","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`);
+  csvRows.push(`"DANH SÁCH LƯỢT TÀU","","",""`);
+  csvRows.push(`"STT","Tên Tàu","Hãng Tàu","Terminal","Bến","LOA (m)","DWT","ETB","ETD"`);
 
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configObj, null, 2));
+  allCalls.forEach((c, index) => {
+    let row = [
+      index + 1,
+      `"${c.vessel || ''}"`,
+      `"${c.operator || ''}"`,
+      `"${c.terminal || ''}"`,
+      `"${c.berth || ''}"`,
+      c.loa || 0,
+      c.dwt || 0,
+      `"${c.etb || ''}"`,
+      `"${c.etd || ''}"`
+    ];
+    csvRows.push(row.join(','));
+  });
+
+  const csvString = "\uFEFF" + csvRows.join('\n'); // Thêm BOM hỗ trợ tiếng Việt trên Excel
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `port_backup_${getTodayString()}.json`);
+  downloadAnchor.setAttribute("href", url);
+  downloadAnchor.setAttribute("download", `port_config_${getTodayString()}.csv`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
 }
 
+// --- NẠP FILE CẤU HÌNH DẠNG CSV/EXCEL ---
 function triggerImportConfig() {
   let pwd = prompt('Nhập mật khẩu xác nhận (6868) để nạp file cấu hình:');
   if (pwd === '6868') {
@@ -926,31 +871,44 @@ function handleFileImport(e) {
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
-      const parsed = JSON.parse(evt.target.result);
-      if (parsed.calls && Array.isArray(parsed.calls)) {
-        allCalls = parsed.calls;
+      const text = evt.target.result;
+      const lines = text.split('\n');
+      let loadedCalls = [];
 
-        if (parsed.shift_info) {
-          $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1 (06:00 - 14:00)';
-          $('dispCommander').textContent = parsed.shift_info.commander || 'Chưa thiết lập';
-          $('dispSafety').textContent = parsed.shift_info.safety || 'Chưa thiết lập';
-          saveShiftConfigToSupabase(parsed.shift_info);
+      for (let i = 3; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+        let cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Phân tách CSV chuẩn hỗ trợ dấu phẩy trong tên
+        if (cols.length >= 9) {
+          loadedCalls.push({
+            vessel: cols[1].replace(/["']/g, ''),
+            operator: cols[2].replace(/["']/g, ''),
+            terminal: cols[3].replace(/["']/g, ''),
+            berth: cols[4].replace(/["']/g, ''),
+            loa: Number(cols[5]) || 0,
+            dwt: cols[6] || '',
+            etb: cols[7].replace(/["']/g, ''),
+            etd: cols[8].replace(/["']/g, '')
+          });
         }
+      }
 
+      if (loadedCalls.length > 0) {
+        allCalls = loadedCalls;
         renderAll();
-        alert(`Nạp file cấu hình thành công! Đã khôi phục ${allCalls.length} lượt tàu.`);
+        alert(`Đã nạp thành công ${allCalls.length} lượt tàu từ file CSV/Excel!`);
       } else {
-        alert('Cấu trúc file JSON không hợp lệ!');
+        alert('Không đọc được dữ liệu từ file CSV. Hãy đảm bảo đúng định dạng hệ thống xuất.');
       }
     } catch(err) {
-      alert('Lỗi đọc file JSON: ' + err.message);
+      alert('Lỗi xử lý file: ' + err.message);
     }
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
 }
 
 function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để lưu dữ liệu hiện tại lên Supabase Cloud:');
+  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để lưu dữ liệu lên Storage Bucket:');
   if (pwd === '6868') {
     saveCurrentDataToSupabase(false);
   } else if (pwd !== null) {
@@ -970,7 +928,7 @@ function scheduleMidnightAutoSave() {
   }, timeUntilMidnight);
 }
 
-// --- TẢI DỮ LIỆU TÀU (CÓ TÍCH HỢP TỰ ĐỘNG FALLBACK KHI SERVER TRỰC TIẾP MẤT KẾT NỐI) ---
+// Load Data từ API Cảng vụ
 async function loadData() {
   $('refreshBtn').disabled = true;
   $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
@@ -994,34 +952,20 @@ async function loadData() {
       $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Live API)';
     }
   } catch(e) {
-    console.warn('Server trực tiếp mất kết nối, đang chuyển sang chế độ dự phòng Supabase Database...');
-    $('sideStatus').textContent = 'Server mất kết nối. Đang lấy dữ liệu từ Supabase...';
+    console.warn('Mất kết nối server trực tiếp, đang tải dữ liệu snapshot từ Storage Bucket...');
+    $('sideStatus').textContent = 'Server mất kết nối. Đang lấy từ Storage Bucket...';
     
-    // Tự động Fallback: Lấy dữ liệu gần đây nhất từ Supabase khi Server trực tiếp chết
     try {
       let today = getTodayString();
-      let startIso = new Date(today + 'T00:00:00.000Z').toISOString();
-      let { data, error } = await supabaseClient
-        .from('port_calls_history')
-        .select('*')
-        .gte('etb', startIso)
-        .limit(200);
-
-      if (data && data.length > 0 && !error) {
-        allCalls = data.map(c => ({
-          vessel: c.vessel || '',
-          operator: c.operator || '',
-          terminal: c.terminal || '',
-          berth: c.berth || '',
-          loa: Number(c.loa) || 0,
-          dwt: c.dwt ?? '',
-          etb: c.etb || '',
-          etd: c.etd || ''
-        }));
-        renderAll();
-        $('sideStatus').textContent = `Đang chạy chế độ Offline (Nạp ${allCalls.length} từ Supabase)`;
-      } else {
-        $('sideStatus').textContent = 'Không có dữ liệu dự phòng trên Supabase';
+      const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
+      if (data) {
+        const text = await data.text();
+        const parsed = JSON.parse(text);
+        if (parsed.calls) {
+          allCalls = parsed.calls;
+          renderAll();
+          $('sideStatus').textContent = `Đang chạy chế độ Offline (Nạp ${allCalls.length} từ Storage Bucket)`;
+        }
       }
     } catch(err) {
       $('sideStatus').textContent = 'Lỗi kết nối toàn bộ hệ thống';
@@ -1407,7 +1351,6 @@ function saveShiftModal() {
   $('dispCommander').textContent = shiftData.commander;
   $('dispSafety').textContent = shiftData.safety;
   
-  // Lưu lên Supabase Database
   saveShiftConfigToSupabase(shiftData);
   closeShiftModal();
 }
@@ -1424,10 +1367,10 @@ setInterval(() => {
 // Event Bindings
 $('manualSaveBtn').onclick = handleManualSave;
 $('setupShiftBtn').onclick = openShiftModalWithPassword;
-$('exportConfigBtn').onclick = exportConfigData;
+$('exportConfigBtn').onclick = exportConfigAsCSV;
 $('importConfigBtn').onclick = triggerImportConfig;
 $('importFileInput').onchange = handleFileImport;
-$('fetchHistoryBtn').onclick = fetchHistoryFromSupabase;
+$('fetchHistoryBtn').onclick = fetchHistoryFromBucket;
 
 $('closeModalBtn').onclick = closeShiftModal;
 $('saveModalBtn').onclick = saveShiftModal;
@@ -1460,7 +1403,7 @@ function restoreState() {
 // Initialize Application
 initDates();
 restoreState();
-loadShiftConfigFromSupabase(); // Tự động nạp kíp trực từ Supabase Database khi khởi động
+loadShiftConfigFromSupabase();
 loadData();
 scheduleMidnightAutoSave();
 </script>
