@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</title>
+<!-- Tích hợp Supabase JS Client SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --navy:#102b46;--navy2:#173f63;--cyan:#26bdc8;--bg:#f2f5f9;--card:#ffffff;--ink:#192c40;
+  --muted:#718196;--line:#dce5ee;--green:#168568;--amber:#d89a24;--red:#c94d4d;
+}
+:root[data-theme="dark"]{
+  --bg:#0b1623;--card:#122337;--ink:#e4edf6;--muted:#9db0c4;--line:#2b4055;--navy:#102b46;--navy2:#245477;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font:14px/1.45 Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);overflow-x:hidden}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:0;border-radius:8px;padding:9px 13px;font-weight:700;font-size:12px;background:#eaf0f6;color:#25445f;transition:all .15s}
+button:hover{filter:brightness(.95)}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:20px 12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;gap:11px;align-items:center;padding:0 8px}
+.brand small{display:block;font-size:8px;letter-spacing:1.2px;color:#9dc9e3;font-weight:800;text-transform:uppercase}
+.brand strong{font-size:13px;color:#fff;line-height:1.2;display:block}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#82a3bd;padding:0 12px;margin-bottom:7px}
+.nav{display:grid;gap:5px}
+.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600}
+.nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
+
+/* SIDEBAR SHIFT BOX */
+.side-shift-card{
+  background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.4);
+  border-radius: 11px;padding: 12px;margin-top: 5px;
+}
+.side-shift-title{font-size: 10px;font-weight: 800;color: var(--cyan);letter-spacing: 0.5px;margin-bottom: 8px;display:flex;align-items:center;gap:5px}
+.side-shift-item{margin-bottom: 8px}
+.side-shift-item:last-child{margin-bottom:0}
+.side-shift-item small{display: block;color: #82a3bd;font-size: 9px;font-weight: 700;margin-bottom: 1px}
+.side-shift-item strong{font-size: 11px;color: #ffffff;word-break: break-word}
+.side-shift-item span.phone{color: var(--cyan);font-weight: 800}
+
+.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:12px 9px 0;color:#91adc2;font-size:10px;line-height:1.35}
+.main{min-width:0}
+.topbar{min-height:75px;padding:12px 28px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.crumb{font-size:11px;color:var(--muted);font-weight:700}
+.topbar h1{font-size:17px;margin:2px 0 0;font-weight:800;color:var(--navy2)}
+:root[data-theme="dark"] .topbar h1{color:var(--cyan)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.primary{background:var(--cyan);color:#073343}
+.darkbtn{background:var(--navy2);color:#fff}
+.savebtn{background:var(--green);color:#fff}
+.content{padding:23px 28px 35px;max-width:1800px;margin:auto}
+.page{display:block;width:100%;animation:pageIn .16s ease-out}
+.page.hidden{display:none!important}
+@keyframes pageIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.page-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:17px}
+.page-head h2{margin:0 0 4px;font-size:22px}
+.muted{color:var(--muted)}
+.tiny{font-size:11px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:16px 0}
+.kpi,.panel{background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:0 3px 12px #18314a05}
+.kpi{padding:15px}
+.kpi-top{display:flex;justify-content:space-between;gap:5px;color:var(--muted);font-size:11px;font-weight:700}
+.kpi-value{font-size:25px;font-weight:850;letter-spacing:-.5px;margin:8px 0 2px}
+.kpi-note{font-size:10px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:14px}
+.panel{overflow:hidden;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 17px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h3{font-size:14px;margin:0}
+.panel-body{padding:15px 17px}
+
+/* HEADER TOP WIDGETS LAYOUT (EXPANDED WEATHER + TIDE) */
+.header-widgets-grid{
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* EXPANDED VIVID WEATHER WIDGET */
+.vivid-weather{
+  background: linear-gradient(135deg, #163d63 0%, #205987 50%, #2fa3b5 100%);
+  color: #ffffff;border-radius: 14px;padding: 20px 24px;
+  box-shadow: 0 8px 24px rgba(16,43,70,0.22);position: relative;overflow: hidden;
+  display: flex;flex-direction: column;justify-content: space-between;
+}
+:root[data-theme="dark"] .vivid-weather{
+  background: linear-gradient(135deg, #0d253d 0%, #153b5c 50%, #1a5b7d 100%);
+}
+.vivid-weather-bg-icon{
+  position: absolute;right: -10px;top: -10px;font-size: 130px;opacity: 0.12;
+  pointer-events: none;line-height: 1;
+}
+.weather-top{display: flex;justify-content: space-between;align-items: flex-start;gap: 15px;margin-bottom: 12px}
+.weather-city{font-size: 12px;font-weight: 800;letter-spacing: 0.6px;color: #8be4ec;text-transform: uppercase}
+.weather-hero{display: flex;align-items: center;gap: 18px;margin-top: 6px}
+.weather-hero-icon{font-size: 48px;line-height: 1;filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25))}
+.weather-hero-temp{font-size: 42px;font-weight: 900;letter-spacing: -1.5px}
+.weather-hero-cond{font-size: 14px;font-weight: 800;opacity: 0.95}
+
+.weather-indicators-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.w-ind-item{background: rgba(0,0,0,0.12);border-radius: 8px;padding: 7px 10px;backdrop-filter: blur(4px)}
+.w-ind-item small{display: block;font-size: 9px;opacity: 0.8;font-weight: 700}
+.w-ind-item strong{font-size: 12px;font-weight: 800;display: block;margin-top: 2px;color: #ffffff}
+
+.weather-hourly{display: flex;gap: 10px;overflow-x: auto;padding-top: 4px}
+.w-hour-item{text-align: center;min-width: 52px;background: rgba(255,255,255,0.1);padding: 5px;border-radius: 7px;font-size: 10px}
+.w-hour-item small{display: block;opacity: 0.8;font-size: 9px}
+
+/* VIVID TIDE WIDGET (HÒN DÁU) */
+.vivid-tide{
+  background: linear-gradient(135deg, #0e3d59 0%, #185a7d 50%, #1f829c 100%);
+  color: #ffffff;border-radius: 14px;padding: 20px 22px;
+  box-shadow: 0 8px 24px rgba(16,43,70,0.22);position: relative;overflow: hidden;
+  display: flex;flex-direction: column;justify-content: space-between;
+}
+:root[data-theme="dark"] .vivid-tide{
+  background: linear-gradient(135deg, #092133 0%, #103b54 50%, #165675 100%);
+}
+.vivid-tide-bg-icon{
+  position: absolute;right: -10px;top: -10px;font-size: 110px;opacity: 0.15;
+  pointer-events: none;line-height: 1;
+}
+.tide-top{display: flex;justify-content: space-between;align-items: flex-start;gap: 10px;margin-bottom: 10px}
+.tide-title{font-size: 12px;font-weight: 800;letter-spacing: 0.5px;color: #8be4ec}
+.tide-grid{display: grid;grid-template-columns: 1fr 1fr;gap: 10px;margin-top: 6px}
+.tide-box{background: rgba(255,255,255,0.1);border-radius: 10px;padding: 10px;backdrop-filter: blur(4px)}
+.tide-box.high{border-left: 3px solid #26bdc8}
+.tide-box.low{border-left: 3px solid #ffb347}
+.tide-box small{display: block;font-size: 10px;opacity: 0.85;font-weight: 700}
+.tide-box strong{font-size: 20px;font-weight: 900;display: block;margin: 2px 0}
+.tide-box span{font-size: 11px;opacity: 0.95;font-weight: 700}
+
+/* TIDE PROGRESS BAR */
+.tide-progress-wrap{margin-top: 10px}
+.tide-progress-labels{display: flex;justify-content: space-between;font-size: 10px;font-weight: 700;margin-bottom: 4px;opacity: 0.9}
+.tide-progress-bar{height: 8px;background: rgba(0,0,0,0.25);border-radius: 6px;overflow: hidden;position: relative}
+.tide-progress-fill{height: 100%;background: linear-gradient(90deg, #ffb347, #26bdc8);border-radius: 6px;width: 65%}
+
+/* MOVEMENT TIMELINE FILTERS & TAGS */
+.movement-tools{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.movement-tools button{padding:6px 11px;font-size:11px}
+.movement-tools button.active{background:var(--navy2);color:#fff}
+.timeline{display:grid;gap:10px}
+.trow{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:start}
+.t-time{font-weight:800;font-size:12px;color:var(--navy2);padding-top:3px}
+:root[data-theme="dark"] .t-time{color:var(--cyan)}
+.t-card{border-left:3px solid var(--cyan);padding:2px 0 8px 11px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.t-card strong{font-size:12px}
+.tag-vivid{font-size:10px;border-radius:6px;padding:4px 8px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.tag-vivid.arriving{background:#e8f6f1;color:#126e55}
+.tag-vivid.departing{background:#fff0f0;color:#a82e2e}
+.tag-vivid.urgent{background:#fff3d9;color:#8f5c00}
+
+/* BERTH LAYOUT */
+.berth-group{margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.berth-group:last-child{border-bottom:0;padding-bottom:0}
+.berth-group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.berth-group-title{font-weight:800;font-size:13px;color:var(--navy2)}
+:root[data-theme="dark"] .berth-group-title{color:var(--cyan)}
+.berth-row{display:grid;grid-template-columns:45px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}
+.berth-name{font-weight:800;font-size:11px;color:var(--muted)}
+.berth-ships{display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
+.ship-chip{background:linear-gradient(135deg,#1f6d9c,#134c70);color:#fff;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 5px rgba(0,0,0,0.1);cursor:pointer}
+.ship-chip.large{background:linear-gradient(135deg,#c48612,#916005)}
+.ship-chip .chip-time{font-size:9px;opacity:.85;font-weight:normal}
+.empty-berth{color:var(--muted);font-size:11px;font-style:italic}
+
+/* CONTROLS & TABLES */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line)}
+.field{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);min-width:120px;font-size:12px;color:var(--ink)}
+.field.search{flex:1;min-width:180px}
+.table-wrap{overflow:auto;max-height:65vh}
+table{border-collapse:collapse;width:100%;min-width:850px;font-size:12px}
+th{background:rgba(0,0,0,0.03);color:var(--muted);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.35px;padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody tr:hover{background:rgba(38,189,200,0.04)}
+.vessel{font-weight:800;color:var(--navy2)}
+:root[data-theme="dark"] .vessel{color:var(--cyan)}
+.badge{display:inline-block;border-radius:5px;padding:3px 6px;background:#e7f2fc;color:#1b6599;font-weight:800;font-size:10px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+/* CHART STYLES FOR STATS */
+.chart-list{display:grid;gap:12px}
+.barrow{display:grid;grid-template-columns:130px 1fr 35px;gap:10px;align-items:center;font-size:12px}
+.barbg{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.barfill{height:100%;background:var(--cyan);border-radius:6px}
+.barfill.gold{background:var(--amber)}
+.hourly-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.hour-cell{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card)}
+.hour-cell-top{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+.hour-cell b{font-size:13px}
+.hour-meter{height:4px;background:var(--line);border-radius:4px;margin-top:6px;overflow:hidden}
+.hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:4px}
+
+/* GANTT CHART */
+.gantt{overflow:auto;padding:15px}
+.gantt-head,.gantt-row{display:grid;grid-template-columns:155px minmax(650px,1fr);min-width:800px}
+.gantt-head{font-size:10px;color:var(--muted);padding-bottom:9px}
+.gantt-row{min-height:48px;border-top:1px solid var(--line);align-items:center}
+.berth-label{font-size:11px;font-weight:800;padding-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:34px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:5px}
+.shipbar{position:absolute;top:4px;height:26px;border-radius:5px;padding:4px 7px;color:#fff;font-size:10px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:35px;cursor:pointer;z-index:2;box-shadow:0 2px 4px rgba(0,0,0,0.15)}
+.shipbar.large{background:#d99a24}
+
+/* SMART TOOLTIP */
+#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.25);pointer-events:none;max-width:320px;font-size:12px}
+#shipTooltip strong{font-size:14px;color:var(--navy2);display:block;margin-bottom:2px}
+:root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
+#shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px}
+#shipTooltip .tt-item small{display:block;color:var(--muted);font-size:9px}
+#shipTooltip .tt-item b{font-size:11px}
+
+/* FORM REPORT & FEEDBACK */
+.report-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:800px;margin:auto}
+.form-group{margin-bottom:15px}
+.form-group label{display:block;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--card);color:var(--ink)}
+
+/* MODAL SHIFT */
+.modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-shade.open{display:flex}
+.modal{background:var(--card);border-radius:14px;width:min(450px,92vw);padding:22px;box-shadow:0 10px 30px rgba(0,0,0,0.25)}
+.modal h3{margin:0 0 15px;font-size:17px}
+.modal-form{display:grid;gap:12px}
+.modal-form label{display:block;font-size:11px;font-weight:700;color:var(--muted)}
+.modal-form input{width:100%;margin-top:4px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+
+.port-link-box{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:11px;display:flex;align-items:center;justify-content:space-between}
+.port-link-box a{color:var(--cyan);font-weight:700;text-decoration:none}
+
+@media(max-width:1250px){.header-widgets-grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:800px){
+  .app{grid-template-columns:68px minmax(0,1fr)}
+  .side{padding:16px 7px}
+  .brand div,.nav-label,.nav button span:last-child,.side-foot,.side-shift-card{display:none}
+  .nav button{justify-content:center;padding:12px 5px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .weather-indicators-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="side">
+    <div class="brand">
+      <div>
+        <small>Operations & Customer Service Center</small>
+        <strong>Trung tâm Khai thác & DVKH</strong>
+      </div>
+    </div>
+    <div>
+      <div class="nav-label">Không gian làm việc</div>
+      <nav class="nav">
+        <button class="active" data-page="overview"><span>▦</span><span>Toàn cảnh</span></button>
+        <button data-page="planning"><span>▤</span><span>Kế hoạch cầu</span></button>
+        <button data-page="search"><span>⌕</span><span>Tra cứu tàu</span></button>
+        <button data-page="stats"><span>▥</span><span>Thống kê</span></button>
+        <button data-page="report"><span>✉</span><span>Báo cáo & Góp ý</span></button>
+        <button data-page="resources"><span>↗</span><span>Nguồn & Liên hệ</span></button>
+      </nav>
+    </div>
+
+    <!-- KHỐI BỘ PHẬN TRỰC ĐIỀU HÀNH TẠI SIDEBAR TRÁI -->
+    <div class="side-shift-card">
+      <div class="side-shift-title">⚡ BỘ PHẬN TRỰC ĐIỀU HÀNH</div>
+      <div class="side-shift-item">
+        <small>CA TRỰC VẬN HÀNH</small>
+        <strong id="dispShift">Ca 1 (06:00 - 14:00)</strong>
+      </div>
+      <div class="side-shift-item">
+        <small>TRƯỞNG ĐIỀU HÀNH</small>
+        <strong id="dispCommander">Nguyễn Văn A - <span class="phone">0912.345.678</span></strong>
+      </div>
+      <div class="side-shift-item">
+        <small>AN TOÀN - HÀNG HẢI</small>
+        <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
+      </div>
+    </div>
+
+    <div class="side-foot">
+      <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b><br>
+      <span style="opacity:0.75;font-size:9px">Operations & Customer Service Center</span><br><br>
+      <span id="sideStatus">Đang khởi tạo Supabase...</span><br>
+      <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa có lịch sử lưu</span>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <section class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb">CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG / <span id="crumb">TOÀN CẢNH</span></div>
+        <h1 id="topTitle">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</h1>
+      </div>
+      <div class="actions">
+        <div style="display:flex;align-items:center;gap:6px" class="tiny">
+          Từ: <input type="date" id="fromDate" class="field" style="padding:4px 6px">
+          Đến: <input type="date" id="toDate" class="field" style="padding:4px 6px">
+        </div>
+        <!-- Nút lưu dữ liệu bảo mật bằng mật khẩu 6868 -->
+        <button id="manualSaveBtn" class="savebtn">Lưu dữ liệu 💾</button>
+        <button id="setupShiftBtn" class="darkbtn">Setup kíp trực 🔒</button>
+        <button class="theme-toggle" id="themeToggle">◐ Giao diện tối</button>
+        <button class="primary" id="refreshBtn">↻ Cập nhật (<span id="countdown">30:00</span>)</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- MÀN HÌNH 1: TOÀN CẢNH -->
+      <section id="page-overview" class="page">
+        <!-- HEADER WIDGETS (EXPANDED WEATHER + TIDE) -->
+        <div class="header-widgets-grid">
+          <!-- Vivid Expanded Weather Widget -->
+          <div class="vivid-weather">
+            <div class="vivid-weather-bg-icon">☀️</div>
+            <div class="weather-top">
+              <div>
+                <div class="weather-city">CẢNG HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI & DỰ BÁO</div>
+                <div class="weather-hero">
+                  <span class="weather-hero-icon">🌤️</span>
+                  <span class="weather-hero-temp">28°C</span>
+                  <div>
+                    <div class="weather-hero-cond">Nắng nhẹ · Bầu trời quang đãng</div>
+                    <div style="font-size:11px;opacity:0.85">Cảm giác như 30°C · Điều kiện xếp dỡ an toàn</div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:18px;font-weight:900" id="liveClock">14:14:00</div>
+                <div style="font-size:10px;opacity:0.85" id="currentFullDate">Thứ Sáu, 23/10/2026</div>
+                <div style="font-size:10px;color:#8be4ec;margin-top:4px;font-weight:800" id="topLastSaved">Lưu gần nhất: Chưa ghi nhận</div>
+              </div>
+            </div>
+
+            <div class="weather-indicators-grid">
+              <div class="w-ind-item"><small>HƯỚNG & TỐC ĐỘ GIÓ</small><strong>🧭 Đông Nam (SE) · 4.2 m/s (Cấp 3)</strong></div>
+              <div class="w-ind-item"><small>TẦM NHÌN XA TRÊN BIỂN</small><strong>👁️ > 10 km (Rất tốt)</strong></div>
+              <div class="w-ind-item"><small>ĐỘ ẨM KHÔNG KHÍ</small><strong>💧 75% RH</strong></div>
+              <div class="w-ind-item"><small>ÁP SUẤT KHÍ QUYỂN</small><strong>🌡️ 1013 hPa</strong></div>
+              <div class="w-ind-item"><small>CHỈ SỐ BỨC XẠ UV</small><strong>☀️ 4 (Trung bình)</strong></div>
+              <div class="w-ind-item"><small>BÌNH MINH / HOÀNG HÔN</small><strong>🌅 05:52 / 🌄 17:28</strong></div>
+            </div>
+
+            <div class="weather-hourly">
+              <div class="w-hour-item"><small>Bây giờ</small><b>☀️ 28°C</b></div>
+              <div class="w-hour-item"><small>15:00</small><b>🌤️ 28°C</b></div>
+              <div class="w-hour-item"><small>18:00</small><b>🌥️ 26°C</b></div>
+              <div class="w-hour-item"><small>21:00</small><b>🌙 24°C</b></div>
+              <div class="w-hour-item"><small>00:00</small><b>🌙 23°C</b></div>
+              <div class="w-hour-item"><small>03:00</small><b>🌌 22°C</b></div>
+              <div class="w-hour-item"><small>06:00</small><b>🌅 23°C</b></div>
+            </div>
+          </div>
+
+          <!-- Vivid Tide Widget (Hòn Dáu) -->
+          <div class="vivid-tide">
+            <div class="vivid-tide-bg-icon">🌊</div>
+            <div class="tide-top">
+              <div>
+                <div class="tide-title">TRẠM HÒN DÁU (HẢI PHÒNG) · LỊCH THỦY TRIỀU</div>
+                <div style="font-size:11px;opacity:0.9;margin-top:2px">Đặc tính: <b>Nhật triều thuần nhất</b></div>
+              </div>
+              <span style="font-size:10px;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;font-weight:800;color:#8be4ec">Chuẩn 0 Hải Đồ</span>
+            </div>
+
+            <div class="tide-grid">
+              <div class="tide-box high">
+                <small>▲ NƯỚC LỚN (TRIỀU CƯỜNG)</small>
+                <strong>2.76 m</strong>
+                <span>🕒 15:17 (Chiều)</span>
+              </div>
+              <div class="tide-box low">
+                <small>▼ NƯỚC RÒNG (TRIỀU KIỆT)</small>
+                <strong>1.49 m</strong>
+                <span>🕒 02:59 (Sáng)</span>
+              </div>
+            </div>
+
+            <div class="tide-progress-wrap">
+              <div class="tide-progress-labels">
+                <span>Ròng: 1.49m</span>
+                <span style="color:#8be4ec">Hiện tại: ~2.62m (Nước đang rút)</span>
+                <span>Lớn: 2.76m</span>
+              </div>
+              <div class="tide-progress-bar">
+                <div class="tide-progress-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-top">Tàu đang làm hàng</div>
+            <div class="kpi-value" id="kWorking">—</div>
+            <div class="kpi-note">Tại các cầu bến</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top">Tàu đến trong 24h <span>↘</span></div>
+            <div class="kpi-value" id="kArrivals">—</div>
+            <div class="kpi-note" id="kArrNote">Theo ETB trong 24 giờ</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top">Tàu rời trong 24h <span>↗</span></div>
+            <div class="kpi-value" id="kDepartures">—</div>
+            <div class="kpi-note" id="kDepNote">Theo ETD trong 24 giờ</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top">Tổng LOA ở cảng <span>↔</span></div>
+            <div class="kpi-value" id="kLoa">—</div>
+            <div class="kpi-note">Chỉ tính Cảng Hải Phòng (HD, CV, HTIT, TV, ĐV)</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top">Tàu ≥ 300 m / 72h</div>
+            <div class="kpi-value" id="kLarge">—</div>
+            <div class="kpi-note" id="kLargeNote">Tàu kích thước lớn</div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <!-- Left Panel: Tân Vũ Berth Layout -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Cầu bến Cảng Tân Vũ (Tiêu điểm)</h3>
+              <span class="muted tiny" id="tanvuCount">Đang cập nhật...</span>
+            </div>
+            <div class="panel-body">
+              <div id="tanvuBerthsLayout">
+                <div class="empty">Đang tải dữ liệu cầu bến Tân Vũ...</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Right Panel: Movement Timeline -->
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Bảng điều động tàu</h3>
+              <button data-goto="search">Xem tất cả →</button>
+            </div>
+            <div class="panel-body">
+              <div class="movement-tools">
+                <button class="active" onclick="filterMovement('all', this)">Tất cả</button>
+                <button onclick="filterMovement('arriving', this)">Tàu cập cầu</button>
+                <button onclick="filterMovement('departing', this)">Tàu rời cầu</button>
+              </div>
+              <div class="timeline" id="movement">
+                <div class="empty">Chưa có dữ liệu điều động.</div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Port Official Link Box -->
+        <div class="port-link-box">
+          <span>Đơn vị chủ quản: <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b></span>
+          <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">Mở haiphongport.com.vn ↗</a>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 2: KẾ HOẠCH CẦU (GANTT CHART) -->
+      <section id="page-planning" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Kế hoạch cầu bến</h2>
+            <div class="muted">Sơ đồ chiếm bến theo khoảng thời gian được chọn</div>
+          </div>
+          <span class="status" id="planningCount">Chưa có dữ liệu</span>
+        </div>
+        <div class="panel">
+          <div class="toolbar" style="background:var(--card)">
+            <input id="planningSearch" class="field search" placeholder="🔍 Tìm kiếm tên tàu, hãng tàu hoặc bến...">
+            <label class="tiny" style="display:flex;align-items:center;gap:4px">
+              Cửa sổ xem:
+              <select id="days" class="field" style="padding:6px 10px">
+                <option value="2">2 ngày</option>
+                <option value="4" selected>4 ngày</option>
+                <option value="7">7 ngày</option>
+              </select>
+            </label>
+          </div>
+          <div class="toolbar" style="border-top:0;padding-top:0;gap:6px">
+            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)">Tất cả khu vực</button>
+            <button class="tiny" onclick="filterPlanningArea('TÂN VŨ', this)">Tân Vũ</button>
+            <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
+            <button class="tiny" onclick="filterPlanningArea('HOÀNG DIỆU', this)">Hoàng Diệu</button>
+            <button class="tiny" onclick="filterPlanningArea('CHÙA VẼ', this)">Chùa Vẽ</button>
+            <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
+          </div>
+          <div class="gantt" id="fullGantt">
+            <div class="empty">Chưa có dữ liệu để dựng Gantt.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 3: TRA CỨU TÀU -->
+      <section id="page-search" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Tra cứu lịch tàu</h2>
+            <div class="muted">Tìm kiếm và kiểm tra danh sách chi tiết các lượt tàu</div>
+          </div>
+          <button id="exportBtn">⇩ Xuất CSV</button>
+        </div>
+        <div class="panel">
+          <div class="toolbar">
+            <input id="search" class="field search" placeholder="Tìm tàu, hãng hoặc cảng...">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Tàu</th><th>Hãng</th><th>LOA (m)</th><th>DWT</th><th>Cảng · Bến</th><th>Cập (ETB)</th><th>Rời (ETD)</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr><td colspan="8" class="empty">Đang tải dữ liệu…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 4: THỐNG KÊ & BÁO CÁO -->
+      <section id="page-stats" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Thống kê & Báo cáo khai thác</h2>
+            <div class="muted" id="statsSubtitle">Phân tích tần suất và sản lượng lượt tàu</div>
+          </div>
+        </div>
+        <div class="grid2">
+          <section class="panel">
+            <div class="panel-head"><h3>Lượt tàu theo đơn vị Terminal</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statTerminals"><div class="empty">Chưa có dữ liệu</div></div></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h3>Lượt tàu theo hãng vận tải</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statOperators"><div class="empty">Chưa có dữ liệu</div></div></div>
+          </section>
+        </div>
+        <div class="grid2" style="margin-top:14px">
+          <section class="panel">
+            <div class="panel-head"><h3>Phân khúc chiều dài tàu (LOA)</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statLoaBins"><div class="empty">Chưa có dữ liệu</div></div></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h3>Tần suất giờ tàu cập bến trong ngày</h3></div>
+            <div class="panel-body"><div class="hourly-grid" id="statHours"></div></div>
+          </section>
+        </div>
+        <section class="panel" style="margin-top:14px">
+          <div class="panel-head"><h3>Top các tàu có kích thước lớn nhất (LOA)</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Tên tàu</th><th>Terminal · Bến</th><th>ETB</th><th>ETD</th><th>LOA (m)</th></tr></thead>
+              <tbody id="statTopShips"><tr><td colspan="6" class="empty">Chưa có dữ liệu</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <!-- MÀN HÌNH 5: BÁO CÁO & GÓP Ý -->
+      <section id="page-report" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Phản ánh & Báo cáo sai lệch dữ liệu</h2>
+            <div class="muted">Gửi phản ánh trực tiếp tới Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</div>
+          </div>
+        </div>
+        <div class="report-card">
+          <div class="form-group">
+            <label>Họ và tên người báo cáo (*)</label>
+            <input id="repName" placeholder="Nhập họ và tên...">
+          </div>
+          <div class="form-group">
+            <label>Số điện thoại liên hệ / Email (*)</label>
+            <input id="repContact" placeholder="Nhập số điện thoại hoặc email...">
+          </div>
+          <div class="form-group">
+            <label>Đơn vị / Hãng tàu / Đại lý</label>
+            <input id="repCompany" placeholder="Ví dụ: Hãng tàu Maersk, Đại lý A...">
+          </div>
+          <div class="form-group">
+            <label>Loại nội dung phản ánh</label>
+            <select id="repType">
+              <option>Sai thông tin thời gian (ETB / ETD)</option>
+              <option>Sai tên tàu / LOA / Trọng tải DWT</option>
+              <option>Sai vị trí cầu bến neo đậu</option>
+              <option>Nội dung góp ý khác</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tên Tàu / Cầu bến liên quan</label>
+            <input id="repVessel" placeholder="Ví dụ: Tàu WAN HAI A19 - Cảng Tân Vũ B1">
+          </div>
+          <div class="form-group">
+            <label>Nội dung chi tiết phản ánh (*)</label>
+            <textarea id="repContent" rows="5" placeholder="Mô tả chi tiết nội dung dữ liệu bị sai lệch hoặc thông tin cần điều chỉnh..."></textarea>
+          </div>
+          <button id="sendEmailBtn" class="primary" style="width:100%;padding:12px;font-size:14px">
+            ✉ Gửi phản ánh về ttdvkh@haiphongport.com.vn
+          </button>
+          
+          <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)">
+            <strong>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</strong><br>
+            • Operations & Customer Service Center<br>
+            • Email tiếp nhận: <b style="color:var(--cyan)">ttdvkh@haiphongport.com.vn</b><br>
+            • Tổng đài Hotline hỗ trợ: <b>1800.5555.22</b> (Nhánh số 3)<br>
+            • Địa chỉ: <b>Số 8a Trần Phú, Ngô Quyền, Hải Phòng</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 6: NGUỒN & LIÊN HỆ -->
+      <section id="page-resources" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Nguồn dữ liệu & Liên hệ</h2>
+            <div class="muted">Thông tin tích hợp hệ thống</div>
+          </div>
+        </div>
+        <div class="panel" style="padding:20px">
+          <p><b>Đơn vị quản lý:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng (Operations & Customer Service Center)</p>
+          <p><b>Hệ thống API:</b> HTIT Port Window Public API (region: hp)</p>
+          <p><b>Cơ sở dữ liệu lịch sử:</b> Supabase Cloud Database & Storage Bucket (`port-documents` Active)</p>
+          <p><b>Liên hệ hỗ trợ:</b> Email: ttdvkh@haiphongport.com.vn | Hotline: 1800.5555.22 (Nhánh 3)</p>
+          <p><b>Trang chủ Cảng Hải Phòng:</b> <a href="https://haiphongport.com.vn" target="_blank">https://haiphongport.com.vn</a></p>
+        </div>
+      </section>
+    </main>
+  </section>
+</div>
+
+<!-- SMART TOOLTIP -->
+<div id="shipTooltip">
+  <strong id="ttName">—</strong>
+  <div id="ttOperator" class="muted tiny"></div>
+  <div class="tt-grid">
+    <div class="tt-item"><small>Kích thước (LOA)</small><b id="ttLoa">—</b></div>
+    <div class="tt-item"><small>Trọng tải (DWT)</small><b id="ttDwt">—</b></div>
+    <div class="tt-item"><small>Thời gian Cập (ETB)</small><b id="ttEtb">—</b></div>
+    <div class="tt-item"><small>Thời gian Rời (ETD)</small><b id="ttEtd">—</b></div>
+    <div class="tt-item"><small>Đã ở cầu đến nay</small><b id="ttDocked">—</b></div>
+    <div class="tt-item"><small>Thời gian còn lại</small><b id="ttRemaining">—</b></div>
+  </div>
+  <button id="ttReportBtn" style="width:100%;margin-top:10px;padding:5px;font-size:10px" class="darkbtn">
+    ✉ Báo sai thông tin tàu này
+  </button>
+</div>
+
+<!-- SETUP SHIFT MODAL -->
+<div id="modalShade" class="modal-shade">
+  <div class="modal">
+    <h3>Thiết lập Bộ phận Trực điều hành</h3>
+    <div class="modal-form">
+      <div>
+        <label>Ca trực</label>
+        <select id="mShift" class="field" style="width:100%">
+          <option>Ca 1 (06:00 - 14:00)</option>
+          <option>Ca 2 (14:00 - 22:00)</option>
+          <option>Ca 3 (22:00 - 06:00)</option>
+        </select>
+      </div>
+      <div>
+        <label>Trưởng Điều hành (Tên & Số ĐT)</label>
+        <input id="mCommander" class="field" placeholder="Ví dụ: Nguyễn Văn A - 0912.345.678">
+      </div>
+      <div>
+        <label>Cán bộ Trực An toàn - Hàng hải (Tên & Số ĐT)</label>
+        <input id="mSafety" class="field" placeholder="Ví dụ: Trần Văn B - 0988.765.432">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="closeModalBtn">Hủy</button>
+      <button id="saveModalBtn" class="primary">Lưu cấu hình</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- CHÍNH THỨC TÍCH HỢP CREDENTIALS SUPABASE CỦA BẠN ---
+const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ZQdpAmhE4LLfsbKGsRiHIw_ShoTsfIe';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const API='https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3wzAgRL82GT125zpflvIhxcdtEsaWNsZdGwiwqtL/exec?format=public';
+let allCalls = [];
+let movementMode = 'all';
+let planningAreaFilter = 'ALL';
+let countdownVal = 1800;
+let selectedShipForReport = null;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function getTodayString() {
+  let d = new Date();
+  let year = d.getFullYear();
+  let month = String(d.getMonth() + 1).padStart(2, '0');
+  let day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dt(v){
+  if(!v) return '—';
+  let d = new Date(v);
+  return isNaN(d) ? esc(v) : d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+function formatDuration(ms) {
+  if (isNaN(ms) || ms <= 0) return '0 giờ 0 phút';
+  let totalMin = Math.floor(ms / 60000);
+  let hrs = Math.floor(totalMin / 60);
+  let mins = totalMin % 60;
+  return `${hrs} giờ ${mins} phút`;
+}
+
+// Router & State Persistence
+function nav(page, saveState = true){
+  document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
+  const target = $('page-' + page);
+  if(target) target.classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(x => {
+    x.classList.toggle('active', x.dataset.page === page);
+  });
+  $('crumb').textContent = page.toUpperCase();
+  if (page === 'planning') renderGantt();
+  if (page === 'stats') renderStats();
+  if (saveState) localStorage.setItem('hp_last_page', page);
+}
+
+document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
+document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
+
+// --- CORE FUNCTION: LƯU DỮ LIỆU ĐỒNG BỘ LÊN DATABASE TABLE & STORAGE BUCKET ---
+async function saveCurrentDataToSupabase(isAuto = false) {
+  if (!allCalls || allCalls.length === 0) {
+    if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
+    return;
+  }
+
+  const todayStr = getTodayString();
+  const nowStr = new Date().toLocaleString('vi-VN');
+
+  // 1. Lưu vào Database Table (Upsert trùng tên tàu + ETB để ghi đè dữ liệu ngày mới nhất)
+  const payload = allCalls.map(c => ({
+    vessel: c.vessel,
+    operator: c.operator || '',
+    terminal: c.terminal || '',
+    berth: c.berth || '',
+    loa: c.loa || 0,
+    dwt: c.dwt ? Number(c.dwt) : null,
+    etb: c.etb ? new Date(c.etb).toISOString() : null,
+    etd: c.etd ? new Date(c.etd).toISOString() : null,
+    snapshot_date: todayStr
+  }));
+
+  const { error: dbError } = await supabaseClient
+    .from('port_calls_history')
+    .upsert(payload, { onConflict: 'vessel,etb' });
+
+  if (dbError) {
+    console.error('Lỗi khi lưu Database:', dbError.message);
+    if (!isAuto) alert('Lỗi khi lưu dữ liệu lên Supabase Database: ' + dbError.message);
+    return;
+  }
+
+  // 2. Upload file snapshot JSON lên Storage Bucket (Ghi đè file của ngày hôm đó nếu thực hiện lưu nhiều lần)
+  const jsonContent = JSON.stringify({
+    saved_at: nowStr,
+    date: todayStr,
+    total_calls: allCalls.length,
+    calls: allCalls
+  }, null, 2);
+
+  const fileName = `daily_snapshot_${todayStr}.json`;
+  const blob = new Blob([jsonContent], { type: 'application/json' });
+
+  const { error: bucketError } = await supabaseClient
+    .storage
+    .from('port-documents')
+    .upload(fileName, blob, {
+      contentType: 'application/json',
+      upsert: true // Ghi đè file mới nhất của ngày đó
+    });
+
+  if (bucketError) {
+    console.warn('Cảnh báo Storage Bucket (Nếu chưa tạo bucket port-documents):', bucketError.message);
+  }
+
+  // 3. Cập nhật giao diện thời gian lưu gần nhất
+  const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 12h đêm' : 'Thủ công'})`;
+  localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
+  updateLastSavedDisplay(savedStatusText);
+
+  if (!isAuto) {
+    alert(`Đã lưu thành công ${allCalls.length} bản ghi dữ liệu vào Supabase Database & Storage Bucket!`);
+  } else {
+    console.log(`[AUTO SAVE 12H ĐÊM] Đã tự động sao lưu dữ liệu ngày ${todayStr} thành công.`);
+  }
+}
+
+function updateLastSavedDisplay(str) {
+  $('topLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
+  $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
+}
+
+// Thao tác nút Lưu dữ liệu phía trên (Bảo mật 6868)
+function handleManualSave() {
+  let pwd = prompt('Nhập mật khẩu xác nhận để lưu dữ liệu hiện tại lên Supabase Cloud:');
+  if (pwd === '6868') {
+    saveCurrentDataToSupabase(false);
+  } else if (pwd !== null) {
+    alert('Mật khẩu không chính xác! Không thể thao tác.');
+  }
+}
+
+// --- TÍNH NĂNG TỰ ĐỘNG LƯU DỮ LIỆU VÀO 12H ĐÊM (00:00 AM) ---
+function scheduleMidnightAutoSave() {
+  let now = new Date();
+  let midnight = new Date();
+  midnight.setHours(24, 0, 0, 0); // Đặt thời điểm 12h đêm tiếp theo
+
+  let timeUntilMidnight = midnight.getTime() - now.getTime();
+  console.log(`Hệ thống hẹn giờ tự động lưu dữ liệu sau: ${(timeUntilMidnight/3600000).toFixed(2)} giờ nữa (vào 12h đêm).`);
+
+  setTimeout(() => {
+    saveCurrentDataToSupabase(true);
+    scheduleMidnightAutoSave(); // Lặp lại cho đêm tiếp theo
+  }, timeUntilMidnight);
+}
+
+// Load Data từ API
+async function loadData() {
+  $('refreshBtn').disabled = true;
+  $('sideStatus').textContent = 'Đang tải API Cảng vụ...';
+  try {
+    let r = await fetch(API, { cache: 'no-store' });
+    if (!r.ok) throw Error('HTTP ' + r.status);
+    let d = await r.json();
+    if (Array.isArray(d.calls)) {
+      allCalls = d.calls.map(c => ({
+        vessel: c.vessel || '',
+        operator: c.operator || '',
+        terminal: c.terminal || '',
+        berth: c.berth || '',
+        loa: Number(c.loa) || 0,
+        dwt: c.dwt ?? '',
+        etb: c.etb || '',
+        etd: c.etd || ''
+      }));
+
+      renderAll();
+      $('sideStatus').textContent = 'Đã đồng bộ ' + allCalls.length + ' lượt tàu (Supabase Ready)';
+    }
+  } catch(e) {
+    console.error(e);
+    $('sideStatus').textContent = 'Lỗi kết nối API Cảng vụ';
+  } finally {
+    $('refreshBtn').disabled = false;
+    resetCountdown();
+  }
+}
+
+function isHaiPhongPort(term) {
+  let t = (term || '').toUpperCase();
+  return t.includes('TÂN VŨ') || t.includes('TAN VU') || 
+         t.includes('HOÀNG DIỆU') || t.includes('HOANG DIEU') || 
+         t.includes('CHÙA VẼ') || t.includes('CHUA VE') || 
+         t.includes('HTIT') || t.includes('ĐÌNH VŨ') || t.includes('DINH VU');
+}
+
+// Get Calls by From-To Date Range
+function getFilteredCalls() {
+  let fDate = $('fromDate').value;
+  let tDate = $('toDate').value;
+  return allCalls.filter(c => {
+    let shipDate = (c.etb || c.etd || '').split('T')[0];
+    if (!shipDate) return true;
+    if (fDate && shipDate < fDate) return false;
+    if (tDate && shipDate > tDate) return false;
+    return true;
+  });
+}
+
+// Render All Components
+function renderAll() {
+  const now = Date.now();
+  let list = getFilteredCalls();
+
+  let working = list.filter(c => {
+    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+    return now >= t1 && now <= t2;
+  });
+  $('kWorking').textContent = working.length;
+
+  let totalHpLoa = list.filter(c => isHaiPhongPort(c.terminal))
+                      .reduce((sum, c) => sum + (c.loa || 0), 0);
+  $('kLoa').textContent = totalHpLoa.toLocaleString('vi-VN') + ' m';
+
+  let in24 = now + 86400000;
+  let arr = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24);
+  let dep = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24);
+  $('kArrivals').textContent = arr.length;
+  $('kDepartures').textContent = dep.length;
+
+  let large = list.filter(c => c.loa >= 300);
+  $('kLarge').textContent = large.length;
+
+  renderTanVuLayout(list);
+  renderMovement(list);
+  renderTable(list);
+
+  let currentPage = localStorage.getItem('hp_last_page') || 'overview';
+  if(currentPage === 'planning') renderGantt();
+  if(currentPage === 'stats') renderStats();
+}
+
+function renderTanVuLayout(list) {
+  let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
+  $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu trong khoảng thời gian';
+
+  let berthMap = {};
+  tanVuShips.forEach(c => {
+    let bName = c.berth || 'B1';
+    if (!berthMap[bName]) berthMap[bName] = [];
+    berthMap[bName].push(c);
+  });
+
+  ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
+
+  let html = `<div class="berth-group">
+    <div class="berth-group-head">
+      <span class="berth-group-title">CẢNG TÂN VŨ (HẢI PHÒNG)</span>
+      <span class="muted tiny">${tanVuShips.length} tàu đang cập/kế hoạch</span>
+    </div>`;
+
+  Object.keys(berthMap).sort().forEach(bName => {
+    let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
+    html += `<div class="berth-row">
+      <div class="berth-name">${bName}</div>
+      <div class="berth-ships">`;
+    
+    if (ships.length === 0) {
+      html += `<span class="empty-berth">Trống · Không có tàu</span>`;
+    } else {
+      ships.forEach(s => {
+        let isLarge = s.loa >= 300;
+        html += `<div class="ship-chip ${isLarge ? 'large' : ''}" 
+                  onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
+                  onmouseleave="hideTooltip()">
+                  <span>${esc(s.vessel)}</span>
+                  <span class="chip-time">${s.loa}m · ${dt(s.etb)}</span>
+                 </div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  $('tanvuBerthsLayout').innerHTML = html;
+}
+
+function renderMovement(list) {
+  let now = Date.now();
+  let items = [];
+
+  list.forEach(c => {
+    if (c.etb && (movementMode === 'all' || movementMode === 'arriving')) {
+      items.push({ c, type: 'arriving', time: new Date(c.etb).getTime() });
+    }
+    if (c.etd && (movementMode === 'all' || movementMode === 'departing')) {
+      items.push({ c, type: 'departing', time: new Date(c.etd).getTime() });
+    }
+  });
+
+  items.sort((a,b) => Math.abs(a.time - now) - Math.abs(b.time - now));
+  let topItems = items.slice(0, 10);
+
+  $('movement').innerHTML = topItems.map(item => {
+    let diff = item.time - now;
+    let isPast = diff < 0;
+    let absDiff = Math.abs(diff);
+    let durStr = formatDuration(absDiff);
+
+    let statusTag = '';
+    if (item.type === 'arriving') {
+      statusTag = isPast 
+        ? `<span class="tag-vivid arriving">⚓ Đã cập ${durStr} trước</span>`
+        : `<span class="tag-vivid urgent">⏳ Sắp cập (còn ${durStr})</span>`;
+    } else {
+      statusTag = isPast 
+        ? `<span class="tag-vivid departing">🚢 Đã rời ${durStr} trước</span>`
+        : `<span class="tag-vivid urgent">⏳ Sắp rời (còn ${durStr})</span>`;
+    }
+
+    return `
+      <div class="trow">
+        <div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div>
+        <div class="t-card">
+          <div>
+            <strong>${esc(item.c.vessel)}</strong>
+            <div class="muted tiny">${esc(item.c.terminal)} · ${esc(item.c.berth)} · LOA ${item.c.loa}m</div>
+          </div>
+          ${statusTag}
+        </div>
+      </div>
+    `;
+  }).join('') || '<div class="empty">Không có tàu phù hợp bộ lọc.</div>';
+}
+
+function filterMovement(mode, btn) {
+  movementMode = mode;
+  document.querySelectorAll('.movement-tools button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMovement(getFilteredCalls());
+}
+
+function renderTable(list) {
+  let q = ($('search')?.value || '').toLowerCase();
+  let filtered = list.filter(c => !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q));
+  
+  $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="vessel">${esc(c.vessel)}</td>
+      <td><span class="badge">${esc(c.operator)}</span></td>
+      <td>${c.loa || '—'}</td>
+      <td>${c.dwt ? Number(c.dwt).toLocaleString('vi-VN') : '—'}</td>
+      <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
+      <td>${dt(c.etb)}</td>
+      <td>${dt(c.etd)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
+}
+
+function renderGantt() {
+  let days = +$('days').value || 4;
+  let fDateStr = $('fromDate').value || getTodayString();
+  let start = new Date(fDateStr); start.setHours(0,0,0,0);
+  let end = new Date(start.getTime() + days * 86400000);
+
+  let q = ($('planningSearch')?.value || '').toLowerCase();
+  let list = getFilteredCalls().filter(c => {
+    let matchQuery = !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q);
+    let matchArea = (planningAreaFilter === 'ALL') || (c.terminal || '').toUpperCase().includes(planningAreaFilter);
+    return matchQuery && matchArea;
+  });
+
+  $('planningCount').textContent = `${list.length} lượt tàu trong lịch trình`;
+
+  let terms = {};
+  list.forEach(c => {
+    let key = (c.terminal || 'Khác') + ' · ' + (c.berth || 'B1');
+    if (!terms[key]) terms[key] = [];
+    terms[key].push(c);
+  });
+
+  let axis = Array.from({length: 8}, (_, i) => {
+    let d = new Date(start.getTime() + (end - start) * i / 8);
+    return d.toLocaleDateString('vi-VN', {weekday: 'short', day: '2-digit'}) + ' ' + String(d.getHours()).padStart(2, '0') + ':00';
+  });
+
+  let out = `<div class="gantt-head"><div>TERMINAL / BẾN</div><div style="display:flex;justify-content:space-between">${axis.map(x=>`<span>${x}</span>`).join('')}</div></div>`;
+
+  for (let [name, ships] of Object.entries(terms)) {
+    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
+    for (let c of ships) {
+      let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
+      let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
+      let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end - start) * 100));
+      let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end - start) * 100));
+      if (a < end.getTime() && b >= start.getTime()) {
+        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" 
+                     style="left:${left}%;width:${Math.max(3, right - left)}%"
+                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
+                     onmouseleave="hideTooltip()">
+                     ${esc(c.vessel)} (${c.loa}m)
+                </div>`;
+      }
+    }
+    out += `</div></div>`;
+  }
+
+  $('fullGantt').innerHTML = out || '<div class="empty">Không có tàu phù hợp với tìm kiếm hoặc khu vực đã chọn.</div>';
+}
+
+function filterPlanningArea(area, btn) {
+  planningAreaFilter = area;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('primary'));
+  btn.classList.add('primary');
+  renderGantt();
+}
+
+// Render Stats
+function renderStats() {
+  let list = getFilteredCalls();
+  let fDateStr = $('fromDate').value || 'Mở';
+  let tDateStr = $('toDate').value || 'Đóng';
+  $('statsSubtitle').textContent = `Phân tích chi tiết ${list.length} lượt tàu trong khoảng thời gian từ ${fDateStr} đến ${tDateStr}`;
+
+  // 1. Terminals Chart
+  let termMap = {};
+  list.forEach(c => { let t = c.terminal || 'Chưa rõ'; termMap[t] = (termMap[t] || 0) + 1; });
+  let sortedTerms = Object.entries(termMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
+  let maxTerm = Math.max(1, ...sortedTerms.map(x => x[1]));
+  $('statTerminals').innerHTML = sortedTerms.map(([k,v]) => `
+    <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>
+  `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
+
+  // 2. Operators Chart
+  let opMap = {};
+  list.forEach(c => { let o = c.operator || 'Chưa rõ'; opMap[o] = (opMap[o] || 0) + 1; });
+  let sortedOps = Object.entries(opMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
+  let maxOp = Math.max(1, ...sortedOps.map(x => x[1]));
+  $('statOperators').innerHTML = sortedOps.map(([k,v]) => `
+    <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxOp*100}%"></div></div><b>${v}</b></div>
+  `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
+
+  // 3. LOA Bins
+  let bins = {'< 100m':0, '100-150m':0, '150-200m':0, '200-250m':0, '250-300m':0, '≥ 300m':0};
+  list.forEach(c => {
+    let l = c.loa || 0;
+    if(l < 100) bins['< 100m']++;
+    else if(l < 150) bins['100-150m']++;
+    else if(l < 200) bins['150-200m']++;
+    else if(l < 250) bins['200-250m']++;
+    else if(l < 300) bins['250-300m']++;
+    else bins['≥ 300m']++;
+  });
+  let maxBin = Math.max(1, ...Object.values(bins));
+  $('statLoaBins').innerHTML = Object.entries(bins).map(([k,v]) => `
+    <div class="barrow"><span>${k}</span><div class="barbg"><div class="barfill ${k==='≥ 300m'?'gold':''}" style="width:${v/maxBin*100}%"></div></div><b>${v}</b></div>
+  `).join('');
+
+  // 4. Hourly Chart
+  let hours = Array(24).fill(0);
+  list.forEach(c => {
+    if(c.etb) {
+      let d = new Date(c.etb);
+      if(!isNaN(d)) hours[d.getHours()]++;
+    }
+  });
+  let maxHour = Math.max(1, ...hours);
+  $('statHours').innerHTML = hours.map((v, i) => `
+    <div class="hour-cell">
+      <div class="hour-cell-top"><span>${String(i).padStart(2,'0')}:00</span><b>${v}</b></div>
+      <div class="hour-meter"><i style="width:${v/maxHour*100}%"></i></div>
+    </div>
+  `).join('');
+
+  // 5. Top Ships Table
+  let topShips = [...list].filter(c => c.loa > 0).sort((a,b) => b.loa - a.loa).slice(0, 10);
+  $('statTopShips').innerHTML = topShips.length ? topShips.map((c, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="vessel">${esc(c.vessel)}</td>
+      <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
+      <td>${dt(c.etb)}</td>
+      <td>${dt(c.etd)}</td>
+      <td><b>${c.loa} m</b></td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">Không có dữ liệu tàu</td></tr>';
+}
+
+function showTooltip(e, ship) {
+  selectedShipForReport = ship;
+  let tt = $('shipTooltip');
+  $('ttName').textContent = ship.vessel || 'Chưa rõ tên tàu';
+  $('ttOperator').textContent = 'Hãng tàu: ' + (ship.operator || '—');
+  $('ttLoa').textContent = (ship.loa || '—') + ' m';
+  $('ttDwt').textContent = ship.dwt ? Number(ship.dwt).toLocaleString('vi-VN') + ' T' : '—';
+  $('ttEtb').textContent = dt(ship.etb);
+  $('ttEtd').textContent = dt(ship.etd);
+
+  let now = Date.now();
+  let t1 = ship.etb ? new Date(ship.etb).getTime() : 0;
+  let t2 = ship.etd ? new Date(ship.etd).getTime() : 0;
+
+  if (t1 > 0 && now >= t1) {
+    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
+    $('ttDocked').textContent = formatDuration(dockedMs);
+  } else {
+    $('ttDocked').textContent = 'Chưa cập';
+  }
+
+  if (t2 > 0 && t2 > now) {
+    $('ttRemaining').textContent = formatDuration(t2 - now);
+  } else if (t2 > 0 && now >= t2) {
+    $('ttRemaining').textContent = 'Đã rời bến';
+  } else {
+    $('ttRemaining').textContent = '—';
+  }
+
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  let tt = $('shipTooltip');
+  let x = e.clientX + 15;
+  let y = e.clientY + 15;
+  if (x + 320 > window.innerWidth) x = e.clientX - 330;
+  if (y + 240 > window.innerHeight) y = e.clientY - 250;
+  tt.style.left = x + 'px';
+  tt.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  $('shipTooltip').style.display = 'none';
+}
+
+$('ttReportBtn').onclick = () => {
+  if(selectedShipForReport) {
+    $('repVessel').value = `Tàu ${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
+  }
+  nav('report');
+};
+
+$('sendEmailBtn').onclick = () => {
+  let name = $('repName').value.trim();
+  let contact = $('repContact').value.trim();
+  let company = $('repCompany').value.trim();
+  let type = $('repType').value;
+  let vessel = $('repVessel').value.trim();
+  let content = $('repContent').value.trim();
+
+  if (!name || !contact || !content) {
+    alert('Vui lòng điền đầy đủ các thông tin có dấu (*)!');
+    return;
+  }
+
+  let subject = encodeURIComponent(`[PHẢN ÁNH DỮ LIỆU PORT CENTER] - ${type} - ${vessel || 'Cảng Hải Phòng'}`);
+  let body = encodeURIComponent(
+    `Kính gửi Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng (ttdvkh@haiphongport.com.vn),\n\n` +
+    `Tôi xin phản ánh thông tin dữ liệu khai thác như sau:\n\n` +
+    `• Họ và tên: ${name}\n` +
+    `• Liên hệ (SĐT/Email): ${contact}\n` +
+    `• Đơn vị / Hãng tàu: ${company || 'Không có'}\n` +
+    `• Loại phản ánh: ${type}\n` +
+    `• Tàu / Cầu bến liên quan: ${vessel || 'Không ghi rõ'}\n\n` +
+    `NỘI DUNG CHI TIẾT PHẢN ÁNH:\n${content}\n\n` +
+    `Trân trọng,\n${name}`
+  );
+
+  window.location.href = `mailto:ttdvkh@haiphongport.com.vn?subject=${subject}&body=${body}`;
+};
+
+// Clock & Date Setup
+setInterval(() => {
+  let d = new Date();
+  $('liveClock').textContent = d.toTimeString().split(' ')[0];
+}, 1000);
+
+function initDates() {
+  let today = getTodayString();
+  if(!$('fromDate').value) $('fromDate').value = today;
+  if(!$('toDate').value) $('toDate').value = today;
+  let now = new Date();
+  $('currentFullDate').textContent = now.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// Password Protected Shift Modal Setup
+function openShiftModalWithPassword() {
+  let pwd = prompt('Vui lòng nhập mật khẩu xác thực để cấu hình kíp trực:');
+  if (pwd === '6868') {
+    openShiftModal();
+  } else if (pwd !== null) {
+    alert('Mật khẩu không chính xác! Quyền truy cập bị từ chối.');
+  }
+}
+
+function openShiftModal() { $('modalShade').classList.add('open'); }
+function closeShiftModal() { $('modalShade').classList.remove('open'); }
+function saveShiftModal() {
+  $('dispShift').textContent = $('mShift').value;
+  $('dispCommander').textContent = $('mCommander').value || 'Chưa thiết lập';
+  $('dispSafety').textContent = $('mSafety').value || 'Chưa thiết lập';
+  closeShiftModal();
+}
+
+function resetCountdown() { countdownVal = 1800; }
+setInterval(() => {
+  countdownVal--;
+  if (countdownVal <= 0) { loadData(); resetCountdown(); }
+  let m = Math.floor(countdownVal / 60);
+  let s = countdownVal % 60;
+  $('countdown').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}, 1000);
+
+// Event Bindings
+$('manualSaveBtn').onclick = handleManualSave;
+$('setupShiftBtn').onclick = openShiftModalWithPassword;
+$('closeModalBtn').onclick = closeShiftModal;
+$('saveModalBtn').onclick = saveShiftModal;
+$('refreshBtn').onclick = loadData;
+$('search').oninput = () => renderTable(getFilteredCalls());
+$('planningSearch').oninput = () => renderGantt();
+$('days').onchange = () => renderGantt();
+$('fromDate').onchange = () => renderAll();
+$('toDate').onchange = () => renderAll();
+$('themeToggle').onclick = () => {
+  let dark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  localStorage.setItem('hp_theme', dark ? 'dark' : 'light');
+  $('themeToggle').textContent = dark ? '☼ Giao diện sáng' : '◐ Giao diện tối';
+};
+
+function restoreState() {
+  let savedTheme = localStorage.getItem('hp_theme');
+  if(savedTheme === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    $('themeToggle').textContent = '☼ Giao diện sáng';
+  }
+  let lastPage = localStorage.getItem('hp_last_page') || 'overview';
+  nav(lastPage, false);
+
+  let lastSaved = localStorage.getItem('hp_last_saved_timestamp');
+  updateLastSavedDisplay(lastSaved);
+}
+
+// Initialize Application
+initDates();
+restoreState();
+loadData();
+scheduleMidnightAutoSave(); // Kích hoạt bộ hẹn giờ 12h đêm tự động lưu
+</script>
+</body>
+</html>
