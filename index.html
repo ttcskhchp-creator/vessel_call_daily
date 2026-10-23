@@ -19,8 +19,8 @@ body{margin:0;background:var(--bg);font:14px/1.45 Inter,"Segoe UI",Arial,sans-se
 button,input,select,textarea{font:inherit}
 button{cursor:pointer;border:0;border-radius:8px;padding:9px 13px;font-weight:700;font-size:12px;background:#eaf0f6;color:#25445f;transition:all .15s}
 button:hover{filter:brightness(.95)}
-.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
-.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:20px 12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:20px 12px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow-y:auto}
 .brand{display:flex;gap:11px;align-items:center;padding:0 8px}
 .brand small{display:block;font-size:8px;letter-spacing:1.2px;color:#9dc9e3;font-weight:800;text-transform:uppercase}
 .brand strong{font-size:13px;color:#fff;line-height:1.2;display:block}
@@ -29,7 +29,7 @@ button:hover{filter:brightness(.95)}
 .nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 
-/* SIDEBAR SHIFT BOX */
+/* SIDEBAR SHIFT BOX & CONTROL BUTTONS */
 .side-shift-card{
   background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.4);
   border-radius: 11px;padding: 12px;margin-top: 5px;
@@ -41,6 +41,14 @@ button:hover{filter:brightness(.95)}
 .side-shift-item strong{font-size: 11px;color: #ffffff;word-break: break-word}
 .side-shift-item span.phone{color: var(--cyan);font-weight: 800}
 
+/* CONTROL BUTTONS GROUPED UNDER SHIFT BOX */
+.side-controls-group{display:grid;gap:6px;margin-top:8px}
+.side-btn{width:100%;padding:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px}
+.side-btn.save{background:var(--green);color:#fff}
+.side-btn.setup{background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2)}
+.side-btn.export{background:#1f5e82;color:#fff}
+.side-btn.import{background:#6c5ce7;color:#fff}
+
 .side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:12px 9px 0;color:#91adc2;font-size:10px;line-height:1.35}
 .main{min-width:0}
 .topbar{min-height:75px;padding:12px 28px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
@@ -50,7 +58,6 @@ button:hover{filter:brightness(.95)}
 .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .primary{background:var(--cyan);color:#073343}
 .darkbtn{background:var(--navy2);color:#fff}
-.savebtn{background:var(--green);color:#fff}
 .content{padding:23px 28px 35px;max-width:1800px;margin:auto}
 .page{display:block;width:100%;animation:pageIn .16s ease-out}
 .page.hidden{display:none!important}
@@ -79,7 +86,6 @@ button:hover{filter:brightness(.95)}
   margin-bottom: 14px;
 }
 
-/* EXPANDED VIVID WEATHER WIDGET */
 .vivid-weather{
   background: linear-gradient(135deg, #163d63 0%, #205987 50%, #2fa3b5 100%);
   color: #ffffff;border-radius: 14px;padding: 20px 24px;
@@ -117,7 +123,6 @@ button:hover{filter:brightness(.95)}
 .w-hour-item{text-align: center;min-width: 52px;background: rgba(255,255,255,0.1);padding: 5px;border-radius: 7px;font-size: 10px}
 .w-hour-item small{display: block;opacity: 0.8;font-size: 9px}
 
-/* VIVID TIDE WIDGET (HÒN DÁU) */
 .vivid-tide{
   background: linear-gradient(135deg, #0e3d59 0%, #185a7d 50%, #1f829c 100%);
   color: #ffffff;border-radius: 14px;padding: 20px 22px;
@@ -141,13 +146,11 @@ button:hover{filter:brightness(.95)}
 .tide-box strong{font-size: 20px;font-weight: 900;display: block;margin: 2px 0}
 .tide-box span{font-size: 11px;opacity: 0.95;font-weight: 700}
 
-/* TIDE PROGRESS BAR */
 .tide-progress-wrap{margin-top: 10px}
 .tide-progress-labels{display: flex;justify-content: space-between;font-size: 10px;font-weight: 700;margin-bottom: 4px;opacity: 0.9}
 .tide-progress-bar{height: 8px;background: rgba(0,0,0,0.25);border-radius: 6px;overflow: hidden;position: relative}
 .tide-progress-fill{height: 100%;background: linear-gradient(90deg, #ffb347, #26bdc8);border-radius: 6px;width: 65%}
 
-/* MOVEMENT TIMELINE FILTERS & TAGS */
 .movement-tools{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .movement-tools button{padding:6px 11px;font-size:11px}
 .movement-tools button.active{background:var(--navy2);color:#fff}
@@ -162,7 +165,6 @@ button:hover{filter:brightness(.95)}
 .tag-vivid.departing{background:#fff0f0;color:#a82e2e}
 .tag-vivid.urgent{background:#fff3d9;color:#8f5c00}
 
-/* BERTH LAYOUT */
 .berth-group{margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px}
 .berth-group:last-child{border-bottom:0;padding-bottom:0}
 .berth-group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -176,7 +178,6 @@ button:hover{filter:brightness(.95)}
 .ship-chip .chip-time{font-size:9px;opacity:.85;font-weight:normal}
 .empty-berth{color:var(--muted);font-size:11px;font-style:italic}
 
-/* CONTROLS & TABLES */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line)}
 .field{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--card);min-width:120px;font-size:12px;color:var(--ink)}
 .field.search{flex:1;min-width:180px}
@@ -190,7 +191,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .badge{display:inline-block;border-radius:5px;padding:3px 6px;background:#e7f2fc;color:#1b6599;font-weight:800;font-size:10px}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 
-/* CHART STYLES FOR STATS */
 .chart-list{display:grid;gap:12px}
 .barrow{display:grid;grid-template-columns:130px 1fr 35px;gap:10px;align-items:center;font-size:12px}
 .barbg{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
@@ -203,7 +203,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .hour-meter{height:4px;background:var(--line);border-radius:4px;margin-top:6px;overflow:hidden}
 .hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:4px}
 
-/* GANTT CHART */
 .gantt{overflow:auto;padding:15px}
 .gantt-head,.gantt-row{display:grid;grid-template-columns:155px minmax(650px,1fr);min-width:800px}
 .gantt-head{font-size:10px;color:var(--muted);padding-bottom:9px}
@@ -213,7 +212,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .shipbar{position:absolute;top:4px;height:26px;border-radius:5px;padding:4px 7px;color:#fff;font-size:10px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:35px;cursor:pointer;z-index:2;box-shadow:0 2px 4px rgba(0,0,0,0.15)}
 .shipbar.large{background:#d99a24}
 
-/* SMART TOOLTIP */
 #shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.25);pointer-events:none;max-width:320px;font-size:12px}
 #shipTooltip strong{font-size:14px;color:var(--navy2);display:block;margin-bottom:2px}
 :root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
@@ -221,13 +219,11 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #shipTooltip .tt-item small{display:block;color:var(--muted);font-size:9px}
 #shipTooltip .tt-item b{font-size:11px}
 
-/* FORM REPORT & FEEDBACK */
 .report-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:800px;margin:auto}
 .form-group{margin-bottom:15px}
 .form-group label{display:block;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:5px}
 .form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--card);color:var(--ink)}
 
-/* MODAL SHIFT */
 .modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center}
 .modal-shade.open{display:flex}
 .modal{background:var(--card);border-radius:14px;width:min(450px,92vw);padding:22px;box-shadow:0 10px 30px rgba(0,0,0,0.25)}
@@ -244,7 +240,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 @media(max-width:800px){
   .app{grid-template-columns:68px minmax(0,1fr)}
   .side{padding:16px 7px}
-  .brand div,.nav-label,.nav button span:last-child,.side-foot,.side-shift-card{display:none}
+  .brand div,.nav-label,.nav button span:last-child,.side-foot,.side-shift-card,.side-controls-group{display:none}
   .nav button{justify-content:center;padding:12px 5px}
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .weather-indicators-grid{grid-template-columns:repeat(2,1fr)}
@@ -288,12 +284,21 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <small>AN TOÀN - HÀNG HẢI</small>
         <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
       </div>
+
+      <!-- NHÓM NÚT ĐIỀU KHIỂN ĐÃ ĐƯỢC CHUYỂN SANG DƯỚI KHỐI TRỰC ĐIỀU HÀNH -->
+      <div class="side-controls-group">
+        <button id="setupShiftBtn" class="side-btn setup">Setup kíp trực 🔒</button>
+        <button id="manualSaveBtn" class="side-btn save">Lưu dữ liệu 💾</button>
+        <button id="exportConfigBtn" class="side-btn export">Xuất file cấu hình 📤</button>
+        <button id="importConfigBtn" class="side-btn import">Nạp file cấu hình 📥</button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none">
+      </div>
     </div>
 
     <div class="side-foot">
       <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b><br>
       <span style="opacity:0.75;font-size:9px">Operations & Customer Service Center</span><br><br>
-      <span id="sideStatus">Đang khởi tạo Supabase...</span><br>
+      <span id="sideStatus">Đang kết nối Supabase...</span><br>
       <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa có lịch sử lưu</span>
     </div>
   </aside>
@@ -309,10 +314,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div style="display:flex;align-items:center;gap:6px" class="tiny">
           Từ: <input type="date" id="fromDate" class="field" style="padding:4px 6px">
           Đến: <input type="date" id="toDate" class="field" style="padding:4px 6px">
+          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:6px 10px">🔍 Truy xuất Supabase</button>
         </div>
-        <!-- Nút lưu dữ liệu bảo mật bằng mật khẩu 6868 -->
-        <button id="manualSaveBtn" class="savebtn">Lưu dữ liệu 💾</button>
-        <button id="setupShiftBtn" class="darkbtn">Setup kíp trực 🔒</button>
         <button class="theme-toggle" id="themeToggle">◐ Giao diện tối</button>
         <button class="primary" id="refreshBtn">↻ Cập nhật (<span id="countdown">30:00</span>)</button>
       </div>
@@ -321,9 +324,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <main class="content">
       <!-- MÀN HÌNH 1: TOÀN CẢNH -->
       <section id="page-overview" class="page">
-        <!-- HEADER WIDGETS (EXPANDED WEATHER + TIDE) -->
         <div class="header-widgets-grid">
-          <!-- Vivid Expanded Weather Widget -->
           <div class="vivid-weather">
             <div class="vivid-weather-bg-icon">☀️</div>
             <div class="weather-top">
@@ -365,7 +366,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- Vivid Tide Widget (Hòn Dáu) -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -402,7 +402,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
 
-        <!-- KPI Cards -->
         <div class="kpis">
           <div class="kpi">
             <div class="kpi-top">Tàu đang làm hàng</div>
@@ -432,7 +431,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
 
         <div class="grid2">
-          <!-- Left Panel: Tân Vũ Berth Layout -->
           <section class="panel">
             <div class="panel-head">
               <h3>Cầu bến Cảng Tân Vũ (Tiêu điểm)</h3>
@@ -445,7 +443,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </section>
 
-          <!-- Right Panel: Movement Timeline -->
           <section class="panel">
             <div class="panel-head">
               <h3>Bảng điều động tàu</h3>
@@ -464,7 +461,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </section>
         </div>
 
-        <!-- Port Official Link Box -->
         <div class="port-link-box">
           <span>Đơn vị chủ quản: <b>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</b></span>
           <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">Mở haiphongport.com.vn ↗</a>
@@ -614,14 +610,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <button id="sendEmailBtn" class="primary" style="width:100%;padding:12px;font-size:14px">
             ✉ Gửi phản ánh về ttdvkh@haiphongport.com.vn
           </button>
-          
-          <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)">
-            <strong>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</strong><br>
-            • Operations & Customer Service Center<br>
-            • Email tiếp nhận: <b style="color:var(--cyan)">ttdvkh@haiphongport.com.vn</b><br>
-            • Tổng đài Hotline hỗ trợ: <b>1800.5555.22</b> (Nhánh số 3)<br>
-            • Địa chỉ: <b>Số 8a Trần Phú, Ngô Quyền, Hải Phòng</b>
-          </div>
         </div>
       </section>
 
@@ -692,7 +680,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 </div>
 
 <script>
-// --- CHÍNH THỨC TÍCH HỢP CREDENTIALS SUPABASE CỦA BẠN ---
+// --- KHỞI TẠO CREDENTIALS SUPABASE CỦA BẠN ---
 const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ZQdpAmhE4LLfsbKGsRiHIw_ShoTsfIe';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -746,7 +734,56 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- CƠ CHẾ LƯU DỮ LIỆU TỐI ƯU CÓ TỰ ĐỘNG XỬ LÝ LỖI (FALLBACK) ---
+// --- TRUY XUẤT DỮ LIỆU LỊCH SỬ TỪ SUPABASE THEO KHOẢNG THỜI GIAN KHÔNG GIỚI HẠN ---
+async function fetchHistoryFromSupabase() {
+  let fDate = $('fromDate').value;
+  let tDate = $('toDate').value;
+
+  if (!fDate || !tDate) {
+    alert('Vui lòng chọn khoảng thời gian Từ ngày và Đến ngày!');
+    return;
+  }
+
+  $('sideStatus').textContent = 'Đang truy vấn Supabase...';
+  
+  let startIso = new Date(fDate + 'T00:00:00.000Z').toISOString();
+  let endIso = new Date(tDate + 'T23:59:59.999Z').toISOString();
+
+  // Truy vấn trực tiếp từ bảng port_calls_history của Supabase
+  const { data, error } = await supabaseClient
+    .from('port_calls_history')
+    .select('*')
+    .gte('etb', startIso)
+    .lte('etb', endIso);
+
+  if (error) {
+    alert('Lỗi khi truy xuất dữ liệu từ Supabase: ' + error.message);
+    $('sideStatus').textContent = 'Lỗi truy vấn SQL';
+    return;
+  }
+
+  if (data && data.length > 0) {
+    allCalls = data.map(c => ({
+      vessel: c.vessel || '',
+      operator: c.operator || '',
+      terminal: c.terminal || '',
+      berth: c.berth || '',
+      loa: Number(c.loa) || 0,
+      dwt: c.dwt ?? '',
+      etb: c.etb || '',
+      etd: c.etd || ''
+    }));
+
+    renderAll();
+    $('sideStatus').textContent = `Đã nạp ${data.length} lượt tàu từ Supabase (${fDate} ➔ ${tDate})`;
+    alert(`Đã nạp thành công ${data.length} lượt tàu lịch sử trong khoảng thời gian từ ${fDate} đến ${tDate}!`);
+  } else {
+    alert(`Không tìm thấy bản ghi lịch sử nào trong Supabase cho khoảng thời gian từ ${fDate} đến ${tDate}.`);
+    $('sideStatus').textContent = 'Không có dữ liệu trong dải ngày';
+  }
+}
+
+// --- CƠ CHẾ LƯU DỮ LIỆU ĐỒNG BỘ LÊN DATABASE & STORAGE BUCKET ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) {
     if (!isAuto) alert('Chưa có dữ liệu để lưu trữ!');
@@ -757,7 +794,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const nowStr = new Date().toLocaleString('vi-VN');
   let dbSuccess = false;
 
-  // 1. Thử lưu vào Database Table với payload chuẩn có snapshot_date
+  // 1. Thử lưu vào Database Table
   try {
     const payloadWithSnapshot = allCalls.map(c => ({
       vessel: c.vessel,
@@ -775,9 +812,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
       .from('port_calls_history')
       .upsert(payloadWithSnapshot, { onConflict: 'vessel,etb' });
 
-    // CƠ CHẾ TỰ ĐỘNG SỬA LỖI (Fallback): Nếu chưa chạy SQL tạo cột snapshot_date, hệ thống thử lại với payload tối giản
     if (dbError && dbError.message.includes('snapshot_date')) {
-      console.warn('Đang thử lại với payload không có snapshot_date...');
       const payloadSimple = allCalls.map(c => ({
         vessel: c.vessel,
         operator: c.operator || '',
@@ -796,21 +831,22 @@ async function saveCurrentDataToSupabase(isAuto = false) {
       dbError = retryRes.error;
     }
 
-    if (!dbError) {
-      dbSuccess = true;
-    } else {
-      console.error('Lỗi Database:', dbError.message);
-    }
+    if (!dbError) dbSuccess = true;
   } catch (err) {
-    console.error('Lỗi ngoại lệ Database:', err);
+    console.error('Lỗi Database:', err);
   }
 
-  // 2. Lưu file snapshot JSON lên Storage Bucket (Luôn thực thi để đảm bảo dữ liệu không bị mất)
+  // 2. Lưu file JSON lên Storage Bucket
   let bucketSuccess = false;
   try {
     const jsonContent = JSON.stringify({
       saved_at: nowStr,
       date: todayStr,
+      shift_info: {
+        shift: $('dispShift').textContent,
+        commander: $('dispCommander').textContent,
+        safety: $('dispSafety').textContent
+      },
       total_calls: allCalls.length,
       calls: allCalls
     }, null, 2);
@@ -821,38 +857,23 @@ async function saveCurrentDataToSupabase(isAuto = false) {
     const { error: bucketError } = await supabaseClient
       .storage
       .from('port-documents')
-      .upload(fileName, blob, {
-        contentType: 'application/json',
-        upsert: true
-      });
+      .upload(fileName, blob, { contentType: 'application/json', upsert: true });
 
-    if (!bucketError) {
-      bucketSuccess = true;
-    } else {
-      console.error('Lỗi Storage Bucket:', bucketError.message);
-    }
+    if (!bucketError) bucketSuccess = true;
   } catch (err) {
-    console.error('Lỗi ngoại lệ Bucket:', err);
+    console.error('Lỗi Bucket:', err);
   }
 
-  // 3. Cập nhật thời điểm lưu gần nhất
   const savedStatusText = `${nowStr} (${isAuto ? 'Tự động 12h đêm' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved_timestamp', savedStatusText);
   updateLastSavedDisplay(savedStatusText);
 
-  // Phản hồi kết quả cho người dùng
   if (!isAuto) {
-    if (dbSuccess && bucketSuccess) {
-      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào cả Supabase Database & Storage Bucket!`);
-    } else if (bucketSuccess) {
-      alert(`Đã lưu thành công file báo cáo ngày ${todayStr} vào Storage Bucket! (Lưu ý: Hãy chạy lệnh SQL ở Bước 1 để hoàn tất Database)`);
-    } else if (dbSuccess) {
-      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào Supabase Database!`);
+    if (dbSuccess || bucketSuccess) {
+      alert(`Đã lưu thành công ${allCalls.length} bản ghi vào Supabase Cloud!`);
     } else {
       alert(`Không thể lưu dữ liệu. Vui lòng kiểm tra lại SQL Editor trên Supabase.`);
     }
-  } else {
-    console.log(`[AUTO SAVE 12H ĐÊM] Kết quả: DB=${dbSuccess}, Bucket=${bucketSuccess}`);
   }
 }
 
@@ -861,25 +882,89 @@ function updateLastSavedDisplay(str) {
   $('sideLastSaved').textContent = 'Lưu gần nhất: ' + (str || 'Chưa ghi nhận');
 }
 
-// Thao tác nút Lưu dữ liệu phía trên (Bảo mật 6868)
-function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác nhận để lưu dữ liệu hiện tại lên Supabase Cloud:');
+// --- XUẤT / NẠP FILE CẤU HÌNH (CONFIG IMPORT/EXPORT) ---
+function exportConfigData() {
+  if (!allCalls || allCalls.length === 0) {
+    alert('Không có dữ liệu để xuất file!');
+    return;
+  }
+
+  const configObj = {
+    version: '1.0',
+    exported_at: new Date().toLocaleString('vi-VN'),
+    shift_info: {
+      shift: $('dispShift').textContent,
+      commander: $('dispCommander').textContent,
+      safety: $('dispSafety').textContent
+    },
+    calls: allCalls
+  };
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configObj, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `port_backup_${getTodayString()}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function triggerImportConfig() {
+  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để nạp file cấu hình:');
   if (pwd === '6868') {
-    saveCurrentDataToSupabase(false);
+    $('importFileInput').click();
   } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác! Không thể thao tác.');
+    alert('Mật khẩu không chính xác!');
   }
 }
 
-// --- TÍNH NĂNG TỰ ĐỘNG LƯU DỮ LIỆU VÀO 12H ĐÊM (00:00 AM) ---
+function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      if (parsed.calls && Array.isArray(parsed.calls)) {
+        allCalls = parsed.calls;
+
+        if (parsed.shift_info) {
+          $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1 (06:00 - 14:00)';
+          $('dispCommander').textContent = parsed.shift_info.commander || 'Chưa thiết lập';
+          $('dispSafety').textContent = parsed.shift_info.safety || 'Chưa thiết lập';
+          localStorage.setItem('hp_shift_info', JSON.stringify(parsed.shift_info));
+        }
+
+        renderAll();
+        alert(`Nạp file cấu hình thành công! Đã khôi phục ${allCalls.length} lượt tàu và thông tin kíp trực.`);
+      } else {
+        alert('Cấu trúc file JSON không hợp lệ!');
+      }
+    } catch(err) {
+      alert('Lỗi đọc file JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Mật khẩu xác thực cho thao tác thủ công
+function handleManualSave() {
+  let pwd = prompt('Nhập mật khẩu xác nhận (6868) để lưu dữ liệu hiện tại lên Supabase Cloud:');
+  if (pwd === '6868') {
+    saveCurrentDataToSupabase(false);
+  } else if (pwd !== null) {
+    alert('Mật khẩu không chính xác!');
+  }
+}
+
+// --- BỘ HẸN GIỜ TỰ ĐỘNG LƯU VÀO 12H ĐÊM (00:00 AM) ---
 function scheduleMidnightAutoSave() {
   let now = new Date();
   let midnight = new Date();
   midnight.setHours(24, 0, 0, 0);
 
   let timeUntilMidnight = midnight.getTime() - now.getTime();
-  console.log(`Hệ thống hẹn giờ tự động lưu dữ liệu sau: ${(timeUntilMidnight/3600000).toFixed(2)} giờ nữa (vào 12h đêm).`);
-
   setTimeout(() => {
     saveCurrentDataToSupabase(true);
     scheduleMidnightAutoSave();
@@ -926,7 +1011,6 @@ function isHaiPhongPort(term) {
          t.includes('HTIT') || t.includes('ĐÌNH VŨ') || t.includes('DINH VU');
 }
 
-// Get Calls by From-To Date Range
 function getFilteredCalls() {
   let fDate = $('fromDate').value;
   let tDate = $('toDate').value;
@@ -939,7 +1023,6 @@ function getFilteredCalls() {
   });
 }
 
-// Render All Components
 function renderAll() {
   const now = Date.now();
   let list = getFilteredCalls();
@@ -1149,14 +1232,12 @@ function filterPlanningArea(area, btn) {
   renderGantt();
 }
 
-// Render Stats
 function renderStats() {
   let list = getFilteredCalls();
   let fDateStr = $('fromDate').value || 'Mở';
   let tDateStr = $('toDate').value || 'Đóng';
   $('statsSubtitle').textContent = `Phân tích chi tiết ${list.length} lượt tàu trong khoảng thời gian từ ${fDateStr} đến ${tDateStr}`;
 
-  // 1. Terminals Chart
   let termMap = {};
   list.forEach(c => { let t = c.terminal || 'Chưa rõ'; termMap[t] = (termMap[t] || 0) + 1; });
   let sortedTerms = Object.entries(termMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
@@ -1165,7 +1246,6 @@ function renderStats() {
     <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>
   `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
 
-  // 2. Operators Chart
   let opMap = {};
   list.forEach(c => { let o = c.operator || 'Chưa rõ'; opMap[o] = (opMap[o] || 0) + 1; });
   let sortedOps = Object.entries(opMap).sort((a,b) => b[1] - a[1]).slice(0, 8);
@@ -1174,7 +1254,6 @@ function renderStats() {
     <div class="barrow"><span title="${esc(k)}">${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxOp*100}%"></div></div><b>${v}</b></div>
   `).join('') || '<div class="empty">Chưa có dữ liệu</div>';
 
-  // 3. LOA Bins
   let bins = {'< 100m':0, '100-150m':0, '150-200m':0, '200-250m':0, '250-300m':0, '≥ 300m':0};
   list.forEach(c => {
     let l = c.loa || 0;
@@ -1190,7 +1269,6 @@ function renderStats() {
     <div class="barrow"><span>${k}</span><div class="barbg"><div class="barfill ${k==='≥ 300m'?'gold':''}" style="width:${v/maxBin*100}%"></div></div><b>${v}</b></div>
   `).join('');
 
-  // 4. Hourly Chart
   let hours = Array(24).fill(0);
   list.forEach(c => {
     if(c.etb) {
@@ -1206,7 +1284,6 @@ function renderStats() {
     </div>
   `).join('');
 
-  // 5. Top Ships Table
   let topShips = [...list].filter(c => c.loa > 0).sort((a,b) => b.loa - a.loa).slice(0, 10);
   $('statTopShips').innerHTML = topShips.length ? topShips.map((c, i) => `
     <tr>
@@ -1267,42 +1344,6 @@ function hideTooltip() {
   $('shipTooltip').style.display = 'none';
 }
 
-$('ttReportBtn').onclick = () => {
-  if(selectedShipForReport) {
-    $('repVessel').value = `Tàu ${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
-  }
-  nav('report');
-};
-
-$('sendEmailBtn').onclick = () => {
-  let name = $('repName').value.trim();
-  let contact = $('repContact').value.trim();
-  let company = $('repCompany').value.trim();
-  let type = $('repType').value;
-  let vessel = $('repVessel').value.trim();
-  let content = $('repContent').value.trim();
-
-  if (!name || !contact || !content) {
-    alert('Vui lòng điền đầy đủ các thông tin có dấu (*)!');
-    return;
-  }
-
-  let subject = encodeURIComponent(`[PHẢN ÁNH DỮ LIỆU PORT CENTER] - ${type} - ${vessel || 'Cảng Hải Phòng'}`);
-  let body = encodeURIComponent(
-    `Kính gửi Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng (ttdvkh@haiphongport.com.vn),\n\n` +
-    `Tôi xin phản ánh thông tin dữ liệu khai thác như sau:\n\n` +
-    `• Họ và tên: ${name}\n` +
-    `• Liên hệ (SĐT/Email): ${contact}\n` +
-    `• Đơn vị / Hãng tàu: ${company || 'Không có'}\n` +
-    `• Loại phản ánh: ${type}\n` +
-    `• Tàu / Cầu bến liên quan: ${vessel || 'Không ghi rõ'}\n\n` +
-    `NỘI DUNG CHI TIẾT PHẢN ÁNH:\n${content}\n\n` +
-    `Trân trọng,\n${name}`
-  );
-
-  window.location.href = `mailto:ttdvkh@haiphongport.com.vn?subject=${subject}&body=${body}`;
-};
-
 // Clock & Date Setup
 setInterval(() => {
   let d = new Date();
@@ -1317,22 +1358,27 @@ function initDates() {
   $('currentFullDate').textContent = now.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
-// Password Protected Shift Modal Setup
 function openShiftModalWithPassword() {
   let pwd = prompt('Vui lòng nhập mật khẩu xác thực để cấu hình kíp trực:');
   if (pwd === '6868') {
     openShiftModal();
   } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác! Quyền truy cập bị từ chối.');
+    alert('Mật khẩu không chính xác!');
   }
 }
 
 function openShiftModal() { $('modalShade').classList.add('open'); }
 function closeShiftModal() { $('modalShade').classList.remove('open'); }
 function saveShiftModal() {
-  $('dispShift').textContent = $('mShift').value;
-  $('dispCommander').textContent = $('mCommander').value || 'Chưa thiết lập';
-  $('dispSafety').textContent = $('mSafety').value || 'Chưa thiết lập';
+  const shiftData = {
+    shift: $('mShift').value,
+    commander: $('mCommander').value || 'Chưa thiết lập',
+    safety: $('mSafety').value || 'Chưa thiết lập'
+  };
+  $('dispShift').textContent = shiftData.shift;
+  $('dispCommander').textContent = shiftData.commander;
+  $('dispSafety').textContent = shiftData.safety;
+  localStorage.setItem('hp_shift_info', JSON.stringify(shiftData));
   closeShiftModal();
 }
 
@@ -1348,7 +1394,12 @@ setInterval(() => {
 // Event Bindings
 $('manualSaveBtn').onclick = handleManualSave;
 $('setupShiftBtn').onclick = openShiftModalWithPassword;
-$('closeModalBtn').onclick = closeModalBtn;
+$('exportConfigBtn').onclick = exportConfigData;
+$('importConfigBtn').onclick = triggerImportConfig;
+$('importFileInput').onchange = handleFileImport;
+$('fetchHistoryBtn').onclick = fetchHistoryFromSupabase;
+
+$('closeModalBtn').onclick = closeShiftModal;
 $('saveModalBtn').onclick = saveShiftModal;
 $('refreshBtn').onclick = loadData;
 $('search').oninput = () => renderTable(getFilteredCalls());
@@ -1372,6 +1423,16 @@ function restoreState() {
   let lastPage = localStorage.getItem('hp_last_page') || 'overview';
   nav(lastPage, false);
 
+  let savedShift = localStorage.getItem('hp_shift_info');
+  if (savedShift) {
+    try {
+      let s = JSON.parse(savedShift);
+      if (s.shift) $('dispShift').textContent = s.shift;
+      if (s.commander) $('dispCommander').textContent = s.commander;
+      if (s.safety) $('dispSafety').textContent = s.safety;
+    } catch(e){}
+  }
+
   let lastSaved = localStorage.getItem('hp_last_saved_timestamp');
   updateLastSavedDisplay(lastSaved);
 }
@@ -1380,7 +1441,7 @@ function restoreState() {
 initDates();
 restoreState();
 loadData();
-scheduleMidnightAutoSave(); // Kích hoạt bộ hẹn giờ 12h đêm tự động lưu
+scheduleMidnightAutoSave();
 </script>
 </body>
 </html>
