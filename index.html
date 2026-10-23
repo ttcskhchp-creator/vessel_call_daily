@@ -180,7 +180,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .shipbar{position:absolute;top:3px;height:24px;border-radius:4px;padding:3px 6px;color:#fff;font-size:9px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:30px;cursor:pointer;z-index:2}
 .shipbar.large{background:#d99a24}
 
-#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:none;max-width:300px;font-size:11px}
+#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:auto;max-width:300px;font-size:11px}
 #shipTooltip strong{font-size:13px;color:var(--navy2);display:block;margin-bottom:2px}
 :root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
 #shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:6px}
@@ -649,7 +649,7 @@ function dt(v){
 }
 
 function formatDuration(ms) {
-  if (isNaN(ms) || ms <= 0) return '0 giờ';
+  if (isNaN(ms) || ms <= 0) return '—';
   let totalMin = Math.floor(ms / 60000);
   let hrs = Math.floor(totalMin / 60);
   let mins = totalMin % 60;
@@ -675,8 +675,6 @@ document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.da
 // --- XỬ LÝ LỌC TRÙNG LẶP & ƯU TIÊN ĐỦ NGÀY CẬP / RỜI ---
 function filterAndDeduplicateCalls(rawList) {
   let map = new Map();
-  
-  // Sắp xếp thô trước để ưu tiên bản ghi có đủ ETB & ETD lên trước
   let sorted = [...rawList].sort((a, b) => {
     let scoreA = (a.etb ? 1 : 0) + (a.etd ? 1 : 0);
     let scoreB = (b.etb ? 1 : 0) + (b.etd ? 1 : 0);
@@ -686,8 +684,6 @@ function filterAndDeduplicateCalls(rawList) {
   sorted.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
-    
-    // Nếu tàu xuất hiện ở các bến khác nhau nhưng cùng tên, ta định danh theo Tên + Terminal + Bến hoặc Tên tàu độc lập nếu là cập nhật mới
     let berthKey = `${vName}_${(c.terminal||'').trim().toUpperCase()}_${(c.berth||'').trim().toUpperCase()}`;
     
     if (!map.has(berthKey)) {
@@ -696,8 +692,6 @@ function filterAndDeduplicateCalls(rawList) {
       let existing = map.get(berthKey);
       let existingScore = (existing.etb ? 1 : 0) + (existing.etd ? 1 : 0);
       let currentScore = (c.etb ? 1 : 0) + (c.etd ? 1 : 0);
-      
-      // Nếu bản ghi hiện tại đầy đủ hơn hoặc mới hơn thì giữ lại
       if (currentScore > existingScore) {
         map.set(berthKey, c);
       }
@@ -706,16 +700,10 @@ function filterAndDeduplicateCalls(rawList) {
   return Array.from(map.values());
 }
 
-// --- TẢI KÍP TRỰC TỪ SUPABASE ---
 async function loadShiftConfigFromSupabase() {
   let today = getTodayString();
   try {
-    let { data, error } = await supabaseClient
-      .from('shift_configs')
-      .select('*')
-      .eq('shift_date', today)
-      .single();
-
+    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).single();
     if (data && !error) {
       $('dispShift').textContent = data.shift_name || 'Ca 1';
       $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
@@ -727,51 +715,33 @@ async function loadShiftConfigFromSupabase() {
 async function saveShiftConfigToSupabase(shiftData) {
   let today = getTodayString();
   try {
-    await supabaseClient
-      .from('shift_configs')
-      .upsert({
-        shift_date: today,
-        shift_name: shiftData.shift,
-        commander: shiftData.commander,
-        safety: shiftData.safety,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'shift_date' });
+    await supabaseClient.from('shift_configs').upsert({
+      shift_date: today,
+      shift_name: shiftData.shift,
+      commander: shiftData.commander,
+      safety: shiftData.safety,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'shift_date' });
   } catch(err) {}
 }
 
-// --- TẢI DỮ LIỆU CŨ TỪ BUCKET (MẬT KHẨU 6868) ---
 function fetchHistoryFromBucketProtected() {
   let pwd = prompt('Nhập mật khẩu xác thực (6868):');
-  if (pwd === '6868') {
-    fetchHistoryFromBucket();
-  } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác!');
-  }
+  if (pwd === '6868') fetchHistoryFromBucket();
+  else if (pwd !== null) alert('Mật khẩu không chính xác!');
 }
 
 async function fetchHistoryFromBucket() {
   let fDate = $('fromDate').value;
-  if (!fDate) {
-    alert('Vui lòng chọn ngày tại ô "Từ:" !');
-    return;
-  }
+  if (!fDate) { alert('Vui lòng chọn ngày tại ô "Từ:" !'); return; }
 
   $('sideStatus').textContent = `Đang tải Bucket (${fDate})...`;
   try {
-    const { data, error } = await supabaseClient
-      .storage
-      .from('port-documents')
-      .download(`daily_snapshot_${fDate}.json`);
-
-    if (error || !data) {
-      alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage.`);
-      $('sideStatus').textContent = 'Trống';
-      return;
-    }
+    const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
+    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate}.`); $('sideStatus').textContent = 'Trống'; return; }
 
     const text = await data.text();
     const parsed = JSON.parse(text);
-
     if (parsed.calls && Array.isArray(parsed.calls)) {
       allCalls = filterAndDeduplicateCalls(parsed.calls);
       if (parsed.shift_info) {
@@ -783,12 +753,9 @@ async function fetchHistoryFromBucket() {
       $('sideStatus').textContent = `Đã nạp ${allCalls.length} tàu (${fDate})`;
       alert(`Nạp thành công dữ liệu ngày ${fDate}!`);
     }
-  } catch(err) {
-    alert('Lỗi: ' + err.message);
-  }
+  } catch(err) { alert('Lỗi: ' + err.message); }
 }
 
-// --- TỰ ĐỘNG SAO LƯU 00:00 ---
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) return;
   const todayStr = getTodayString();
@@ -797,11 +764,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const jsonContent = JSON.stringify({
     saved_at: nowStr,
     date: todayStr,
-    shift_info: {
-      shift: $('dispShift').textContent,
-      commander: $('dispCommander').textContent,
-      safety: $('dispSafety').textContent
-    },
+    shift_info: { shift: $('dispShift').textContent, commander: $('dispCommander').textContent, safety: $('dispSafety').textContent },
     total_calls: allCalls.length,
     calls: allCalls
   }, null, 2);
@@ -812,8 +775,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const savedText = `${nowStr} (${isAuto ? '00:00' : 'Thủ công'})`;
   localStorage.setItem('hp_last_saved', savedText);
   updateLastSavedDisplay(savedText);
-
-  if (!isAuto) alert('Đã lưu snapshot lên Storage thành công!');
+  if (!isAuto) alert('Đã lưu snapshot thành công!');
 }
 
 function updateLastSavedDisplay(str) {
@@ -821,37 +783,28 @@ function updateLastSavedDisplay(str) {
   $('sideLastSaved').textContent = 'Lưu: ' + (str || 'Chưa');
 }
 
-// --- XUẤT CSV/EXCEL (MẬT KHẨU 6868) ---
 function exportConfigAsCSVProtected() {
   let pwd = prompt('Nhập mật khẩu xác thực (6868):');
-  if (pwd === '6868') {
-    exportConfigAsCSV();
-  } else if (pwd !== null) {
-    alert('Mật khẩu không chính xác!');
-  }
+  if (pwd === '6868') exportConfigAsCSV();
+  else if (pwd !== null) alert('Mật khẩu không chính xác!');
 }
 
 function exportConfigAsCSV() {
-  if (!allCalls || allCalls.length === 0) {
-    alert('Không có dữ liệu!');
-    return;
-  }
+  if (!allCalls || allCalls.length === 0) { alert('Không có dữ liệu!'); return; }
   let csvRows = [`"KÍP","${$('dispShift').textContent}","${$('dispCommander').textContent}","${$('dispSafety').textContent}"`, `"STT","Tàu","Hãng","Terminal","Bến","LOA","DWT","ETB","ETD"`];
   allCalls.forEach((c, i) => {
     csvRows.push([i+1, `"${c.vessel}"`, `"${c.operator}"`, `"${c.terminal}"`, `"${c.berth}"`, c.loa, c.dwt, `"${c.etb}"`, `"${c.etd}"`].join(','));
   });
   const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `port_config_${getTodayString()}.csv`;
+  const a = document.createElement('a'); a.href = url; a.download = `port_config_${getTodayString()}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-// --- NẠP CSV/EXCEL (MẬT KHẨU 6868) ---
 function triggerImportConfig() {
   let pwd = prompt('Nhập mật khẩu xác thực (6868):');
-  if (pwd === '6868') { $('importFileInput').click(); }
-  else if (pwd !== null) { alert('Mật khẩu không chính xác!'); }
+  if (pwd === '6868') $('importFileInput').click();
+  else if (pwd !== null) alert('Sai mật khẩu!');
 }
 
 function handleFileImport(e) {
@@ -880,7 +833,7 @@ function handleFileImport(e) {
       if (loaded.length > 0) {
         allCalls = filterAndDeduplicateCalls(loaded);
         renderAll();
-        alert(`Đã nạp ${allCalls.length} tàu (đã lọc trùng)!`);
+        alert(`Đã nạp ${allCalls.length} tàu!`);
       }
     } catch(err) { alert('Lỗi nạp file: ' + err.message); }
   };
@@ -889,8 +842,8 @@ function handleFileImport(e) {
 
 function handleManualSave() {
   let pwd = prompt('Nhập mật khẩu xác thực (6868):');
-  if (pwd === '6868') { saveCurrentDataToSupabase(false); }
-  else if (pwd !== null) { alert('Mật khẩu không chính xác!'); }
+  if (pwd === '6868') saveCurrentDataToSupabase(false);
+  else if (pwd !== null) alert('Sai mật khẩu!');
 }
 
 function scheduleMidnightAutoSave() {
@@ -904,7 +857,6 @@ function scheduleMidnightAutoSave() {
   }, midnight.getTime() - now.getTime());
 }
 
-// TẢI API CẢNG VỤ
 async function loadData() {
   $('refreshBtn').disabled = true;
   $('sideStatus').textContent = 'Đang tải API...';
@@ -1096,27 +1048,49 @@ function renderStats() {
   $('statTerminals').innerHTML = Object.entries(termMap).map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>`).join('');
 }
 
+// --- TÍNH TOÁN CHÍNH XÁC ĐÃ Ở CẦU & CÒN LẠI ---
 function showTooltip(e, s) {
   selectedShipForReport = s;
   let tt = $('shipTooltip');
   $('ttName').textContent = s.vessel;
   $('ttOperator').textContent = s.operator || '—';
   $('ttLoa').textContent = s.loa + 'm';
-  $('ttDwt').textContent = s.dwt || '—';
+  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString('vi-VN') + ' T' : '—';
   $('ttEtb').textContent = dt(s.etb);
   $('ttEtd').textContent = dt(s.etd);
+
+  let now = Date.now();
+  let t1 = s.etb ? new Date(s.etb).getTime() : 0;
+  let t2 = s.etd ? new Date(s.etd).getTime() : 0;
+
+  if (t1 > 0 && now >= t1) {
+    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
+    $('ttDocked').textContent = formatDuration(dockedMs);
+  } else {
+    $('ttDocked').textContent = 'Chưa cập';
+  }
+
+  if (t2 > 0 && t2 > now) {
+    $('ttRemaining').textContent = formatDuration(t2 - now);
+  } else if (t2 > 0 && now >= t2) {
+    $('ttRemaining').textContent = 'Đã rời bến';
+  } else {
+    $('ttRemaining').textContent = '—';
+  }
+
   tt.style.display = 'block';
   tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
-  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 200) + 'px';
+  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 220) + 'px';
 }
+
 function hideTooltip() { $('shipTooltip').style.display = 'none'; }
 
-// Xử lý sự kiện click nút Báo cáo trên Tooltip để chuyển sang tab Báo cáo
+// Liên kết nút Báo lỗi trên Tooltip trỏ trực tiếp đến tab Báo cáo
 $('ttReportBtn').onclick = () => {
   if (selectedShipForReport) {
     nav('report');
     $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
-    $('repContent').value = `Báo cáo sai lệch thông tin tàu ${selectedShipForReport.vessel} (ETB: ${dt(selectedShipForReport.etb)}, ETD: ${dt(selectedShipForReport.etd)}).`;
+    $('repContent').value = `Phản ánh sai lệch thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`;
     hideTooltip();
   }
 };
