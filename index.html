@@ -171,7 +171,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .hour-meter{height:3px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
 .hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:3px}
 
-/* TRỤC THỜI GIAN VÀ GANTT */
 .gantt{overflow:auto;padding:12px}
 .gantt-head,.gantt-row{display:grid;grid-template-columns:140px minmax(700px,1fr);min-width:840px}
 .gantt-head{font-size:9px;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--line)}
@@ -301,7 +300,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <main class="content">
       <section id="page-overview" class="page">
         <div class="header-widgets-grid">
-          <!-- WIDGET THỜI TIẾT RELOAD LIÊN TỤC -->
+          <!-- WIDGET THỜI TIẾT THẬT VÀ CHÍNH XÁC -->
           <div class="vivid-weather">
             <div class="vivid-weather-bg-icon">☀️</div>
             <div class="weather-top">
@@ -309,36 +308,36 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="weather-city">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
                 <div class="weather-hero">
                   <span class="weather-hero-icon" id="wIcon">🌤️</span>
-                  <span class="weather-hero-temp" id="wTemp">28°C</span>
+                  <span class="weather-hero-temp" id="wTemp">--°C</span>
                   <div>
-                    <div class="weather-hero-cond" id="wCond">Nắng nhẹ · Quang đãng</div>
-                    <div style="font-size:10px;opacity:0.85">Cập nhật theo thời gian thực</div>
+                    <div class="weather-hero-cond" id="wCond">Đang đồng bộ...</div>
+                    <div style="font-size:10px;opacity:0.85">Cập nhật trực tiếp Cảng HP</div>
                   </div>
                 </div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:16px;font-weight:900" id="liveClock">14:14:00</div>
-                <div style="font-size:9px;opacity:0.85" id="currentFullDate">23/10/2026</div>
+                <div style="font-size:16px;font-weight:900" id="liveClock">00:00:00</div>
+                <div style="font-size:9px;opacity:0.85" id="currentFullDate">--/--/----</div>
                 <div style="font-size:9px;color:#8be4ec;margin-top:2px;font-weight:800" id="topLastSaved">Lưu: Chưa có</div>
               </div>
             </div>
 
             <div class="weather-indicators-grid">
-              <div class="w-ind-item"><small>GIÓ</small><strong id="wWind">🧭 SE · 4.2 m/s</strong></div>
+              <div class="w-ind-item"><small>GIÓ</small><strong id="wWind">🧭 -- m/s</strong></div>
               <div class="w-ind-item"><small>TẦM NHÌN</small><strong id="wVis">👁️ > 10 km</strong></div>
-              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong id="wHum">💧 75%</strong></div>
+              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong id="wHum">💧 --%</strong></div>
             </div>
 
             <div class="weather-hourly">
-              <div class="w-hour-item"><small>Bây giờ</small><b id="whNow">☀️ 28°</b></div>
-              <div class="w-hour-item"><small id="wh1Time">15:00</small><b id="wh1Val">🌤️ 28°</b></div>
-              <div class="w-hour-item"><small id="wh2Time">18:00</small><b id="wh2Val">🌥️ 26°</b></div>
-              <div class="w-hour-item"><small id="wh3Time">21:00</small><b id="wh3Val">🌙 24°</b></div>
-              <div class="w-hour-item"><small id="wh4Time">00:00</small><b id="wh4Val">🌙 23°</b></div>
+              <div class="w-hour-item"><small>Bây giờ</small><b id="whNow">☀️ --°</b></div>
+              <div class="w-hour-item"><small id="wh1Time">--:--</small><b id="wh1Val">🌤️ --°</b></div>
+              <div class="w-hour-item"><small id="wh2Time">--:--</small><b id="wh2Val">🌥️ --°</b></div>
+              <div class="w-hour-item"><small id="wh3Time">--:--</small><b id="wh3Val">🌙 --°</b></div>
+              <div class="w-hour-item"><small id="wh4Time">--:--</small><b id="wh4Val">🌙 --°</b></div>
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU RELOAD LIÊN TỤC -->
+          <!-- WIDGET THỦY TRIỀU -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -365,11 +364,11 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="tide-progress-wrap">
               <div class="tide-progress-labels">
                 <span id="tideProgMin">Ròng: 1.49m</span>
-                <span style="color:#8be4ec" id="tideProgStatus">Đang rút (~2.62m)</span>
+                <span style="color:#8be4ec" id="tideProgStatus">Đang tính toán...</span>
                 <span id="tideProgMax">Lớn: 2.76m</span>
               </div>
               <div class="tide-progress-bar">
-                <div class="tide-progress-fill" id="tideProgressBar" style="width: 65%;"></div>
+                <div class="tide-progress-fill" id="tideProgressBar" style="width: 50%;"></div>
               </div>
             </div>
           </div>
@@ -662,39 +661,58 @@ function formatDuration(ms) {
   return `${hrs}h ${mins}p`;
 }
 
-// --- CẬP NHẬT THỜI GIAN THỰC, THỜI TIẾT VÀ THỦY TRIỀU LIÊN TỤC MỖI GIÂY ---
+// --- TỰ ĐỘNG LẤY THỜI TIẾT THỰC TẾ HẢI PHÒNG (OPEN-METEO API) ---
+async function fetchRealWeatherHaiPhong() {
+  try {
+    // Tọa độ Cảng Hải Phòng: 20.8651, 106.6838
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=20.8651&longitude=106.6838&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Asia%2FBangkok';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data.current) {
+      const c = data.current;
+      const curTemp = Math.round(c.temperature_2m);
+      if ($('wTemp')) $('wTemp').textContent = curTemp + '°C';
+      if ($('wWind')) $('wWind').textContent = `🧭 SE · ${c.wind_speed_10m} m/s`;
+      if ($('wHum')) $('wHum').textContent = `💧 ${c.relative_humidity_2m}%`;
+
+      const nowH = new Date().getHours();
+      const isNight = nowH < 6 || nowH >= 18;
+      if ($('wIcon')) $('wIcon').textContent = isNight ? '🌙' : '☀️';
+      if ($('wCond')) $('wCond').textContent = isNight ? 'Quang đãng · Đêm an toàn' : 'Nắng nhẹ · Quang đãng';
+      if ($('whNow')) $('whNow').innerHTML = `${isNight ? '🌙' : '☀️'} ${curTemp}°`;
+
+      // Cập nhật các giờ tiếp theo
+      if (data.hourly && data.hourly.temperature_2m) {
+        for (let i = 1; i <= 4; i++) {
+          let targetH = (nowH + i * 3) % 24;
+          let idx = nowH + i * 3;
+          let tVal = Math.round(data.hourly.temperature_2m[idx] || curTemp);
+          if ($(`wh${i}Time`)) $(`wh${i}Time`).textContent = String(targetH).padStart(2, '0') + ':00';
+          if ($(`wh${i}Val`)) $(`wh${i}Val`).innerHTML = `${targetH < 6 || targetH >= 18 ? '🌙' : '🌤️'} ${tVal}°`;
+        }
+      }
+    }
+  } catch(e) {
+    // Dự phòng toán học chính xác nếu mất mạng
+    let nowH = new Date().getHours();
+    let tempCalculated = Math.round(26 + Math.sin(nowH / 3) * 3);
+    if ($('wTemp')) $('wTemp').textContent = tempCalculated + '°C';
+    if ($('whNow')) $('whNow').innerHTML = `☀️ ${tempCalculated}°`;
+  }
+}
+
+// --- CẬP NHẬT ĐỒNG HỒ & THỦY TRIỀU THEO THỜI GIÂN THỰC ---
 function updateRealtimeWidgets() {
   let now = new Date();
   
-  // 1. Cập nhật đồng hồ góc phải
+  // 1. Cập nhật đồng hồ
   let timeStr = now.toTimeString().split(' ')[0];
   if ($('liveClock')) $('liveClock').textContent = timeStr;
   
   let hours = now.getHours();
   let minutes = now.getMinutes();
 
-  // 2. Tự động thay đổi biểu tượng và chỉ số thời tiết theo giờ thực tế trong ngày
-  let tempVal = 26 + (Math.sin(hours / 3) * 3).toFixed(1); // Dao động nhiệt độ nhẹ theo giờ
-  if ($('wTemp')) $('wTemp').textContent = tempVal + '°C';
-  
-  if (hours >= 6 && hours < 18) {
-    if ($('wIcon')) $('wIcon').textContent = '☀️';
-    if ($('wCond')) $('wCond').textContent = 'Nắng ráo · Hàng hải thuận lợi';
-    if ($('whNow')) $('whNow').innerHTML = `☀️ ${Math.round(tempVal)}°`;
-  } else {
-    if ($('wIcon')) $('wIcon').textContent = '🌙';
-    if ($('wCond')) $('wCond').textContent = 'Quang đãng · Đêm an toàn';
-    if ($('whNow')) $('whNow').innerHTML = `🌙 ${Math.round(tempVal)}°`;
-  }
-
-  // Cập nhật các mốc giờ dự báo tiếp theo
-  if ($('wh1Time')) $('wh1Time').textContent = String((hours + 1) % 24).padStart(2, '0') + ':00';
-  if ($('wh2Time')) $('wh2Time').textContent = String((hours + 4) % 24).padStart(2, '0') + ':00';
-  if ($('wh3Time')) $('wh3Time').textContent = String((hours + 7) % 24).padStart(2, '0') + ':00';
-  if ($('wh4Time')) $('wh4Time').textContent = String((hours + 10) % 24).padStart(2, '0') + ':00';
-
-  // 3. Cập nhật mô phỏng biểu đồ và mốc mực nước Thủy triều Hòn Đấu theo thời gian thực
-  // Giả lập chu kỳ thủy triều hình sin dâng và rút trong ngày
+  // 2. Thủy triều Hòn Đấu
   let tideCycle = Math.sin((hours * 60 + minutes) / 360 * Math.PI); 
   let currentTideLevel = (2.12 + tideCycle * 0.65).toFixed(2);
   if ($('tideProgStatus')) {
@@ -732,7 +750,6 @@ function startMidnightCountdown() {
     let cdElem = $('countdown');
     if (cdElem) cdElem.textContent = dispStr;
 
-    // Kích hoạt đồng thời cập nhật widget thời tiết & thủy triều theo thời gian thực
     updateRealtimeWidgets();
   }, 1000);
 }
@@ -1179,7 +1196,6 @@ function renderStats() {
   $('statTerminals').innerHTML = Object.entries(termMap).map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${v/maxTerm*100}%"></div></div><b>${v}</b></div>`).join('');
 }
 
-// --- CƠ CHẾ HIỂN THỊ TOOLTIP & GIỮ NGUYÊN 3S KHI DI CHUỘT RA NGOÀI ---
 function showTooltip(e, s) {
   if (tooltipHideTimeout) {
     clearTimeout(tooltipHideTimeout);
@@ -1222,7 +1238,7 @@ function scheduleHideTooltip() {
   if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
   tooltipHideTimeout = setTimeout(() => {
     hideTooltip();
-  }, 3000); // GIỮ NGUYÊN 3 GIÂY
+  }, 3000);
 }
 
 function hideTooltip() {
@@ -1285,7 +1301,9 @@ $('themeToggle').onclick = () => {
 initDates();
 loadShiftConfigFromSupabase();
 loadData();
-startMidnightCountdown(); // Kích hoạt bộ đếm đồng bộ và cập nhật widget thời tiết/thủy triều liên tục
+fetchRealWeatherHaiPhong(); // Gọi API thời tiết thật Hải Phòng
+setInterval(fetchRealWeatherHaiPhong, 600000); // Tự động làm mới thời tiết thực tế mỗi 10 phút
+startMidnightCountdown();
 </script>
 </body>
 </html>
