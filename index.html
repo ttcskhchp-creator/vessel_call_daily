@@ -61,6 +61,13 @@ button:hover{filter:brightness(.95)}
 .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .primary{background:var(--cyan);color:#073343}
 .darkbtn{background:var(--navy2);color:#fff}
+
+.lang-toggle-btn{
+  background: var(--navy2); color: #fff; border: 1px solid var(--cyan);
+  display: flex; align-items: center; gap: 4px; font-weight: 800;
+}
+:root[data-theme="dark"] .lang-toggle-btn{background: rgba(38,189,200,0.15); color: var(--cyan)}
+
 .content{padding:16px 20px 30px;max-width:1800px;margin:auto}
 .page{display:block;width:100%;animation:pageIn .15s ease-out}
 .page.hidden{display:none!important}
@@ -167,7 +174,9 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .empty{padding:24px;text-align:center;color:var(--muted)}
 
 .chart-list{display:grid;gap:10px}
-.barrow{display:grid;grid-template-columns:120px 1fr 30px;gap:8px;align-items:center;font-size:11px}
+.barrow{display:grid;grid-template-columns:140px 1fr 30px;gap:8px;align-items:center;font-size:11px}
+.barrow-label{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s}
+.barrow-label:hover{color:var(--cyan);text-decoration:underline}
 .barbg{height:8px;background:var(--line);border-radius:5px;overflow:hidden}
 .barfill{height:100%;background:var(--cyan);border-radius:5px}
 .barfill.gold{background:var(--amber)}
@@ -197,6 +206,35 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #shipTooltip .tt-item small{display:block;color:var(--muted);font-size:8px}
 #shipTooltip .tt-item b{font-size:10px}
 #shipTooltip .tt-actions{display:flex;gap:5px;margin-top:10px}
+
+/* CỬA SỔ NHỎ XEM CHI TIẾT TÀU TẠI TAB THỐNG KÊ (POPOVER) */
+#statsVesselPopover{
+  position:fixed;display:none;z-index:1000;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:12px;box-shadow:0 8px 26px rgba(0,0,0,0.28);
+  width:290px;font-size:11px;
+}
+#statsVesselPopover .pop-head{
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px;
+}
+#statsVesselPopover .pop-head strong{
+  font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
+}
+:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
+#statsVesselPopover .pop-list{
+  max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
+}
+.pop-item{
+  background:rgba(38,189,200,0.06);border:1px solid var(--line);
+  border-radius:6px;padding:6px 8px;display:grid;gap:2px;
+}
+.pop-item-top{
+  display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:11px;
+}
+.pop-item-meta{
+  font-size:9px;color:var(--muted);display:flex;justify-content:space-between;gap:4px;
+}
 
 .report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
 .form-group{margin-bottom:12px}
@@ -241,49 +279,49 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <aside class="side" id="sidebarNav">
     <div class="brand">
       <div>
-        <small>Operations Center</small>
-        <strong>Cảng Hải Phòng</strong>
+        <small id="t_opCenter">Operations Center</small>
+        <strong id="t_hpPort">Cảng Hải Phòng</strong>
       </div>
     </div>
     <div>
-      <div class="nav-label">Không gian làm việc</div>
+      <div class="nav-label" id="t_navWorkspace">Không gian làm việc</div>
       <nav class="nav">
-        <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt">Toàn cảnh</span></button>
-        <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt">Kế hoạch cầu</span></button>
-        <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt">Tra cứu tàu</span></button>
-        <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt">Thống kê</span></button>
-        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt">Bổ sung & Sửa tàu</span></button>
-        <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt">Báo cáo & Góp ý</span></button>
-        <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt">Nguồn & Liên hệ</span></button>
+        <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt" id="t_menuOverview">Toàn cảnh</span></button>
+        <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt" id="t_menuPlanning">Kế hoạch cầu</span></button>
+        <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt" id="t_menuSearch">Tra cứu tàu</span></button>
+        <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
+        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span></button>
+        <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt" id="t_menuReport">Báo cáo & Góp ý</span></button>
+        <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt" id="t_menuResources">Nguồn & Liên hệ</span></button>
       </nav>
     </div>
 
     <div class="side-shift-card">
-      <div class="side-shift-title">⚡ BỘ PHẬN TRỰC</div>
+      <div class="side-shift-title" id="t_shiftDutyTitle">⚡ BỘ PHẬN TRỰC</div>
       <div class="side-shift-item">
-        <small>CA TRỰC</small>
+        <small id="t_shiftLabel">CA TRỰC</small>
         <strong id="dispShift">Ca 1 (06:00 - 14:00)</strong>
       </div>
       <div class="side-shift-item">
-        <small>TRƯỞNG ĐIỀU HÀNH</small>
+        <small id="t_commanderLabel">TRƯỞNG ĐIỀU HÀNH</small>
         <strong id="dispCommander">Nguyễn Văn A - <span class="phone">0912.345.678</span></strong>
       </div>
       <div class="side-shift-item">
-        <small>AN TOÀN HẢI</small>
+        <small id="t_safetyLabel">AN TOÀN HẢI</small>
         <strong id="dispSafety">Trần Văn B - <span class="phone">0988.765.432</span></strong>
       </div>
 
       <div class="side-controls-group">
-        <button id="setupShiftBtn" class="side-btn setup" title="Setup kíp trực">Setup trực 🔒</button>
-        <button id="manualSaveBtn" class="side-btn save" title="Lưu dữ liệu">Lưu Bucket 💾</button>
-        <button id="exportConfigBtn" class="side-btn export" title="Xuất file">Xuất Excel 📤</button>
-        <button id="importConfigBtn" class="side-btn import" title="Nạp file">Nạp Excel 📥</button>
+        <button id="setupShiftBtn" class="side-btn setup">Setup trực 🔒</button>
+        <button id="manualSaveBtn" class="side-btn save">Lưu Bucket 💾</button>
+        <button id="exportConfigBtn" class="side-btn export">Xuất Excel 📤</button>
+        <button id="importConfigBtn" class="side-btn import">Nạp Excel 📥</button>
         <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
       </div>
     </div>
 
     <div class="side-foot">
-      <b>Cảng Hải Phòng</b><br>
+      <b id="t_footBrand">Cảng Hải Phòng</b><br>
       <span id="sideStatus">Đang kết nối Supabase...</span><br>
       <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
     </div>
@@ -292,16 +330,21 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <section class="main">
     <header class="topbar">
       <div>
-        <div class="crumb">CẢNG HẢI PHÒNG / <span id="crumb">TOÀN CẢNH</span></div>
-        <h1 id="topTitle" title="Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng">Trung tâm Khai thác & DVKH</h1>
+        <div class="crumb"><span id="t_crumbPrefix">CẢNG HẢI PHÒNG</span> / <span id="crumb">TOÀN CẢNH</span></div>
+        <h1 id="topTitle">Trung tâm Khai thác & DVKH</h1>
       </div>
       <div class="actions">
+        <!-- NÚT GẠT ĐA NGÔN NGỮ (VI / EN) -->
+        <button id="langToggleBtn" class="lang-toggle-btn" title="Chuyển đổi ngôn ngữ / Switch Language">
+          <span id="langFlag">🇻🇳</span> <span id="langText">VI</span>
+        </button>
+
         <div style="display:flex;align-items:center;gap:4px" class="tiny">
-          Từ: <input type="date" id="fromDate" class="field" style="padding:3px 5px">
-          Đến: <input type="date" id="toDate" class="field" style="padding:3px 5px">
-          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu từ Storage Bucket">🔍 Tải Bucket</button>
+          <span id="t_fromLabel">Từ:</span> <input type="date" id="fromDate" class="field" style="padding:3px 5px">
+          <span id="t_toLabel">Đến:</span> <input type="date" id="toDate" class="field" style="padding:3px 5px">
+          <button id="fetchHistoryBtn" class="darkbtn tiny" style="padding:5px 8px" title="Tải dữ liệu từ Storage Bucket">🔍 <span id="t_loadBucket">Tải Bucket</span></button>
         </div>
-        <button class="theme-toggle" id="themeToggle" style="padding:6px 10px">◐ Giao diện</button>
+        <button class="theme-toggle" id="themeToggle" style="padding:6px 10px">◐ <span id="t_theme">Giao diện</span></button>
         <button class="primary" id="refreshBtn" style="padding:6px 10px" title="Thời gian còn lại đến 00:00 tự động đồng bộ">↻ 00h00: (<span id="countdown">00:00:00</span>)</button>
       </div>
     </header>
@@ -314,13 +357,13 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-weather-bg-icon">☀️</div>
             <div class="weather-top">
               <div>
-                <div class="weather-city">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
+                <div class="weather-city" id="t_weatherCity">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
                 <div class="weather-hero">
                   <span class="weather-hero-icon" id="wIcon">🌤️</span>
                   <span class="weather-hero-temp" id="wTemp">--°C</span>
                   <div>
                     <div class="weather-hero-cond" id="wCond">Đang đồng bộ...</div>
-                    <div style="font-size:10px;opacity:0.85">Cập nhật trực tiếp Cảng HP</div>
+                    <div style="font-size:10px;opacity:0.85" id="t_weatherDirect">Cập nhật trực tiếp Cảng HP</div>
                   </div>
                 </div>
               </div>
@@ -332,13 +375,13 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
 
             <div class="weather-indicators-grid">
-              <div class="w-ind-item"><small>GIÓ</small><strong id="wWind">🧭 -- m/s</strong></div>
-              <div class="w-ind-item"><small>TẦM NHÌN</small><strong id="wVis">👁️ > 10 km</strong></div>
-              <div class="w-ind-item"><small>ĐỘ ẨM</small><strong id="wHum">💧 --%</strong></div>
+              <div class="w-ind-item"><small id="t_windLabel">GIÓ</small><strong id="wWind">🧭 -- m/s</strong></div>
+              <div class="w-ind-item"><small id="t_visLabel">TẦM NHÌN</small><strong id="wVis">👁️ > 10 km</strong></div>
+              <div class="w-ind-item"><small id="t_humLabel">ĐỘ ẨM</small><strong id="wHum">💧 --%</strong></div>
             </div>
 
             <div class="weather-hourly">
-              <div class="w-hour-item"><small>Bây giờ</small><b id="whNow">☀️ --°</b></div>
+              <div class="w-hour-item"><small id="t_nowLabel">Bây giờ</small><b id="whNow">☀️ --°</b></div>
               <div class="w-hour-item"><small id="wh1Time">--:--</small><b id="wh1Val">🌤️ --°</b></div>
               <div class="w-hour-item"><small id="wh2Time">--:--</small><b id="wh2Val">🌥️ --°</b></div>
               <div class="w-hour-item"><small id="wh3Time">--:--</small><b id="wh3Val">🌙 --°</b></div>
@@ -351,20 +394,20 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
-                <div class="tide-title">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
-                <div style="font-size:10px;opacity:0.9">Nhật triều thuần nhất · Cảng chính</div>
+                <div class="tide-title" id="t_tideTitle">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
+                <div style="font-size:10px;opacity:0.9" id="t_tideSub">Nhật triều thuần nhất · Cảng chính</div>
               </div>
               <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn Hòn Dấu</span>
             </div>
 
             <div class="tide-grid">
               <div class="tide-box high">
-                <small>▲ NƯỚC LỚN (ĐỈNH)</small>
+                <small id="t_highTideLabel">▲ NƯỚC LỚN (ĐỈNH)</small>
                 <strong id="tideHighVal">2.30 m</strong>
                 <span id="tideHighTime">🕒 14:19</span>
               </div>
               <div class="tide-box low">
-                <small>▼ NƯỚC RÒNG (ĐÁY)</small>
+                <small id="t_lowTideLabel">▼ NƯỚC RÒNG (ĐÁY)</small>
                 <strong id="tideLowVal">1.60 m</strong>
                 <span id="tideLowTime">🕒 04:12</span>
               </div>
@@ -385,36 +428,36 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 
         <div class="kpis">
           <div class="kpi">
-            <div class="kpi-top">Đang làm hàng</div>
+            <div class="kpi-top" id="t_kWorking">Đang làm hàng</div>
             <div class="kpi-value" id="kWorking">—</div>
-            <div class="kpi-note">Tại cầu bến</div>
+            <div class="kpi-note" id="t_kWorkingSub">Tại cầu bến</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Đến trong 24h</div>
+            <div class="kpi-top" id="t_kArrivals">Đến trong 24h</div>
             <div class="kpi-value" id="kArrivals">—</div>
-            <div class="kpi-note">Theo ETB</div>
+            <div class="kpi-note" id="t_kArrivalsSub">Theo ETB</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Rời trong 24h</div>
+            <div class="kpi-top" id="t_kDepartures">Rời trong 24h</div>
             <div class="kpi-value" id="kDepartures">—</div>
-            <div class="kpi-note">Theo ETD</div>
+            <div class="kpi-note" id="t_kDeparturesSub">Theo ETD</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tổng LOA</div>
+            <div class="kpi-top" id="t_kLoa">Tổng LOA</div>
             <div class="kpi-value" id="kLoa">—</div>
-            <div class="kpi-note">Cảng HP</div>
+            <div class="kpi-note" id="t_kLoaSub">Cảng HP</div>
           </div>
           <div class="kpi">
-            <div class="kpi-top">Tàu ≥ 300m</div>
+            <div class="kpi-top" id="t_kLarge">Tàu ≥ 300m</div>
             <div class="kpi-value" id="kLarge">—</div>
-            <div class="kpi-note">Cỡ lớn</div>
+            <div class="kpi-note" id="t_kLargeSub">Cỡ lớn</div>
           </div>
         </div>
 
         <div class="grid2">
           <section class="panel">
             <div class="panel-head">
-              <h3>Cảng Tân Vũ (Tiêu điểm)</h3>
+              <h3 id="t_tanvuTitle">Cảng Tân Vũ (Tiêu điểm)</h3>
               <span class="muted tiny" id="tanvuCount">Đang cập nhật...</span>
             </div>
             <div class="panel-body">
@@ -426,15 +469,15 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 
           <section class="panel">
             <div class="panel-head">
-              <h3>Điều động tàu</h3>
-              <button data-goto="search">Xem tất cả →</button>
+              <h3 id="t_moveTitle">Điều động tàu</h3>
+              <button data-goto="search" id="t_viewAllBtn">Xem tất cả →</button>
             </div>
             <div class="panel-body">
               <div class="movement-tools">
-                <button class="active" onclick="filterMovement('all', this)">Tất cả</button>
-                <button onclick="filterMovement('arriving', this)">Cập cầu</button>
-                <button onclick="filterMovement('departing', this)">Rời cầu</button>
-                <button onclick="filterMovement('departed', this)">Đã rời</button>
+                <button class="active" onclick="filterMovement('all', this)" id="btnMoveAll">Tất cả</button>
+                <button onclick="filterMovement('arriving', this)" id="btnMoveArr">Cập cầu</button>
+                <button onclick="filterMovement('departing', this)" id="btnMoveDep">Rời cầu</button>
+                <button onclick="filterMovement('departed', this)" id="btnMoveDepted">Đã rời</button>
               </div>
               <div class="movement-scroll-wrapper" id="movementContainer" onmouseenter="pauseAutoScroll()" onmouseleave="resumeAutoScroll()">
                 <div class="timeline" id="movement">
@@ -446,7 +489,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
 
         <div class="port-link-box">
-          <span>Đơn vị: <b>Trung tâm Khai thác & DVKH - Cảng Hải Phòng</b></span>
+          <span><span id="t_unitLabel">Đơn vị:</span> <b id="t_unitName">Trung tâm Khai thác & DVKH - Cảng Hải Phòng</b></span>
           <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">haiphongport.com.vn ↗</a>
         </div>
       </section>
@@ -455,8 +498,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-planning" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Kế hoạch cầu bến</h2>
-            <div class="muted">Sơ đồ chiếm bến trực quan</div>
+            <h2 id="t_planHead">Kế hoạch cầu bến</h2>
+            <div class="muted" id="t_planSub">Sơ đồ chiếm bến trực quan</div>
           </div>
           <span class="status" id="planningCount">Chưa có dữ liệu</span>
         </div>
@@ -464,7 +507,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <div class="toolbar" style="background:var(--card)">
             <input id="planningSearch" class="field search" placeholder="🔍 Tìm kiếm tàu, hãng, bến..." oninput="renderGantt()">
             <label class="tiny" style="display:flex;align-items:center;gap:4px">
-              Cửa sổ:
+              <span id="t_windowLabel">Cửa sổ:</span>
               <select id="days" class="field" style="padding:5px 8px" onchange="renderGantt()">
                 <option value="2">2 ngày</option>
                 <option value="4" selected>4 ngày</option>
@@ -473,7 +516,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </label>
           </div>
           <div class="toolbar" style="border-top:0;padding-top:0;gap:5px">
-            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)">Tất cả</button>
+            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)" id="btnPlanAll">Tất cả</button>
             <button class="tiny" onclick="filterPlanningArea('TÂN VŨ', this)">Tân Vũ</button>
             <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
             <button class="tiny" onclick="filterPlanningArea('HOÀNG DIỆU', this)">Hoàng Diệu</button>
@@ -490,10 +533,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-search" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Tra cứu lịch tàu</h2>
-            <div class="muted">Danh sách chi tiết lượt tàu</div>
+            <h2 id="t_searchHead">Tra cứu lịch tàu</h2>
+            <div class="muted" id="t_searchSub">Danh sách chi tiết lượt tàu</div>
           </div>
-          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ Xuất Báo Cáo Excel/CSV</button>
+          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ <span id="t_exportBtnText">Xuất Báo Cáo Excel/CSV</span></button>
         </div>
         <div class="panel">
           <div class="toolbar">
@@ -503,7 +546,14 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th>Tàu</th><th>Hãng</th><th>LOA (m)</th><th>DWT</th><th>Cảng · Bến</th><th>Cập (ETB)</th><th>Rời (ETD)</th>
+                  <th>#</th>
+                  <th id="th_vessel">Tàu</th>
+                  <th id="th_operator">Hãng</th>
+                  <th>LOA (m)</th>
+                  <th>DWT</th>
+                  <th id="th_berth">Cảng · Bến</th>
+                  <th id="th_etb">Cập (ETB)</th>
+                  <th id="th_etd">Rời (ETD)</th>
                 </tr>
               </thead>
               <tbody id="rows">
@@ -518,69 +568,76 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-stats" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Thống kê & Báo cáo</h2>
-            <div class="muted" id="statsSubtitle">Phân tích tần suất lượt tàu</div>
+            <h2 id="t_statsHead">Thống kê & Báo cáo</h2>
+            <div class="muted" id="statsSubtitle">Phân tích tần suất lượt tàu (Rê chuột vào tên mục để xem chi tiết tàu)</div>
           </div>
         </div>
         <div class="grid2">
           <section class="panel">
-            <div class="panel-head"><h3>Theo Terminal</h3></div>
+            <div class="panel-head"><h3 id="t_statTerm">Theo Terminal</h3></div>
             <div class="panel-body"><div class="chart-list" id="statTerminals"><div class="empty">Trống</div></div></div>
           </section>
           <section class="panel">
-            <div class="panel-head"><h3>Theo Hãng tàu</h3></div>
+            <div class="panel-head"><h3 id="t_statOper">Theo Hãng tàu</h3></div>
             <div class="panel-body"><div class="chart-list" id="statOperators"><div class="empty">Trống</div></div></div>
           </section>
         </div>
         <div class="grid2" style="margin-top:12px">
           <section class="panel">
-            <div class="panel-head"><h3>Phân khúc LOA</h3></div>
+            <div class="panel-head"><h3 id="t_statLoa">Phân khúc LOA</h3></div>
             <div class="panel-body"><div class="chart-list" id="statLoaBins"><div class="empty">Trống</div></div></div>
           </section>
           <section class="panel">
-            <div class="panel-head"><h3>Tần suất giờ cập</h3></div>
+            <div class="panel-head"><h3 id="t_statHours">Tần suất giờ cập</h3></div>
             <div class="panel-body"><div class="hourly-grid" id="statHours"></div></div>
           </section>
         </div>
       </section>
 
-      <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU -->
+      <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU (ĐÃ XÓA HIỂN THỊ 6868) -->
       <section id="page-edit-vessel" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Bổ sung & Sửa thông tin tàu</h2>
-            <div class="muted">Quản lý và ghi đè thông tin tàu thủ công (Yêu cầu mật khẩu )</div>
+            <h2 id="t_editVesselHead">Bổ sung & Sửa thông tin tàu</h2>
+            <div class="muted" id="t_editVesselSub">Quản lý và ghi đè thông tin tàu thủ công (Yêu cầu mật khẩu quản trị)</div>
           </div>
         </div>
         <div class="grid2">
           <div class="panel">
-            <div class="panel-head"><h3>Cập nhật / Thêm mới thông tin tàu</h3></div>
+            <div class="panel-head"><h3 id="t_editFormHead">Cập nhật / Thêm mới thông tin tàu</h3></div>
             <div class="panel-body">
-              <div class="form-group"><label>Tên tàu (*)</label><input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu..."></div>
-              <div class="form-group"><label>Hãng tàu</label><input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu..."></div>
+              <div class="form-group"><label id="lbl_vesselName">Tên tàu (*)</label><input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu..."></div>
+              <div class="form-group"><label id="lbl_operator">Hãng tàu</label><input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu..."></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group"><label>Terminal</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: Tân Vũ"></div>
-                <div class="form-group"><label>Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
+                <div class="form-group"><label id="lbl_terminal">Terminal</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: Tân Vũ"></div>
+                <div class="form-group"><label id="lbl_berth">Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="form-group"><label>LOA (m)</label><input id="editVesselLoa" type="number" class="field" style="width:100%" placeholder="0"></div>
                 <div class="form-group"><label>DWT</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="Trọng tải"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group"><label>ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
-                <div class="form-group"><label>ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
+                <div class="form-group"><label id="lbl_etb">ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
+                <div class="form-group"><label id="lbl_etd">ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:10px">
-                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1">💾 Lưu / Cập nhật ()</button>
-                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1">🗑️ Xóa bản ghi ()</button>
+                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1" id="btnSaveOverride">💾 Lưu / Cập nhật</button>
+                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1" id="btnDeleteOverride">🗑️ Xóa bản ghi</button>
               </div>
             </div>
           </div>
           <div class="panel">
-            <div class="panel-head"><h3>Danh sách tàu đã chỉnh sửa thủ công</h3></div>
+            <div class="panel-head"><h3 id="t_overrideListHead">Danh sách tàu đã chỉnh sửa thủ công</h3></div>
             <div class="panel-body table-wrap" style="max-height:400px">
               <table>
-                <thead><tr><th>Tên tàu</th><th>Hãng</th><th>Bến</th><th>Thao tác</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th id="th_ovVessel">Tên tàu</th>
+                    <th id="th_ovOperator">Hãng</th>
+                    <th id="th_ovBerth">Bến</th>
+                    <th id="th_ovAction">Thao tác</th>
+                  </tr>
+                </thead>
                 <tbody id="overrideTableRows">
                   <tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>
                 </tbody>
@@ -594,16 +651,16 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Phản ánh & Báo cáo sai lệch</h2>
-            <div class="muted">Gửi phản ánh tới Trung tâm Khai thác & DVKH</div>
+            <h2 id="t_reportHead">Phản ánh & Báo cáo sai lệch</h2>
+            <div class="muted" id="t_reportSub">Gửi phản ánh tới Trung tâm Khai thác & DVKH</div>
           </div>
         </div>
         <div class="report-card">
-          <div class="form-group"><label>Họ tên (*)</label><input id="repName" placeholder="Nhập tên..."></div>
-          <div class="form-group"><label>SĐT / Email (*)</label><input id="repContact" placeholder="Nhập liên hệ..."></div>
-          <div class="form-group"><label>Đơn vị</label><input id="repCompany" placeholder="Hãng tàu / Đại lý..."></div>
+          <div class="form-group"><label id="lbl_repName">Họ tên (*)</label><input id="repName" placeholder="Nhập tên..."></div>
+          <div class="form-group"><label id="lbl_repContact">SĐT / Email (*)</label><input id="repContact" placeholder="Nhập liên hệ..."></div>
+          <div class="form-group"><label id="lbl_repCompany">Đơn vị</label><input id="repCompany" placeholder="Hãng tàu / Đại lý..."></div>
           <div class="form-group">
-            <label>Nội dung phản ánh</label>
+            <label id="lbl_repType">Nội dung phản ánh</label>
             <select id="repType">
               <option>Sai thời gian ETB/ETD</option>
               <option>Sai tên tàu / LOA / DWT</option>
@@ -611,9 +668,9 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
               <option>Góp ý khác</option>
             </select>
           </div>
-          <div class="form-group"><label>Tàu / Cầu bến liên quan</label><input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1"></div>
-          <div class="form-group"><label>Chi tiết (*)</label><textarea id="repContent" rows="4" placeholder="Mô tả nội dung..."></textarea></div>
-          <button id="sendEmailBtn" class="primary" style="width:100%;padding:10px" onclick="alert('Đã gửi thông tin phản ánh thành công!')">✉ Gửi phản ánh</button>
+          <div class="form-group"><label id="lbl_repVessel">Tàu / Cầu bến liên quan</label><input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1"></div>
+          <div class="form-group"><label id="lbl_repContent">Chi tiết (*)</label><textarea id="repContent" rows="4" placeholder="Mô tả nội dung..."></textarea></div>
+          <button id="sendEmailBtn" class="primary" style="width:100%;padding:10px" onclick="alert(currentLang === 'vi' ? 'Đã gửi thông tin phản ánh thành công!' : 'Feedback sent successfully!')">✉ <span id="t_sendReportBtn">Gửi phản ánh</span></button>
         </div>
       </section>
 
@@ -621,12 +678,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
-            <h2>Nguồn & Liên hệ</h2>
-            <div class="muted">Thông tin hệ thống</div>
+            <h2 id="t_resHead">Nguồn & Liên hệ</h2>
+            <div class="muted" id="t_resSub">Thông tin hệ thống</div>
           </div>
         </div>
         <div class="panel" style="padding:16px">
-          <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</p>
+          <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
           <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
@@ -635,7 +692,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   </section>
 </div>
 
-<!-- SMART TOOLTIP -->
+<!-- SMART TOOLTIP CHO TÀU Ở TOÀN CẢNH / GANTT (ĐÃ XÓA 6868) -->
 <div id="shipTooltip">
   <strong id="ttName">—</strong>
   <div id="ttOperator" class="muted tiny"></div>
@@ -644,22 +701,31 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <div class="tt-item"><small>DWT</small><b id="ttDwt">—</b></div>
     <div class="tt-item"><small>ETB</small><b id="ttEtb">—</b></div>
     <div class="tt-item"><small>ETD</small><b id="ttEtd">—</b></div>
-    <div class="tt-item"><small>Đã ở cầu</small><b id="ttDocked">—</b></div>
-    <div class="tt-item"><small>Còn lại</small><b id="ttRemaining">—</b></div>
+    <div class="tt-item"><small id="tt_dockedLabel">Đã ở cầu</small><b id="ttDocked">—</b></div>
+    <div class="tt-item"><small id="tt_remainLabel">Còn lại</small><b id="ttRemaining">—</b></div>
   </div>
   <div class="tt-actions">
-    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa ()</button>
+    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa</button>
     <button id="ttReportBtn" class="darkbtn" style="flex:1;padding:6px;font-size:10px">✉ Báo lỗi</button>
   </div>
 </div>
 
-<!-- SETUP MODAL -->
+<!-- POPOVER XEM CHI TIẾT DANH SÁCH TÀU TẠI TAB THỐNG KÊ (5 TÀU + THANH TRƯỢT + TỰ TẮT SAU 1S) -->
+<div id="statsVesselPopover" onmouseenter="clearStatsPopoverTimeout()" onmouseleave="scheduleHideStatsPopover()">
+  <div class="pop-head">
+    <strong id="popTitle">—</strong>
+    <span class="badge" id="popBadge">0 tàu</span>
+  </div>
+  <div class="pop-list" id="popList"></div>
+</div>
+
+<!-- SETUP MODAL (ĐÃ XÓA HIỂN THỊ 6868) -->
 <div id="modalShade" class="modal-shade">
   <div class="modal">
-    <h3>Thiết lập Bộ phận Trực</h3>
+    <h3 id="t_modalDutyHead">Thiết lập Bộ phận Trực</h3>
     <div class="modal-form">
       <div>
-        <label>Ca trực</label>
+        <label id="lbl_mShift">Ca trực</label>
         <select id="mShift" class="field" style="width:100%">
           <option>Ca 1 (06:00 - 14:00)</option>
           <option>Ca 2 (14:00 - 22:00)</option>
@@ -667,11 +733,11 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </select>
       </div>
       <div>
-        <label>Trưởng điều hành</label>
+        <label id="lbl_mCommander">Trưởng điều hành</label>
         <input id="mCommander" class="field" placeholder="Tên - SĐT">
       </div>
       <div>
-        <label>An toàn hải</label>
+        <label id="lbl_mSafety">An toàn hải</label>
         <input id="mSafety" class="field" placeholder="Tên - SĐT">
       </div>
     </div>
@@ -699,9 +765,285 @@ let tooltipHideTimeout = null;
 
 let autoScrollTimer = null;
 let isUserHovering = false;
+let statsPopoverTimeout = null;
+
+// QUẢN LÝ NGÔN NGỮ (MẶC ĐỊNH TIẾNG VIỆT)
+let currentLang = localStorage.getItem('hp_lang') || 'vi';
+
+const dict = {
+  vi: {
+    topTitle: "Trung tâm Khai thác & DVKH",
+    opCenter: "Operations Center",
+    hpPort: "Cảng Hải Phòng",
+    navWorkspace: "Không gian làm việc",
+    menuOverview: "Toàn cảnh",
+    menuPlanning: "Kế hoạch cầu",
+    menuSearch: "Tra cứu tàu",
+    menuStats: "Thống kê",
+    menuEditVessel: "Bổ sung & Sửa tàu",
+    menuReport: "Báo cáo & Góp ý",
+    menuResources: "Nguồn & Liên hệ",
+    shiftDutyTitle: "⚡ BỘ PHẬN TRỰC",
+    shiftLabel: "CA TRỰC",
+    commanderLabel: "TRƯỞNG ĐIỀU HÀNH",
+    safetyLabel: "AN TOÀN HẢI",
+    setupShiftBtn: "Setup trực 🔒",
+    manualSaveBtn: "Lưu Bucket 💾",
+    exportConfigBtn: "Xuất Excel 📤",
+    importConfigBtn: "Nạp Excel 📥",
+    fromLabel: "Từ:",
+    toLabel: "Đến:",
+    loadBucket: "Tải Bucket",
+    theme: "Giao diện",
+    weatherCity: "HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI",
+    weatherDirect: "Cập nhật trực tiếp Cảng HP",
+    windLabel: "GIÓ",
+    visLabel: "TẦM NHÌN",
+    humLabel: "ĐỘ ẨM",
+    nowLabel: "Bây giờ",
+    tideTitle: "TRẠM HÒN DÁU (20°40'N, 106°49'E)",
+    tideSub: "Nhật triều thuần nhất · Cảng chính",
+    highTideLabel: "▲ NƯỚC LỚN (ĐỈNH)",
+    lowTideLabel: "▼ NƯỚC RÒNG (ĐÁY)",
+    kWorking: "Đang làm hàng",
+    kWorkingSub: "Tại cầu bến",
+    kArrivals: "Đến trong 24h",
+    kArrivalsSub: "Theo ETB",
+    kDepartures: "Rời trong 24h",
+    kDeparturesSub: "Theo ETD",
+    kLoa: "Tổng LOA",
+    kLoaSub: "Cảng HP",
+    kLarge: "Tàu ≥ 300m",
+    kLargeSub: "Cỡ lớn",
+    tanvuTitle: "Cảng Tân Vũ (Tiêu điểm)",
+    moveTitle: "Điều động tàu",
+    viewAllBtn: "Xem tất cả →",
+    btnMoveAll: "Tất cả",
+    btnMoveArr: "Cập cầu",
+    btnMoveDep: "Rời cầu",
+    btnMoveDepted: "Đã rời",
+    unitLabel: "Đơn vị:",
+    unitName: "Trung tâm Khai thác & DVKH - Cảng Hải Phòng",
+    planHead: "Kế hoạch cầu bến",
+    planSub: "Sơ đồ chiếm bến trực quan",
+    windowLabel: "Cửa sổ:",
+    btnPlanAll: "Tất cả",
+    searchHead: "Tra cứu lịch tàu",
+    searchSub: "Danh sách chi tiết lượt tàu",
+    exportBtnText: "Xuất Báo Cáo Excel/CSV",
+    th_vessel: "Tàu",
+    th_operator: "Hãng",
+    th_berth: "Cảng · Bến",
+    th_etb: "Cập (ETB)",
+    th_etd: "Rời (ETD)",
+    statsHead: "Thống kê & Báo cáo",
+    statsSubtitle: "Phân tích tần suất lượt tàu (Rê chuột vào tên mục để xem chi tiết tàu)",
+    statTerm: "Theo Terminal",
+    statOper: "Theo Hãng tàu",
+    statLoa: "Phân khúc LOA",
+    statHours: "Tần suất giờ cập",
+    editVesselHead: "Bổ sung & Sửa thông tin tàu",
+    editVesselSub: "Quản lý và ghi đè thông tin tàu thủ công (Yêu cầu mật khẩu quản trị)",
+    editFormHead: "Cập nhật / Thêm mới thông tin tàu",
+    lbl_vesselName: "Tên tàu (*)",
+    lbl_operator: "Hãng tàu",
+    lbl_terminal: "Terminal",
+    lbl_berth: "Bến",
+    lbl_etb: "ETB (Cập)",
+    lbl_etd: "ETD (Rời)",
+    btnSaveOverride: "💾 Lưu / Cập nhật",
+    btnDeleteOverride: "🗑️ Xóa bản ghi",
+    overrideListHead: "Danh sách tàu đã chỉnh sửa thủ công",
+    th_ovVessel: "Tên tàu",
+    th_ovOperator: "Hãng",
+    th_ovBerth: "Bến",
+    th_ovAction: "Thao tác",
+    reportHead: "Phản ánh & Báo cáo sai lệch",
+    reportSub: "Gửi phản ánh tới Trung tâm Khai thác & DVKH",
+    lbl_repName: "Họ tên (*)",
+    lbl_repContact: "SĐT / Email (*)",
+    lbl_repCompany: "Đơn vị",
+    lbl_repType: "Nội dung phản ánh",
+    lbl_repVessel: "Tàu / Cầu bến liên quan",
+    lbl_repContent: "Chi tiết (*)",
+    sendReportBtn: "Gửi phản ánh",
+    resHead: "Nguồn & Liên hệ",
+    resSub: "Thông tin hệ thống",
+    resUnit: "Đơn vị:",
+    resUnitVal: "Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng",
+    tt_dockedLabel: "Đã ở cầu",
+    tt_remainLabel: "Còn lại",
+    ttEditBtn: "✏️ Sửa",
+    ttReportBtn: "✉ Báo lỗi",
+    modalDutyHead: "Thiết lập Bộ phận Trực",
+    lbl_mShift: "Ca trực",
+    lbl_mCommander: "Trưởng điều hành",
+    lbl_mSafety: "An toàn hải",
+    closeModalBtn: "Hủy",
+    saveModalBtn: "Lưu",
+    promptPwd: "Nhập mật khẩu quản trị:",
+    pwdWrong: "Mật khẩu không chính xác!",
+    hourUnit: "giờ",
+    minUnit: "phút",
+    arrRemaining: "Sắp cập còn",
+    dockedElapsed: "Đã cập",
+    depRemaining: "Sắp rời còn",
+    depElapsed: "Đã rời",
+    agoText: "trước",
+    shipsUnit: "tàu"
+  },
+  en: {
+    topTitle: "Operations & Customer Service Center",
+    opCenter: "Operations Center",
+    hpPort: "Port of Hai Phong",
+    navWorkspace: "Workspace",
+    menuOverview: "Overview",
+    menuPlanning: "Berth Planning",
+    menuSearch: "Vessel Schedule",
+    menuStats: "Statistics",
+    menuEditVessel: "Update Vessel Data",
+    menuReport: "Feedback & Report",
+    menuResources: "Info & Contact",
+    shiftDutyTitle: "⚡ DUTY ROSTER",
+    shiftLabel: "SHIFT",
+    commanderLabel: "DUTY MANAGER",
+    safetyLabel: "SAFETY OFFICER",
+    setupShiftBtn: "Duty Setup 🔒",
+    manualSaveBtn: "Save Bucket 💾",
+    exportConfigBtn: "Export Excel 📤",
+    importConfigBtn: "Import Excel 📥",
+    fromLabel: "From:",
+    toLabel: "To:",
+    loadBucket: "Load Bucket",
+    theme: "Theme",
+    weatherCity: "HAI PHONG · MARITIME METEOROLOGY",
+    weatherDirect: "Live updates from Hai Phong Port",
+    windLabel: "WIND",
+    visLabel: "VISIBILITY",
+    humLabel: "HUMIDITY",
+    nowLabel: "Now",
+    tideTitle: "HON DAU STATION (20°40'N, 106°49'E)",
+    tideSub: "Diurnal Tide · Primary Port",
+    highTideLabel: "▲ HIGH TIDE (PEAK)",
+    lowTideLabel: "▼ LOW TIDE (TROUGH)",
+    kWorking: "Working at Berth",
+    kWorkingSub: "At berths",
+    kArrivals: "Arrivals in 24h",
+    kArrivalsSub: "By ETB",
+    kDepartures: "Departures in 24h",
+    kDeparturesSub: "By ETD",
+    kLoa: "Total LOA",
+    kLoaSub: "HP Port",
+    kLarge: "Vessels ≥ 300m",
+    kLargeSub: "Large size",
+    tanvuTitle: "Tan Vu Terminal (Focus)",
+    moveTitle: "Vessel Movements",
+    viewAllBtn: "View all →",
+    btnMoveAll: "All",
+    btnMoveArr: "Arrivals",
+    btnMoveDep: "Departures",
+    btnMoveDepted: "Departed",
+    unitLabel: "Unit:",
+    unitName: "Operations & Customer Service Center - Hai Phong Port",
+    planHead: "Berth Allocation Plan",
+    planSub: "Interactive Gantt Chart",
+    windowLabel: "Window:",
+    btnPlanAll: "All",
+    searchHead: "Vessel Schedule Lookup",
+    searchSub: "Detailed vessel calls list",
+    exportBtnText: "Export Report Excel/CSV",
+    th_vessel: "Vessel",
+    th_operator: "Operator",
+    th_berth: "Port · Berth",
+    th_etb: "Berthing (ETB)",
+    th_etd: "Departure (ETD)",
+    statsHead: "Statistics & Analytics",
+    statsSubtitle: "Vessel call frequency analysis (Hover on names to view vessels)",
+    statTerm: "By Terminal",
+    statOper: "By Operator",
+    statLoa: "LOA Segment",
+    statHours: "Arrival Hourly Frequency",
+    editVesselHead: "Edit & Add Vessel Data",
+    editVesselSub: "Manual data override management (Admin password required)",
+    editFormHead: "Update / Create Vessel Details",
+    lbl_vesselName: "Vessel Name (*)",
+    lbl_operator: "Operator",
+    lbl_terminal: "Terminal",
+    lbl_berth: "Berth",
+    lbl_etb: "ETB (Berthing)",
+    lbl_etd: "ETD (Departure)",
+    btnSaveOverride: "💾 Save / Update",
+    btnDeleteOverride: "🗑️ Delete Record",
+    overrideListHead: "Manually Overridden Vessels",
+    th_ovVessel: "Vessel Name",
+    th_ovOperator: "Operator",
+    th_ovBerth: "Berth",
+    th_ovAction: "Action",
+    reportHead: "Feedback & Discrepancy Report",
+    reportSub: "Send feedback to Operations & Customer Service Center",
+    lbl_repName: "Full Name (*)",
+    lbl_repContact: "Phone / Email (*)",
+    lbl_repCompany: "Organization",
+    lbl_repType: "Feedback Type",
+    lbl_repVessel: "Related Vessel / Berth",
+    lbl_repContent: "Details (*)",
+    sendReportBtn: "Submit Feedback",
+    resHead: "Sources & Contacts",
+    resSub: "System Information",
+    resUnit: "Unit:",
+    resUnitVal: "Operations & Customer Service Center - Port of Hai Phong JSC",
+    tt_dockedLabel: "Docked Time",
+    tt_remainLabel: "Remaining",
+    ttEditBtn: "✏️ Edit",
+    ttReportBtn: "✉ Report",
+    modalDutyHead: "Duty Roster Setup",
+    lbl_mShift: "Shift",
+    lbl_mCommander: "Duty Manager",
+    lbl_mSafety: "Safety Officer",
+    closeModalBtn: "Cancel",
+    saveModalBtn: "Save",
+    promptPwd: "Enter Administrator Password:",
+    pwdWrong: "Incorrect Password!",
+    hourUnit: "hrs",
+    minUnit: "mins",
+    arrRemaining: "Arriving in",
+    dockedElapsed: "Docked for",
+    depRemaining: "Departing in",
+    depElapsed: "Departed",
+    agoText: "ago",
+    shipsUnit: "vessels"
+  }
+};
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function applyLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('hp_lang', lang);
+  const d = dict[lang];
+
+  $('langFlag').textContent = lang === 'vi' ? '🇻🇳' : '🇬🇧';
+  $('langText').textContent = lang === 'vi' ? 'VI' : 'EN';
+
+  for (let key in d) {
+    let elem = $(key) || $('t_' + key) || $('lbl_' + key) || $('th_' + key);
+    if (elem) {
+      if (elem.tagName === 'INPUT' && elem.type === 'button') elem.value = d[key];
+      else elem.textContent = d[key];
+    }
+  }
+
+  $('search').placeholder = lang === 'vi' ? 'Tìm tên tàu, hãng...' : 'Search vessel, operator...';
+  $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
+
+  renderAll();
+}
+
+$('langToggleBtn').onclick = () => {
+  let nextLang = currentLang === 'vi' ? 'en' : 'vi';
+  applyLanguage(nextLang);
+};
 
 function getTodayString() {
   let d = new Date();
@@ -714,7 +1056,8 @@ function getTodayString() {
 function dt(v){
   if(!v) return '—';
   let d = new Date(v);
-  return isNaN(d) ? esc(v) : d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  let locale = currentLang === 'vi' ? 'vi-VN' : 'en-GB';
+  return isNaN(d) ? esc(v) : d.toLocaleString(locale, {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
 function formatDateTimeLocal(v) {
@@ -726,14 +1069,15 @@ function formatDateTimeLocal(v) {
 }
 
 function formatDuration(ms) {
-  if (isNaN(ms) || ms <= 0) return '0 phút';
+  let d = dict[currentLang];
+  if (isNaN(ms) || ms <= 0) return `0 ${d.minUnit}`;
   let totalMin = Math.floor(ms / 60000);
   let hrs = Math.floor(totalMin / 60);
   let mins = totalMin % 60;
   if (hrs > 0) {
-    return `${hrs} giờ ${mins} phút`;
+    return `${hrs} ${d.hourUnit} ${mins} ${d.minUnit}`;
   }
-  return `${mins} phút`;
+  return `${mins} ${d.minUnit}`;
 }
 
 function parseEtbEtd(etbStr, etdStr) {
@@ -765,16 +1109,18 @@ function renderOverrideTable() {
   let tbody = $('overrideTableRows');
   if (!tbody) return;
   if (vesselOverridesMap.size === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>';
+    let emptyMsg = currentLang === 'vi' ? 'Chưa có bản ghi chỉnh sửa nào.' : 'No override records found.';
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">${emptyMsg}</td></tr>`;
     return;
   }
+  let btnTxt = currentLang === 'vi' ? 'Sửa' : 'Edit';
   let html = '';
   vesselOverridesMap.forEach((val, key) => {
     html += `<tr>
       <td><b>${esc(val.vessel_name)}</b></td>
       <td><span class="badge">${esc(val.operator || '—')}</span></td>
       <td>${esc(val.terminal || '')} ${esc(val.berth || '')}</td>
-      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa</button></td>
+      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">${btnTxt}</button></td>
     </tr>`;
   });
   tbody.innerHTML = html;
@@ -809,7 +1155,7 @@ async function fetchRealWeatherHaiPhong() {
       const nowH = new Date().getHours();
       const isNight = nowH < 6 || nowH >= 18;
       if ($('wIcon')) $('wIcon').textContent = isNight ? '🌙' : '☀️';
-      if ($('wCond')) $('wCond').textContent = isNight ? 'Quang đãng · Đêm an toàn' : 'Nắng nhẹ · Quang đãng';
+      if ($('wCond')) $('wCond').textContent = isNight ? (currentLang === 'vi' ? 'Quang đãng · Đêm an toàn' : 'Clear Sky · Safe Night') : (currentLang === 'vi' ? 'Nắng nhẹ · Quang đãng' : 'Sunny · Clear');
       if ($('whNow')) $('whNow').innerHTML = `${isNight ? '🌙' : '☀️'} ${curTemp}°`;
 
       if (data.hourly && data.hourly.temperature_2m) {
@@ -830,7 +1176,6 @@ async function fetchRealWeatherHaiPhong() {
   }
 }
 
-// CẬP NHẬT THỦY TRIỀU CHUẨN TRẠM HÒN DÁU (20°40'N, 106°49'E)
 function updateRealtimeWidgets() {
   let now = new Date();
   let timeStr = now.toTimeString().split(' ')[0];
@@ -840,16 +1185,15 @@ function updateRealtimeWidgets() {
   let minutes = now.getMinutes();
   let totalMinNow = hours * 60 + minutes;
 
-  // Trạm Hòn Dấu: Đáy nước ròng lúc ~04:12 (252 phút), đỉnh nước lớn lúc ~14:19 (859 phút)
   let tidePhase = Math.sin((totalMinNow - 252) / (859 - 252) * Math.PI);
   let currentTideLevel = (1.60 + (tidePhase > 0 ? tidePhase * 0.70 : Math.abs(tidePhase) * 0.40)).toFixed(2);
 
   if ($('tideProgStatus')) {
     if (tidePhase >= 0) {
-      $('tideProgStatus').textContent = `Đang dâng (~${currentTideLevel}m)`;
+      $('tideProgStatus').textContent = currentLang === 'vi' ? `Đang dâng (~${currentTideLevel}m)` : `Flooding (~${currentTideLevel}m)`;
       $('tideProgStatus').style.color = '#8be4ec';
     } else {
-      $('tideProgStatus').textContent = `Đang rút (~${currentTideLevel}m)`;
+      $('tideProgStatus').textContent = currentLang === 'vi' ? `Đang rút (~${currentTideLevel}m)` : `Ebbing (~${currentTideLevel}m)`;
       $('tideProgStatus').style.color = '#ffb347';
     }
   }
@@ -891,7 +1235,9 @@ function nav(page, saveState = true){
   document.querySelectorAll('.nav button').forEach(x => {
     x.classList.toggle('active', x.dataset.page === page);
   });
-  $('crumb').textContent = page.replace('-', ' ').toUpperCase();
+  
+  let pName = dict[currentLang]['menu' + page.charAt(0).toUpperCase() + page.slice(1).replace('-','')] || page.replace('-', ' ').toUpperCase();
+  $('crumb').textContent = pName.toUpperCase();
   if (page === 'planning') renderGantt();
   if (page === 'stats') renderStats();
   if (page === 'edit-vessel') renderOverrideTable();
@@ -992,8 +1338,8 @@ async function loadShiftConfigFromSupabase() {
     let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).single();
     if (data && !error) {
       $('dispShift').textContent = data.shift_name || 'Ca 1';
-      $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
-      $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
+      $('dispCommander').textContent = data.commander || (currentLang === 'vi' ? 'Chưa thiết lập' : 'Not Set');
+      $('dispSafety').textContent = data.safety || (currentLang === 'vi' ? 'Chưa thiết lập' : 'Not Set');
     }
   } catch(e) {}
 }
@@ -1012,19 +1358,19 @@ async function saveShiftConfigToSupabase(shiftData) {
 }
 
 function fetchHistoryFromBucketProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực ():');
-  if (pwd === '') fetchHistoryFromBucket();
-  else if (pwd !== null) alert('Mật khẩu không chính xác!');
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') fetchHistoryFromBucket();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
 async function fetchHistoryFromBucket() {
   let fDate = $('fromDate').value;
-  if (!fDate) { alert('Vui lòng chọn ngày tại ô "Từ:" !'); return; }
+  if (!fDate) { alert(currentLang === 'vi' ? 'Vui lòng chọn ngày tại ô "Từ:" !' : 'Please choose date in "From:" field!'); return; }
 
-  $('sideStatus').textContent = `Đang tải Bucket (${fDate})...`;
+  $('sideStatus').textContent = `Bucket (${fDate})...`;
   try {
     const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
-    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.`); $('sideStatus').textContent = 'Trống'; return; }
+    if (error || !data) { alert(currentLang === 'vi' ? `Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.` : `No snapshot found for ${fDate}.`); $('sideStatus').textContent = 'Trống'; return; }
 
     const text = await data.text();
     const parsed = JSON.parse(text);
@@ -1036,16 +1382,16 @@ async function fetchHistoryFromBucket() {
         $('dispSafety').textContent = parsed.shift_info.safety || '—';
       }
       renderAll();
-      $('sideStatus').textContent = `Đã nạp ${allCalls.length} tàu (${fDate})`;
-      alert(`Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!`);
+      $('sideStatus').textContent = `${allCalls.length} ${dict[currentLang].shipsUnit} (${fDate})`;
+      alert(currentLang === 'vi' ? `Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!` : `Successfully loaded ${fDate} snapshot!`);
     }
-  } catch(err) { alert('Lỗi: ' + err.message); }
+  } catch(err) { alert('Error: ' + err.message); }
 }
 
 async function saveCurrentDataToSupabase(isAuto = false) {
   if (!allCalls || allCalls.length === 0) return;
   const todayStr = getTodayString();
-  const nowStr = new Date().toLocaleString('vi-VN');
+  const nowStr = new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB');
 
   const jsonContent = JSON.stringify({
     saved_at: nowStr,
@@ -1058,33 +1404,35 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const blob = new Blob([jsonContent], { type: 'application/json' });
   await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
 
-  const savedText = `${nowStr} (${isAuto ? 'Auto 00h00' : 'Thủ công'})`;
+  const savedText = `${nowStr} (${isAuto ? 'Auto 00h00' : (currentLang === 'vi' ? 'Thủ công' : 'Manual')})`;
   localStorage.setItem('hp_last_saved', savedText);
   updateLastSavedDisplay(savedText);
-  if (!isAuto) alert('Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!');
+  if (!isAuto) alert(currentLang === 'vi' ? 'Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!' : 'Snapshot saved to Storage Bucket successfully!');
 }
 
 function updateLastSavedDisplay(str) {
-  $('topLastSaved').textContent = 'Lưu: ' + (str || 'Chưa');
-  $('sideLastSaved').textContent = 'Lưu: ' + (str || 'Chưa');
+  let lbl = currentLang === 'vi' ? 'Lưu: ' : 'Saved: ';
+  let notYet = currentLang === 'vi' ? 'Chưa' : 'None';
+  $('topLastSaved').textContent = lbl + (str || notYet);
+  $('sideLastSaved').textContent = lbl + (str || notYet);
 }
 
 function exportConfigAsCSVProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực ():');
-  if (pwd === '') exportConfigAsCSV();
-  else if (pwd !== null) alert('Mật khẩu không chính xác!');
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') exportConfigAsCSV();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
 function exportConfigAsCSV() {
   let list = getFilteredCalls();
-  if (!list || list.length === 0) { alert('Không có dữ liệu trong khoảng thời gian đã chọn!'); return; }
+  if (!list || list.length === 0) { alert(currentLang === 'vi' ? 'Không có dữ liệu trong khoảng thời gian đã chọn!' : 'No data in selected date range!'); return; }
   
   let csvRows = [
-    `"BÁO CÁO KẾ HOẠCH CẦU BẾN & ĐIỀU ĐỘNG TÀU - CẢNG HẢI PHÒNG"`,
-    `"KÍP TRỰC","${$('dispShift').textContent}","Trưởng điều hành: ${$('dispCommander').textContent}","An toàn hải: ${$('dispSafety').textContent}"`,
-    `"Thời gian xuất báo cáo: ${new Date().toLocaleString('vi-VN')}"`,
+    `"${dict[currentLang].hpPort} - ${dict[currentLang].topTitle}"`,
+    `"Shift: ${$('dispShift').textContent}","Commander: ${$('dispCommander').textContent}","Safety: ${$('dispSafety').textContent}"`,
+    `"Exported: ${new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')}"`,
     `""`,
-    `"STT","Tên Tàu","Hãng Tàu","Terminal / Cảng","Bến Cập","LOA (m)","DWT (Tấn)","Thời Gian Cập (ETB)","Thời Gian Rời (ETD)"`
+    `"STT","Vessel Name","Operator","Terminal","Berth","LOA (m)","DWT","ETB","ETD"`
   ];
 
   list.forEach((c, i) => {
@@ -1105,16 +1453,16 @@ function exportConfigAsCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Bao_Cao_Cau_Ben_${getTodayString()}.csv`;
+  a.download = `HaiPhongPort_Schedule_${getTodayString()}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
 }
 
 function triggerImportConfig() {
-  let pwd = prompt('Nhập mật khẩu xác thực ():');
-  if (pwd === '') $('importFileInput').click();
-  else if (pwd !== null) alert('Sai mật khẩu!');
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') $('importFileInput').click();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
 function handleFileImport(e) {
@@ -1143,22 +1491,22 @@ function handleFileImport(e) {
       if (loaded.length > 0) {
         allCalls = filterAndDeduplicateCalls(loaded);
         renderAll();
-        alert(`Đã nạp ${allCalls.length} tàu từ file thành công!`);
+        alert(currentLang === 'vi' ? `Đã nạp ${allCalls.length} tàu từ file thành công!` : `Imported ${allCalls.length} vessels successfully!`);
       }
-    } catch(err) { alert('Lỗi nạp file: ' + err.message); }
+    } catch(err) { alert('Error: ' + err.message); }
   };
   reader.readAsText(file, 'UTF-8');
 }
 
 function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác thực ():');
-  if (pwd === '') saveCurrentDataToSupabase(false);
-  else if (pwd !== null) alert('Sai mật khẩu!');
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') saveCurrentDataToSupabase(false);
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
 async function loadData() {
   $('refreshBtn').disabled = true;
-  $('sideStatus').textContent = 'Đang tải dữ liệu...';
+  $('sideStatus').textContent = currentLang === 'vi' ? 'Đang tải dữ liệu...' : 'Loading data...';
   try {
     await loadVesselOverrides();
     let r = await fetch(API, { cache: 'no-store' });
@@ -1175,10 +1523,10 @@ async function loadData() {
         etd: c.etd || ''
       })));
       renderAll();
-      $('sideStatus').textContent = `Đồng bộ ${allCalls.length} tàu`;
+      $('sideStatus').textContent = `${allCalls.length} ${dict[currentLang].shipsUnit}`;
     }
   } catch(e) {
-    $('sideStatus').textContent = 'Lỗi API, lấy Bucket...';
+    $('sideStatus').textContent = 'API Error, checking Bucket...';
     try {
       let today = getTodayString();
       const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
@@ -1187,7 +1535,7 @@ async function loadData() {
         if (parsed.calls) {
           allCalls = filterAndDeduplicateCalls(parsed.calls);
           renderAll();
-          $('sideStatus').textContent = `Offline (${allCalls.length} tàu)`;
+          $('sideStatus').textContent = `Offline (${allCalls.length})`;
         }
       }
     } catch(err) {}
@@ -1197,11 +1545,11 @@ async function loadData() {
 }
 
 async function saveVesselOverrideProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực quản trị ():');
-  if (pwd !== '') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') { if(pwd !== null) alert(dict[currentLang].pwdWrong); return; }
 
   let vName = ($('editVesselName').value || '').trim();
-  if (!vName) { alert('Vui lòng nhập tên tàu cần sửa/bổ sung!'); return; }
+  if (!vName) { alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần sửa/bổ sung!' : 'Please enter vessel name!'); return; }
 
   let payload = {
     vessel_name: vName,
@@ -1217,34 +1565,34 @@ async function saveVesselOverrideProtected() {
 
   try {
     let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
-    if (error) { alert('Lỗi lưu Supabase: ' + error.message); return; }
+    if (error) { alert('Supabase error: ' + error.message); return; }
 
     vesselOverridesMap.set(vName.toUpperCase(), payload);
     renderOverrideTable();
     loadData();
-    alert(`Đã lưu và cập nhật thông tin tàu "${vName}" thành công!`);
+    alert(currentLang === 'vi' ? `Đã lưu và cập nhật thông tin tàu "${vName}" thành công!` : `Saved vessel "${vName}" successfully!`);
   } catch(err) {
-    alert('Lỗi kết nối: ' + err.message);
+    alert('Connection error: ' + err.message);
   }
 }
 
 async function deleteVesselOverrideProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực quản trị ():');
-  if (pwd !== '') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') { if(pwd !== null) alert(dict[currentLang].pwdWrong); return; }
 
   let vName = ($('editVesselName').value || '').trim();
-  if (!vName) { alert('Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!'); return; }
+  if (!vName) { alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!' : 'Please enter vessel name to delete!'); return; }
 
   try {
     let { error } = await supabaseClient.from('vessel_overrides').delete().eq('vessel_name', vName);
-    if (error) { alert('Lỗi xóa Supabase: ' + error.message); return; }
+    if (error) { alert('Supabase error: ' + error.message); return; }
 
     vesselOverridesMap.delete(vName.toUpperCase());
     renderOverrideTable();
     loadData();
-    alert(`Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!`);
+    alert(currentLang === 'vi' ? `Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!` : `Deleted override rule for "${vName}"!`);
   } catch(err) {
-    alert('Lỗi kết nối: ' + err.message);
+    alert('Connection error: ' + err.message);
   }
 }
 
@@ -1278,7 +1626,7 @@ function renderAll() {
   $('kWorking').textContent = working.length;
 
   let totalLoa = list.filter(c => isHaiPhongPort(c.terminal)).reduce((s, c) => s + (c.loa || 0), 0);
-  $('kLoa').textContent = totalLoa.toLocaleString('vi-VN') + 'm';
+  $('kLoa').textContent = totalLoa.toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-US') + 'm';
 
   let in24 = now + 86400000;
   $('kArrivals').textContent = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24).length;
@@ -1296,7 +1644,7 @@ function renderAll() {
 
 function renderTanVuLayout(list) {
   let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
-  $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu';
+  $('tanvuCount').textContent = tanVuShips.length + ' ' + (currentLang === 'vi' ? 'lượt tàu' : 'calls');
 
   let berthMap = {};
   tanVuShips.forEach(c => {
@@ -1306,12 +1654,14 @@ function renderTanVuLayout(list) {
   });
   ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
 
-  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">CẢNG TÂN VŨ</span></div>`;
+  let termTitle = currentLang === 'vi' ? 'CẢNG TÂN VŨ' : 'TAN VU TERMINAL';
+  let emptyTxt = currentLang === 'vi' ? 'Trống' : 'Vacant';
+  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${termTitle}</span></div>`;
   Object.keys(berthMap).sort().forEach(bName => {
     let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
     html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
     if (ships.length === 0) {
-      html += `<span class="empty-berth">Trống</span>`;
+      html += `<span class="empty-berth">${emptyTxt}</span>`;
     } else {
       ships.forEach(s => {
         html += `<div class="ship-chip ${s.loa >= 300 ? 'large' : ''}" onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()"><span>${esc(s.vessel)}</span><span class="chip-time">${s.loa}m</span></div>`;
@@ -1328,6 +1678,7 @@ function renderMovement(list) {
   let todayStr = getTodayString();
   let threeHoursMs = 3 * 3600 * 1000;
   let items = [];
+  let d = dict[currentLang];
 
   list.forEach(c => {
     let t1 = c.etb ? new Date(c.etb).getTime() : 0;
@@ -1358,7 +1709,7 @@ function renderMovement(list) {
   items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
 
   if (items.length === 0) {
-    $('movement').innerHTML = '<div class="empty">Không có dữ liệu điều động phù hợp.</div>';
+    $('movement').innerHTML = `<div class="empty">${currentLang === 'vi' ? 'Không có dữ liệu điều động phù hợp.' : 'No movements found.'}</div>`;
     stopAutoScroll();
     return;
   }
@@ -1366,13 +1717,13 @@ function renderMovement(list) {
   let html = items.map(item => {
     let badgeHtml = '';
     if (item.type === 'arriving') {
-      badgeHtml = `<span class="tag-vivid urgent">Sắp cập còn ${formatDuration(item.time - now)}</span>`;
+      badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining} ${formatDuration(item.time - now)}</span>`;
     } else if (item.type === 'working') {
-      badgeHtml = `<span class="tag-vivid arriving">Đã cập ${formatDuration(now - item.time)}</span>`;
+      badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed} ${formatDuration(now - item.time)}</span>`;
     } else if (item.type === 'departing_soon') {
-      badgeHtml = `<span class="tag-vivid urgent">Sắp rời còn ${formatDuration(item.time - now)}</span>`;
+      badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining} ${formatDuration(item.time - now)}</span>`;
     } else if (item.type === 'departed') {
-      badgeHtml = `<span class="tag-vivid departing">Đã rời ${formatDuration(now - item.time)} trước</span>`;
+      badgeHtml = `<span class="tag-vivid departing">${d.depElapsed} ${formatDuration(now - item.time)} ${d.agoText}</span>`;
     }
 
     return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
@@ -1429,9 +1780,10 @@ function filterMovement(m, btn) {
 function renderTable(list) {
   let q = ($('search')?.value || '').toLowerCase();
   let filtered = list.filter(c => !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q));
+  let emptyMsg = currentLang === 'vi' ? 'Không tìm thấy bản ghi.' : 'No records found.';
   $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
     <tr><td>${i+1}</td><td class="vessel">${esc(c.vessel)}</td><td><span class="badge">${esc(c.operator)}</span></td><td>${c.loa}</td><td>${c.dwt}</td><td>${esc(c.terminal)} · ${esc(c.berth)}</td><td>${dt(c.etb)}</td><td>${dt(c.etd)}</td></tr>
-  `).join('') : '<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>';
+  `).join('') : `<tr><td colspan="8" class="empty">${emptyMsg}</td></tr>`;
 }
 
 function renderGantt() {
@@ -1441,7 +1793,7 @@ function renderGantt() {
   let list = getFilteredCalls();
   let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
 
-  let headerHtml = `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
+  let headerHtml = `<div class="gantt-head"><div class="berth-label">${currentLang === 'vi' ? 'CẦU BẾN' : 'BERTHS'}</div><div class="gantt-timeline-header">`;
   for (let d = 0; d < days; d++) {
     let curDate = new Date(start.getTime() + d * 86400000);
     let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
@@ -1456,7 +1808,7 @@ function renderGantt() {
   list.forEach(c => {
     if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
     if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
-    let key = (c.terminal || 'Khác') + ' · ' + (c.berth || 'B1');
+    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
     if (!terms[key]) terms[key] = [];
     terms[key].push(c);
   });
@@ -1479,10 +1831,10 @@ function renderGantt() {
   }
   
   if (!hasData) {
-    out += '<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>';
+    out += `<div class="empty">${currentLang === 'vi' ? 'Không có dữ liệu kế hoạch phù hợp.' : 'No planning data available.'}</div>`;
   }
   $('fullGantt').innerHTML = out;
-  $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
+  $('planningCount').textContent = `${Object.keys(terms).length} ${currentLang === 'vi' ? 'bến có tàu' : 'berths occupied'}`;
 }
 
 function filterPlanningArea(area, btn) {
@@ -1492,52 +1844,82 @@ function filterPlanningArea(area, btn) {
   renderGantt();
 }
 
+let statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
+
 function renderStats() {
   let list = getFilteredCalls();
+  statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
+
+  let emptyMsg = currentLang === 'vi' ? 'Không có dữ liệu' : 'No data';
   if (!list || list.length === 0) {
-    $('statTerminals').innerHTML = '<div class="empty">Không có dữ liệu</div>';
-    $('statOperators').innerHTML = '<div class="empty">Không có dữ liệu</div>';
-    $('statLoaBins').innerHTML = '<div class="empty">Không có dữ liệu</div>';
-    $('statHours').innerHTML = '<div class="empty" style="grid-column:1/-1">Không có dữ liệu</div>';
+    $('statTerminals').innerHTML = `<div class="empty">${emptyMsg}</div>`;
+    $('statOperators').innerHTML = `<div class="empty">${emptyMsg}</div>`;
+    $('statLoaBins').innerHTML = `<div class="empty">${emptyMsg}</div>`;
+    $('statHours').innerHTML = `<div class="empty" style="grid-column:1/-1">${emptyMsg}</div>`;
     return;
   }
 
   let termMap = {};
   list.forEach(c => {
-    let t = c.terminal || 'Khác';
+    let t = c.terminal || (currentLang === 'vi' ? 'Khác' : 'Other');
     termMap[t] = (termMap[t] || 0) + 1;
+    if (!statsVesselCache.terminals[t]) statsVesselCache.terminals[t] = [];
+    statsVesselCache.terminals[t].push(c);
   });
   let maxTerm = Math.max(1, ...Object.values(termMap));
   $('statTerminals').innerHTML = Object.entries(termMap)
     .sort((a,b) => b[1] - a[1])
-    .map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${(v/maxTerm*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
-    .join('');
+    .map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'terminals', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
+        <div class="barbg"><div class="barfill" style="width:${(v/maxTerm*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
 
   let opMap = {};
   list.forEach(c => {
-    let op = (c.operator || 'Không xác định').trim();
+    let op = (c.operator || (currentLang === 'vi' ? 'Không xác định' : 'Unknown')).trim();
     opMap[op] = (opMap[op] || 0) + 1;
+    if (!statsVesselCache.operators[op]) statsVesselCache.operators[op] = [];
+    statsVesselCache.operators[op].push(c);
   });
   let maxOp = Math.max(1, ...Object.values(opMap));
   $('statOperators').innerHTML = Object.entries(opMap)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 10)
-    .map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill gold" style="width:${(v/maxOp*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
-    .join('');
+    .map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'operators', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
+        <div class="barbg"><div class="barfill gold" style="width:${(v/maxOp*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
 
   let loaBins = { '< 150m': 0, '150m - 200m': 0, '200m - 250m': 0, '250m - 300m': 0, '≥ 300m': 0 };
+  Object.keys(loaBins).forEach(k => { statsVesselCache.loaBins[k] = []; });
+
   list.forEach(c => {
     let l = c.loa || 0;
-    if (l < 150) loaBins['< 150m']++;
-    else if (l < 200) loaBins['150m - 200m']++;
-    else if (l < 250) loaBins['200m - 250m']++;
-    else if (l < 300) loaBins['250m - 300m']++;
-    else loaBins['≥ 300m']++;
+    let bKey = '< 150m';
+    if (l < 150) bKey = '< 150m';
+    else if (l < 200) bKey = '150m - 200m';
+    else if (l < 250) bKey = '200m - 250m';
+    else if (l < 300) bKey = '250m - 300m';
+    else bKey = '≥ 300m';
+
+    loaBins[bKey]++;
+    statsVesselCache.loaBins[bKey].push(c);
   });
   let maxLoa = Math.max(1, ...Object.values(loaBins));
   $('statLoaBins').innerHTML = Object.entries(loaBins)
-    .map(([k,v]) => `<div class="barrow"><span>${k}</span><div class="barbg"><div class="barfill" style="width:${(v/maxLoa*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
-    .join('');
+    .map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'loaBins', '${k}')" onmouseleave="scheduleHideStatsPopover()">${k}</span>
+        <div class="barbg"><div class="barfill" style="width:${(v/maxLoa*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
 
   let hourArr = new Array(24).fill(0);
   list.forEach(c => {
@@ -1556,12 +1938,73 @@ function renderStats() {
     let pct = (cnt / maxHour * 100).toFixed(1);
     hourHtml += `
       <div class="hour-cell">
-        <div class="hour-cell-top"><span>${String(h).padStart(2,'0')}:00</span><span><b>${cnt}</b> tàu</span></div>
+        <div class="hour-cell-top"><span>${String(h).padStart(2,'0')}:00</span><span><b>${cnt}</b> ${dict[currentLang].shipsUnit}</span></div>
         <div class="hour-meter"><i style="width:${pct}%"></i></div>
       </div>
     `;
   }
   $('statHours').innerHTML = hourHtml;
+}
+
+function showStatsPopover(e, groupKey, labelName) {
+  clearStatsPopoverTimeout();
+  let ships = (statsVesselCache[groupKey] && statsVesselCache[groupKey][labelName]) ? statsVesselCache[groupKey][labelName] : [];
+  if (!ships || ships.length === 0) return;
+
+  $('popTitle').textContent = labelName;
+  $('popBadge').textContent = `${ships.length} ${dict[currentLang].shipsUnit}`;
+
+  let arrPrefix = currentLang === 'vi' ? 'Cập: ' : 'Arr: ';
+  let listHtml = ships.map((s, idx) => `
+    <div class="pop-item">
+      <div class="pop-item-top">
+        <span>${idx + 1}. ${esc(s.vessel)}</span>
+        <span style="color:var(--cyan)">${s.loa ? s.loa + 'm' : ''}</span>
+      </div>
+      <div class="pop-item-meta">
+        <span>${esc(s.terminal || '—')} ${esc(s.berth || '')}</span>
+        <span>${arrPrefix}${dt(s.etb)}</span>
+      </div>
+    </div>
+  `).join('');
+
+  $('popList').innerHTML = listHtml;
+
+  let pop = $('statsVesselPopover');
+  pop.style.display = 'block';
+
+  let rect = e.target.getBoundingClientRect();
+  let left = rect.right + 10;
+  let top = rect.top - 20;
+
+  if (left + 300 > window.innerWidth) {
+    left = rect.left - 305;
+  }
+  if (top + 230 > window.innerHeight) {
+    top = window.innerHeight - 240;
+  }
+
+  pop.style.left = Math.max(10, left) + 'px';
+  pop.style.top = Math.max(10, top) + 'px';
+}
+
+function scheduleHideStatsPopover() {
+  clearStatsPopoverTimeout();
+  statsPopoverTimeout = setTimeout(() => {
+    hideStatsPopover();
+  }, 1000);
+}
+
+function clearStatsPopoverTimeout() {
+  if (statsPopoverTimeout) {
+    clearTimeout(statsPopoverTimeout);
+    statsPopoverTimeout = null;
+  }
+}
+
+function hideStatsPopover() {
+  let pop = $('statsVesselPopover');
+  if (pop) pop.style.display = 'none';
 }
 
 function showTooltip(e, s) {
@@ -1574,7 +2017,7 @@ function showTooltip(e, s) {
   $('ttName').textContent = s.vessel;
   $('ttOperator').textContent = s.operator || '—';
   $('ttLoa').textContent = s.loa + 'm';
-  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString('vi-VN') + ' T' : '—';
+  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-US') + ' T' : '—';
   $('ttEtb').textContent = dt(s.etb);
   $('ttEtd').textContent = dt(s.etd);
 
@@ -1586,13 +2029,13 @@ function showTooltip(e, s) {
     let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
     $('ttDocked').textContent = formatDuration(dockedMs);
   } else {
-    $('ttDocked').textContent = 'Chưa cập';
+    $('ttDocked').textContent = currentLang === 'vi' ? 'Chưa cập' : 'Not arrived';
   }
 
   if (t2 > 0 && t2 > now) {
     $('ttRemaining').textContent = formatDuration(t2 - now);
   } else if (t2 > 0 && now >= t2) {
-    $('ttRemaining').textContent = 'Đã rời bến';
+    $('ttRemaining').textContent = currentLang === 'vi' ? 'Đã rời bến' : 'Departed';
   } else {
     $('ttRemaining').textContent = '—';
   }
@@ -1625,8 +2068,8 @@ $('shipTooltip').onmouseleave = () => {
 
 $('ttEditBtn').onclick = () => {
   if (selectedShipForReport) {
-    let pwd = prompt('Nhập mật khẩu quản trị ():');
-    if (pwd === '') {
+    let pwd = prompt(dict[currentLang].promptPwd);
+    if (pwd === '6868') {
       $('editVesselName').value = selectedShipForReport.vessel || '';
       $('editVesselOperator').value = selectedShipForReport.operator || '';
       $('editVesselTerminal').value = selectedShipForReport.terminal || '';
@@ -1638,7 +2081,7 @@ $('ttEditBtn').onclick = () => {
       nav('edit-vessel');
       hideTooltip();
     } else if (pwd !== null) {
-      alert('Mật khẩu không chính xác!');
+      alert(dict[currentLang].pwdWrong);
     }
   }
 };
@@ -1647,7 +2090,9 @@ $('ttReportBtn').onclick = () => {
   if (selectedShipForReport) {
     nav('report');
     $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
-    $('repContent').value = `Phản ánh sai lệch thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`;
+    $('repContent').value = currentLang === 'vi' 
+      ? `Phản ánh sai lệch thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`
+      : `Discrepancy report for vessel ${selectedShipForReport.vessel} (ETB: ${dt(selectedShipForReport.etb)}, ETD: ${dt(selectedShipForReport.etd)}).`;
     hideTooltip();
   }
 };
@@ -1656,13 +2101,14 @@ function initDates() {
   let today = getTodayString();
   if(!$('fromDate').value) $('fromDate').value = today;
   if(!$('toDate').value) $('toDate').value = today;
-  $('currentFullDate').textContent = new Date().toLocaleDateString('vi-VN');
+  let loc = currentLang === 'vi' ? 'vi-VN' : 'en-GB';
+  $('currentFullDate').textContent = new Date().toLocaleDateString(loc);
 }
 
 function openShiftModalWithPassword() {
-  let pwd = prompt('Nhập mật khẩu ():');
-  if (pwd === '') $('modalShade').classList.add('open');
-  else if (pwd !== null) alert('Sai mật khẩu!');
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') $('modalShade').classList.add('open');
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
 $('manualSaveBtn').onclick = handleManualSave;
@@ -1687,6 +2133,7 @@ $('themeToggle').onclick = () => {
 };
 
 initDates();
+applyLanguage(currentLang);
 loadShiftConfigFromSupabase();
 loadData();
 fetchRealWeatherHaiPhong();
