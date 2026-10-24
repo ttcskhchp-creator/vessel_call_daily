@@ -122,6 +122,14 @@ button:hover{filter:brightness(.95)}
 .movement-tools{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
 .movement-tools button{padding:5px 9px;font-size:10px}
 .movement-tools button.active{background:var(--navy2);color:#fff}
+
+/* KHU VỰC ĐIỀU ĐỘNG TÀU - VÒNG TRÒN CUỘN TỰ ĐỘNG */
+.movement-scroll-wrapper{
+  max-height: 380px;
+  overflow-y: auto;
+  position: relative;
+  scrollbar-width: thin;
+}
 .timeline{display:grid;gap:8px}
 .trow{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:start}
 .t-time{font-weight:800;font-size:11px;color:var(--navy2);padding-top:2px}
@@ -429,8 +437,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <button onclick="filterMovement('departing', this)">Rời cầu</button>
                 <button onclick="filterMovement('departed', this)">Đã rời</button>
               </div>
-              <div class="timeline" id="movement">
-                <div class="empty">Chưa có dữ liệu.</div>
+              <div class="movement-scroll-wrapper" id="movementContainer" onmouseenter="pauseAutoScroll()" onmouseleave="resumeAutoScroll()">
+                <div class="timeline" id="movement">
+                  <div class="empty">Chưa có dữ liệu.</div>
+                </div>
               </div>
             </div>
           </section>
@@ -688,6 +698,10 @@ let planningAreaFilter = 'ALL';
 let selectedShipForReport = null;
 let tooltipHideTimeout = null;
 
+// BIẾN ĐIỀU KHIỂN CUỘN TỰ ĐỘNG
+let autoScrollTimer = null;
+let isUserHovering = false;
+
 const $ = id => document.getElementById(id);
 const esc = v => String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -722,6 +736,18 @@ function formatDuration(ms) {
     return `${hrs} giờ ${mins} phút`;
   }
   return `${mins} phút`;
+}
+
+// BẢO ĐẢM TÍNH HỢP LỆ LOGIC: ETD LUÔN NẰM SAU ETB
+function ensureValidEtbDtd(etbStr, etdStr) {
+  let t1 = etbStr ? new Date(etbStr).getTime() : 0;
+  let t2 = etdStr ? new Date(etdStr).getTime() : 0;
+
+  if (t1 > 0 && (t2 === 0 || t2 <= t1)) {
+    t2 = t1 + 12 * 3600 * 1000;
+    etdStr = new Date(t2).toISOString();
+  }
+  return { etb: etbStr, etd: etdStr, t1, t2 };
 }
 
 async function loadVesselOverrides() {
@@ -874,12 +900,17 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
+// HÀM XỬ LÝ TRÙNG TÊN: CHỈ LẤY ETB HỢP LỆ VÀ NỔI BẬT THEO QUY TẮC MỚI
 function filterAndDeduplicateCalls(rawList) {
   let processedList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     let override = vesselOverridesMap.get(vName);
     
     if (override) {
+      let mergedEtb = override.etb || c.etb || '';
+      let mergedEtd = override.etd || c.etd || '';
+      let validatedTimes = ensureValidEtbDtd(mergedEtb, mergedEtd);
+
       return {
         ...c,
         operator: override.operator || c.operator || '',
@@ -887,24 +918,33 @@ function filterAndDeduplicateCalls(rawList) {
         berth: override.berth || c.berth || '',
         loa: override.loa !== null && override.loa !== undefined && override.loa !== '' ? Number(override.loa) : c.loa,
         dwt: override.dwt || c.dwt || '',
-        etb: override.etb || c.etb || '',
-        etd: override.etd || c.etd || ''
+        etb: validatedTimes.etb,
+        etd: validatedTimes.etd
       };
     }
-    return c;
+
+    let validatedTimes = ensureValidEtbDtd(c.etb, c.etd);
+    return {
+      ...c,
+      etb: validatedTimes.etb,
+      etd: validatedTimes.etd
+    };
   });
 
+  // Gom nhóm tìm ETB hợp lệ nhất từ danh sách
   processedList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
-    let score = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
+
     if (!masterGlobalVesselMap.has(vName)) {
       masterGlobalVesselMap.set(vName, c);
     } else {
       let existing = masterGlobalVesselMap.get(vName);
-      let existingScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
-      if (score > existingScore) {
-        masterGlobalVesselMap.set(vName, c);
+      // CHỈ BỔ SUNG HOẶC CẬP NHẬT ETB HỢP LỆ NẾU TÀU BAN ĐẦU BỊ THIẾU
+      if (!existing.etb && c.etb) {
+        existing.etb = c.etb;
+        let reValid = ensureValidEtbDtd(existing.etb, existing.etd);
+        existing.etd = reValid.etd;
       }
     }
   });
@@ -913,10 +953,14 @@ function filterAndDeduplicateCalls(rawList) {
     let vName = (c.vessel || '').trim().toUpperCase();
     let master = masterGlobalVesselMap.get(vName);
     if (master) {
+      let finalEtb = c.etb || master.etb || '';
+      let finalEtd = c.etd || master.etd || '';
+      let validatedTimes = ensureValidEtbDtd(finalEtb, finalEtd);
+
       return {
         ...c,
-        etb: c.etb || master.etb || '',
-        etd: c.etd || master.etd || '',
+        etb: validatedTimes.etb,
+        etd: validatedTimes.etd,
         terminal: c.terminal || master.terminal || '',
         berth: c.berth || master.berth || '',
         operator: c.operator || master.operator || '',
@@ -1281,7 +1325,7 @@ function renderTanVuLayout(list) {
   $('tanvuBerthsLayout').innerHTML = html;
 }
 
-// --- HÀM ĐIỀU ĐỘNG TÀU (CẬP NHẬT THEO CÁC QUY TẮC MỚI) ---
+// --- HÀM RENDER ĐIỀU ĐỘNG TÀU & CUỘN VÒNG TRÒN VỚI TỐC ĐỘ MƯỢT VỪA PHẢI ---
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
@@ -1294,15 +1338,11 @@ function renderMovement(list) {
     let etbDateStr = (c.etb || '').split('T')[0];
     let etdDateStr = (c.etd || '').split('T')[0];
 
-    // 1. Cập cầu / Sắp cập:
-    // - Chỉ hiển thị tàu có thời gian cập (ETB) thuộc ngày hiện tại
-    // - Tàu đã cập (t1 <= now <= t2) nếu đã cập quá 3 tiếng (now - t1 > 3h) thì không hiển thị nữa
+    // 1. Cập cầu / Sắp cập
     if (etbDateStr === todayStr && (movementMode === 'all' || movementMode === 'arriving')) {
       if (t1 > now) {
-        // Sắp cập trong ngày
         items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
       } else if (t1 <= now && (t2 === 0 || now <= t2)) {
-        // Đã cập trong ngày - chỉ giữ lại nếu thời gian cập chưa quá 3 tiếng
         let timeDocked = now - t1;
         if (timeDocked <= threeHoursMs) {
           items.push({ c, type: 'working', time: t1, sortVal: now });
@@ -1310,26 +1350,28 @@ function renderMovement(list) {
       }
     }
 
-    // 2. Sắp rời:
-    // - Chỉ hiển thị các tàu có thời gian rời (ETD) nằm trong ngày hiện tại và ETD > now
+    // 2. Sắp rời
     if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
 
-    // 3. Đã rời:
-    // - Hiển thị tất cả các tàu có ngày giờ rời (ETD) nhỏ hơn hoặc bằng hiện tại (ETD <= now)
-    // - Tuân thủ bộ lọc thời gian (getFilteredCalls() đã xử lý việc này)
+    // 3. Đã rời
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
       items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
   });
 
-  // Sắp xếp theo mức độ gần kề thời gian hiện tại
   items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
 
-  $('movement').innerHTML = items.slice(0, 10).map(item => {
-    let badgeHtml = '';
+  if (items.length === 0) {
+    $('movement').innerHTML = '<div class="empty">Không có dữ liệu điều động phù hợp.</div>';
+    stopAutoScroll();
+    return;
+  }
 
+  // HIỂN THỊ TẤT CẢ CÁC BẢN GHI ĐÁP ỨNG
+  let html = items.map(item => {
+    let badgeHtml = '';
     if (item.type === 'arriving') {
       badgeHtml = `<span class="tag-vivid urgent">Sắp cập còn ${formatDuration(item.time - now)}</span>`;
     } else if (item.type === 'working') {
@@ -1341,7 +1383,49 @@ function renderMovement(list) {
     }
 
     return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
-  }).join('') || '<div class="empty">Không có dữ liệu điều động phù hợp.</div>';
+  }).join('');
+
+  // NẾU NHIỀU HƠN 8 BẢN GHI: NHÂN ĐÔI DANH SÁCH ĐỂ TẠO HIỆU ỨNG VÒNG TRÒN KHÔNG BỊ HỔNG
+  if (items.length > 8) {
+    $('movement').innerHTML = html + html;
+    startAutoScroll();
+  } else {
+    $('movement').innerHTML = html;
+    stopAutoScroll();
+  }
+}
+
+// KHỞI TẠO TỐC ĐỘ CUỘN VÒNG TRÒN CHẬM VỪA PHẢI MƯỢT MÀ
+function startAutoScroll() {
+  stopAutoScroll();
+  const container = $('movementContainer');
+  if (!container) return;
+
+  autoScrollTimer = setInterval(() => {
+    if (isUserHovering) return; // TẠM NGỪNG KHI RÊ CHUỘT VÀO KHU VỰC
+
+    let halfHeight = container.scrollHeight / 2;
+    if (container.scrollTop >= halfHeight) {
+      container.scrollTop = 0; // TỰ ĐỘNG CHUYỂN VỀ ĐẦU VÒNG TRÒN MƯỢT MÀ
+    } else {
+      container.scrollTop += 0.5; // TỐC ĐỘ CUỘN CHẬM CHUẨN VỪA PHẢI (0.5px mỗi 35ms)
+    }
+  }, 35);
+}
+
+function stopAutoScroll() {
+  if (autoScrollTimer) {
+    clearInterval(autoScrollTimer);
+    autoScrollTimer = null;
+  }
+}
+
+function pauseAutoScroll() {
+  isUserHovering = true;
+}
+
+function resumeAutoScroll() {
+  isUserHovering = false;
 }
 
 function filterMovement(m, btn) {
