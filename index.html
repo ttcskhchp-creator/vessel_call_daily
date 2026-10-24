@@ -123,7 +123,6 @@ button:hover{filter:brightness(.95)}
 .movement-tools button{padding:5px 9px;font-size:10px}
 .movement-tools button.active{background:var(--navy2);color:#fff}
 
-/* KHU VỰC ĐIỀU ĐỘNG TÀU - CUỘN VÒNG TRÒN TỰ ĐỘNG */
 .movement-scroll-wrapper{
   max-height: 380px;
   overflow-y: auto;
@@ -347,38 +346,38 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN TRẠM HÒN DÁU -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
-                <div class="tide-title">TRẠM HÒN ĐÁU · THỦY TRIỀU</div>
-                <div style="font-size:10px;opacity:0.9">Nhật triều thuần nhất</div>
+                <div class="tide-title">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
+                <div style="font-size:10px;opacity:0.9">Nhật triều thuần nhất · Cảng chính</div>
               </div>
-              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn 0</span>
+              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn Hòn Dấu</span>
             </div>
 
             <div class="tide-grid">
               <div class="tide-box high">
-                <small>▲ NƯỚC LỚN</small>
-                <strong id="tideHighVal">2.76 m</strong>
-                <span id="tideHighTime">🕒 15:17</span>
+                <small>▲ NƯỚC LỚN (ĐỈNH)</small>
+                <strong id="tideHighVal">2.30 m</strong>
+                <span id="tideHighTime">🕒 14:19</span>
               </div>
               <div class="tide-box low">
-                <small>▼ NƯỚC RÒNG</small>
-                <strong id="tideLowVal">1.49 m</strong>
-                <span id="tideLowTime">🕒 02:59</span>
+                <small>▼ NƯỚC RÒNG (ĐÁY)</small>
+                <strong id="tideLowVal">1.60 m</strong>
+                <span id="tideLowTime">🕒 04:12</span>
               </div>
             </div>
 
             <div class="tide-progress-wrap">
               <div class="tide-progress-labels">
-                <span id="tideProgMin">Ròng: 1.49m</span>
-                <span style="color:#8be4ec" id="tideProgStatus">Đang tính toán...</span>
-                <span id="tideProgMax">Lớn: 2.76m</span>
+                <span id="tideProgMin">Ròng: 1.60m</span>
+                <span style="color:#8be4ec" id="tideProgStatus">Đang dâng...</span>
+                <span id="tideProgMax">Lớn: 2.30m</span>
               </div>
               <div class="tide-progress-bar">
-                <div class="tide-progress-fill" id="tideProgressBar" style="width: 50%;"></div>
+                <div class="tide-progress-fill" id="tideProgressBar" style="width: 65%;"></div>
               </div>
             </div>
           </div>
@@ -698,7 +697,6 @@ let planningAreaFilter = 'ALL';
 let selectedShipForReport = null;
 let tooltipHideTimeout = null;
 
-// BIẾN ĐIỀU KHIỂN CUỘN TỰ ĐỘNG
 let autoScrollTimer = null;
 let isUserHovering = false;
 
@@ -738,7 +736,6 @@ function formatDuration(ms) {
   return `${mins} phút`;
 }
 
-// BỔ SUNG QUY TẮC RÀNG BUỘC: NẾU ETD <= ETB THÌ ĐỂ TRỐNG ETD
 function parseEtbEtd(etbStr, etdStr) {
   let t1 = etbStr ? new Date(etbStr).getTime() : 0;
   let t2 = etdStr ? new Date(etdStr).getTime() : 0;
@@ -833,6 +830,7 @@ async function fetchRealWeatherHaiPhong() {
   }
 }
 
+// CẬP NHẬT THỦY TRIỀU CHUẨN TRẠM HÒN DÁU (20°40'N, 106°49'E)
 function updateRealtimeWidgets() {
   let now = new Date();
   let timeStr = now.toTimeString().split(' ')[0];
@@ -840,11 +838,14 @@ function updateRealtimeWidgets() {
   
   let hours = now.getHours();
   let minutes = now.getMinutes();
+  let totalMinNow = hours * 60 + minutes;
 
-  let tideCycle = Math.sin((hours * 60 + minutes) / 360 * Math.PI); 
-  let currentTideLevel = (2.12 + tideCycle * 0.65).toFixed(2);
+  // Trạm Hòn Dấu: Đáy nước ròng lúc ~04:12 (252 phút), đỉnh nước lớn lúc ~14:19 (859 phút)
+  let tidePhase = Math.sin((totalMinNow - 252) / (859 - 252) * Math.PI);
+  let currentTideLevel = (1.60 + (tidePhase > 0 ? tidePhase * 0.70 : Math.abs(tidePhase) * 0.40)).toFixed(2);
+
   if ($('tideProgStatus')) {
-    if (tideCycle > 0) {
+    if (tidePhase >= 0) {
       $('tideProgStatus').textContent = `Đang dâng (~${currentTideLevel}m)`;
       $('tideProgStatus').style.color = '#8be4ec';
     } else {
@@ -852,7 +853,7 @@ function updateRealtimeWidgets() {
       $('tideProgStatus').style.color = '#ffb347';
     }
   }
-  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.4) / 1.4) * 100)));
+  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.60) / (2.30 - 1.60)) * 100)));
   if ($('tideProgressBar')) $('tideProgressBar').style.width = fillPercent + '%';
   
   renderMovement(getFilteredCalls());
@@ -900,7 +901,6 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// XỬ LÝ TRÙNG TÊN NÂNG CẤP: NẾU ETD <= ETB THÌ TỰ ĐỘNG ĐỂ TRỐNG ETD
 function filterAndDeduplicateCalls(rawList) {
   let processedList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
@@ -931,7 +931,6 @@ function filterAndDeduplicateCalls(rawList) {
     };
   });
 
-  // Gom nhóm tìm ETB hợp lệ nhất từ danh sách
   processedList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
@@ -1324,7 +1323,6 @@ function renderTanVuLayout(list) {
   $('tanvuBerthsLayout').innerHTML = html;
 }
 
-// --- HÀM RENDER ĐIỀU ĐỘNG TÀU ---
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
@@ -1337,7 +1335,6 @@ function renderMovement(list) {
     let etbDateStr = (c.etb || '').split('T')[0];
     let etdDateStr = (c.etd || '').split('T')[0];
 
-    // 1. Cập cầu / Sắp cập
     if (etbDateStr === todayStr && (movementMode === 'all' || movementMode === 'arriving')) {
       if (t1 > now) {
         items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
@@ -1349,12 +1346,10 @@ function renderMovement(list) {
       }
     }
 
-    // 2. Sắp rời
     if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
 
-    // 3. Đã rời (ETD <= now)
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
       items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
