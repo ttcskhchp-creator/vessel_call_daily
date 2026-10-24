@@ -189,6 +189,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:6px}
 #shipTooltip .tt-item small{display:block;color:var(--muted);font-size:8px}
 #shipTooltip .tt-item b{font-size:10px}
+#shipTooltip .tt-actions{display:flex;gap:5px;margin-top:10px}
 
 .report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
 .form-group{margin-bottom:12px}
@@ -244,6 +245,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt">Kế hoạch cầu</span></button>
         <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt">Tra cứu tàu</span></button>
         <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt">Thống kê</span></button>
+        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt">Bổ sung & Sửa tàu</span></button>
         <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt">Báo cáo & Góp ý</span></button>
         <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt">Nguồn & Liên hệ</span></button>
       </nav>
@@ -532,7 +534,53 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 5: BÁO CÁO -->
+      <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU -->
+      <section id="page-edit-vessel" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Bổ sung & Sửa thông tin tàu</h2>
+            <div class="muted">Quản lý và ghi đè thông tin tàu thủ công (Yêu cầu mật khẩu 6868)</div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="panel">
+            <div class="panel-head"><h3>Cập nhật / Thêm mới thông tin tàu</h3></div>
+            <div class="panel-body">
+              <div class="form-group"><label>Tên tàu (*)</label><input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu..."></div>
+              <div class="form-group"><label>Hãng tàu</label><input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu..."></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label>Terminal</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: Tân Vũ"></div>
+                <div class="form-group"><label>Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label>LOA (m)</label><input id="editVesselLoa" type="number" class="field" style="width:100%" placeholder="0"></div>
+                <div class="form-group"><label>DWT</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="Trọng tải"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label>ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
+                <div class="form-group"><label>ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1">💾 Lưu / Cập nhật (6868)</button>
+                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1">🗑️ Xóa bản ghi (6868)</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Danh sách tàu đã chỉnh sửa thủ công</h3></div>
+            <div class="panel-body table-wrap" style="max-height:400px">
+              <table>
+                <thead><tr><th>Tên tàu</th><th>Hãng</th><th>Bến</th><th>Thao tác</th></tr></thead>
+                <tbody id="overrideTableRows">
+                  <tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 6: BÁO CÁO -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
@@ -559,7 +607,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 6: NGUỒN -->
+      <!-- MÀN HÌNH 7: NGUỒN -->
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
@@ -568,7 +616,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
         <div class="panel" style="padding:16px">
-          <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Cảng Hải Phòng</p>
+          <p><b>Đơn vị:</b> Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</p>
           <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
@@ -589,9 +637,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <div class="tt-item"><small>Đã ở cầu</small><b id="ttDocked">—</b></div>
     <div class="tt-item"><small>Còn lại</small><b id="ttRemaining">—</b></div>
   </div>
-  <button id="ttReportBtn" style="width:100%;margin-top:10px;padding:6px;font-size:10px" class="darkbtn">
-    ✉ Báo sai thông tin tàu này
-  </button>
+  <div class="tt-actions">
+    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa (6868)</button>
+    <button id="ttReportBtn" class="darkbtn" style="flex:1;padding:6px;font-size:10px">✉ Báo lỗi</button>
+  </div>
 </div>
 
 <!-- SETUP MODAL -->
@@ -630,7 +679,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API='https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3wzAgRL82GT125zpflvIhxcdtEsaWNsZdGwiwqtL/exec?format=public';
 let allCalls = [];
-let masterGlobalVesselMap = new Map(); // Lưu trữ trọn vẹn thông tin hoàn thiện của tàu qua các ngày để đắp dữ liệu
+let masterGlobalVesselMap = new Map();
+let vesselOverridesMap = new Map(); // Lưu trữ thông tin tàu do Ban quản trị sửa thủ công
 let movementMode = 'all';
 let planningAreaFilter = 'ALL';
 
@@ -654,12 +704,68 @@ function dt(v){
   return isNaN(d) ? esc(v) : d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
+function formatDateTimeLocal(v) {
+  if (!v) return '';
+  let d = new Date(v);
+  if (isNaN(d)) return '';
+  let pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function formatDuration(ms) {
   if (isNaN(ms) || ms <= 0) return '—';
   let totalMin = Math.floor(ms / 60000);
   let hrs = Math.floor(totalMin / 60);
   let mins = totalMin % 60;
   return `${hrs}h ${mins}p`;
+}
+
+// --- TẢI DỮ LIỆU CHỈNH SỬA TỪ SUPABASE ---
+async function loadVesselOverrides() {
+  try {
+    let { data, error } = await supabaseClient.from('vessel_overrides').select('*');
+    if (data && !error) {
+      vesselOverridesMap.clear();
+      data.forEach(item => {
+        let key = (item.vessel_name || '').trim().toUpperCase();
+        if (key) vesselOverridesMap.set(key, item);
+      });
+      renderOverrideTable();
+    }
+  } catch(e) {}
+}
+
+function renderOverrideTable() {
+  let tbody = $('overrideTableRows');
+  if (!tbody) return;
+  if (vesselOverridesMap.size === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>';
+    return;
+  }
+  let html = '';
+  vesselOverridesMap.forEach((val, key) => {
+    html += `<tr>
+      <td><b>${esc(val.vessel_name)}</b></td>
+      <td><span class="badge">${esc(val.operator || '—')}</span></td>
+      <td>${esc(val.terminal || '')} ${esc(val.berth || '')}</td>
+      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa</button></td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function populateEditForm(vesselName) {
+  let item = vesselOverridesMap.get(vesselName);
+  if (!item) return;
+  $('editVesselName').value = item.vessel_name || '';
+  $('editVesselOperator').value = item.operator || '';
+  $('editVesselTerminal').value = item.terminal || '';
+  $('editVesselBerth').value = item.berth || '';
+  $('editVesselLoa').value = item.loa || '';
+  $('editVesselDwt').value = item.dwt || '';
+  $('editVesselEtb').value = formatDateTimeLocal(item.etb);
+  $('editVesselEtd').value = formatDateTimeLocal(item.etd);
+  nav('edit-vessel', false);
 }
 
 // --- THỜI TIẾT THỰC TẾ HẢI PHÒNG ---
@@ -754,49 +860,58 @@ function nav(page, saveState = true){
   document.querySelectorAll('.nav button').forEach(x => {
     x.classList.toggle('active', x.dataset.page === page);
   });
-  $('crumb').textContent = page.toUpperCase();
+  $('crumb').textContent = page.replace('-', ' ').toUpperCase();
   if (page === 'planning') renderGantt();
   if (page === 'stats') renderStats();
+  if (page === 'edit-vessel') renderOverrideTable();
   if (saveState) localStorage.setItem('hp_last_page', page);
 }
 
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// --- XỬ LÝ KHỬ TRÙNG LẶP & TRUY XUẤT NGƯỢC THÔNG TIN DÀI NGÀY ---
+// --- ÁP DỤNG QUY TẮC GHI ĐÈ & KHỬ TRÙNG LẶP ---
 function filterAndDeduplicateCalls(rawList) {
-  let incomingMap = new Map();
+  let processedList = rawList.map(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let override = vesselOverridesMap.get(vName);
+    
+    // Nếu có dữ liệu Ban quản trị chỉnh sửa, ưu tiên ghi đè tuyệt đối (tên tàu, hãng, etb, etd, v.v.)
+    if (override) {
+      return {
+        ...c,
+        operator: override.operator || c.operator || '',
+        terminal: override.terminal || c.terminal || '',
+        berth: override.berth || c.berth || '',
+        loa: override.loa !== null && override.loa !== undefined && override.loa !== '' ? Number(override.loa) : c.loa,
+        dwt: override.dwt || c.dwt || '',
+        etb: override.etb || c.etb || '',
+        etd: override.etd || c.etd || ''
+      };
+    }
+    return c;
+  });
 
-  // Đưa các bản ghi mới vào kho lưu trữ tổng toàn cục (masterGlobalVesselMap) để giữ lại dữ liệu lịch sử
-  rawList.forEach(c => {
+  // Lưu vào masterGlobalVesselMap để truy xuất ngược khi tàu nằm dài ngày
+  processedList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
-
     let score = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
     if (!masterGlobalVesselMap.has(vName)) {
       masterGlobalVesselMap.set(vName, c);
     } else {
       let existing = masterGlobalVesselMap.get(vName);
       let existingScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
-      
-      // Ưu tiên lấy bản ghi có đầy đủ thông tin hơn (đủ ETB/ETD mới hơn hoặc chi tiết hơn)
       if (score > existingScore) {
         masterGlobalVesselMap.set(vName, c);
-      } else if (score === existingScore) {
-        let existingTime = new Date(existing.etb || existing.etd || 0).getTime();
-        let currentTime = new Date(c.etb || c.etd || 0).getTime();
-        if (currentTime >= existingTime) {
-          masterGlobalVesselMap.set(vName, c);
-        }
       }
     }
   });
 
-  // Xử lý đắp dữ liệu (ETB/ETD bị khuyết do tàu nằm dài ngày qua các ngày khác nhau)
-  let processedList = rawList.map(c => {
+  // Đắp dữ liệu khuyết cho tàu dài ngày
+  let filledList = processedList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     let master = masterGlobalVesselMap.get(vName);
-
     if (master) {
       return {
         ...c,
@@ -812,9 +927,9 @@ function filterAndDeduplicateCalls(rawList) {
     return c;
   });
 
-  // Khử trùng lặp cuối cùng cho tập dữ liệu hiển thị
+  // Khử trùng lặp cuối cùng
   let finalMap = new Map();
-  processedList.forEach(c => {
+  filledList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
     if (!finalMap.has(vName)) {
@@ -1002,8 +1117,9 @@ function handleManualSave() {
 
 async function loadData() {
   $('refreshBtn').disabled = true;
-  $('sideStatus').textContent = 'Đang tải API...';
+  $('sideStatus').textContent = 'Đang tải dữ liệu...';
   try {
+    await loadVesselOverrides();
     let r = await fetch(API, { cache: 'no-store' });
     let d = await r.json();
     if (Array.isArray(d.calls)) {
@@ -1036,6 +1152,59 @@ async function loadData() {
     } catch(err) {}
   } finally {
     $('refreshBtn').disabled = false;
+  }
+}
+
+// --- HÀM LƯU VÀ XÓA THÔNG TIN TÀU CHỈNH SỬA (BẢO MẬT 6868) ---
+async function saveVesselOverrideProtected() {
+  let pwd = prompt('Nhập mật khẩu xác thực quản trị (6868):');
+  if (pwd !== '6868') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
+
+  let vName = ($('editVesselName').value || '').trim();
+  if (!vName) { alert('Vui lòng nhập tên tàu cần sửa/bổ sung!'); return; }
+
+  let payload = {
+    vessel_name: vName,
+    operator: $('editVesselOperator').value.trim(),
+    terminal: $('editVesselTerminal').value.trim(),
+    berth: $('editVesselBerth').value.trim(),
+    loa: Number($('editVesselLoa').value) || 0,
+    dwt: $('editVesselDwt').value.trim(),
+    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
+    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
+    if (error) { alert('Lỗi lưu Supabase: ' + error.message); return; }
+
+    vesselOverridesMap.set(vName.toUpperCase(), payload);
+    renderOverrideTable();
+    loadData();
+    alert(`Đã lưu và cập nhật thông tin tàu "${vName}" thành công!`);
+  } catch(err) {
+    alert('Lỗi kết nối: ' + err.message);
+  }
+}
+
+async function deleteVesselOverrideProtected() {
+  let pwd = prompt('Nhập mật khẩu xác thực quản trị (6868):');
+  if (pwd !== '6868') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
+
+  let vName = ($('editVesselName').value || '').trim();
+  if (!vName) { alert('Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!'); return; }
+
+  try {
+    let { error } = await supabaseClient.from('vessel_overrides').delete().eq('vessel_name', vName);
+    if (error) { alert('Lỗi xóa Supabase: ' + error.message); return; }
+
+    vesselOverridesMap.delete(vName.toUpperCase());
+    renderOverrideTable();
+    loadData();
+    alert(`Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!`);
+  } catch(err) {
+    alert('Lỗi kết nối: ' + err.message);
   }
 }
 
@@ -1332,6 +1501,26 @@ $('shipTooltip').onmouseenter = () => {
 };
 $('shipTooltip').onmouseleave = () => {
   scheduleHideTooltip();
+};
+
+$('ttEditBtn').onclick = () => {
+  if (selectedShipForReport) {
+    let pwd = prompt('Nhập mật khẩu quản trị (6868):');
+    if (pwd === '6868') {
+      $('editVesselName').value = selectedShipForReport.vessel || '';
+      $('editVesselOperator').value = selectedShipForReport.operator || '';
+      $('editVesselTerminal').value = selectedShipForReport.terminal || '';
+      $('editVesselBerth').value = selectedShipForReport.berth || '';
+      $('editVesselLoa').value = selectedShipForReport.loa || '';
+      $('editVesselDwt').value = selectedShipForReport.dwt || '';
+      $('editVesselEtb').value = formatDateTimeLocal(selectedShipForReport.etb);
+      $('editVesselEtd').value = formatDateTimeLocal(selectedShipForReport.etd);
+      nav('edit-vessel');
+      hideTooltip();
+    } else if (pwd !== null) {
+      alert('Mật khẩu không chính xác!');
+    }
+  }
 };
 
 $('ttReportBtn').onclick = () => {
