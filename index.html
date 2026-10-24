@@ -502,7 +502,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 4: THỐNG KÊ (ĐÃ FIX ĐẦY ĐỦ CÁC TAB BIỂU ĐỒ) -->
+      <!-- MÀN HÌNH 4: THỐNG KÊ -->
       <section id="page-stats" class="page hidden">
         <div class="page-head">
           <div>
@@ -630,6 +630,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API='https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3wzAgRL82GT125zpflvIhxcdtEsaWNsZdGwiwqtL/exec?format=public';
 let allCalls = [];
+let masterGlobalVesselMap = new Map(); // Lưu trữ trọn vẹn thông tin hoàn thiện của tàu qua các ngày để đắp dữ liệu
 let movementMode = 'all';
 let planningAreaFilter = 'ALL';
 
@@ -762,48 +763,71 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
+// --- XỬ LÝ KHỬ TRÙNG LẶP & TRUY XUẤT NGƯỢC THÔNG TIN DÀI NGÀY ---
 function filterAndDeduplicateCalls(rawList) {
-  let map = new Map();
+  let incomingMap = new Map();
 
-  let sorted = [...rawList].sort((a, b) => {
-    let scoreA = (a.etb ? 2 : 0) + (a.etd ? 2 : 0);
-    let scoreB = (b.etb ? 2 : 0) + (b.etd ? 2 : 0);
-    
-    if (scoreA === scoreB) {
-      let timeA = new Date(a.etb || a.etd || 0).getTime();
-      let timeB = new Date(b.etb || b.etd || 0).getTime();
-      return timeB - timeA;
-    }
-    return scoreB - scoreA;
-  });
-
-  sorted.forEach(c => {
+  // Đưa các bản ghi mới vào kho lưu trữ tổng toàn cục (masterGlobalVesselMap) để giữ lại dữ liệu lịch sử
+  rawList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
 
-    let globalKey = vName;
-    
-    if (!map.has(globalKey)) {
-      map.set(globalKey, c);
+    let score = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
+    if (!masterGlobalVesselMap.has(vName)) {
+      masterGlobalVesselMap.set(vName, c);
     } else {
-      let existing = map.get(globalKey);
-      
+      let existing = masterGlobalVesselMap.get(vName);
       let existingScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
-      let currentScore = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
-
-      if (currentScore > existingScore) {
-        map.set(globalKey, c);
-      } else if (currentScore === existingScore) {
+      
+      // Ưu tiên lấy bản ghi có đầy đủ thông tin hơn (đủ ETB/ETD mới hơn hoặc chi tiết hơn)
+      if (score > existingScore) {
+        masterGlobalVesselMap.set(vName, c);
+      } else if (score === existingScore) {
         let existingTime = new Date(existing.etb || existing.etd || 0).getTime();
         let currentTime = new Date(c.etb || c.etd || 0).getTime();
-        if (currentTime > existingTime) {
-          map.set(globalKey, c);
+        if (currentTime >= existingTime) {
+          masterGlobalVesselMap.set(vName, c);
         }
       }
     }
   });
 
-  return Array.from(map.values());
+  // Xử lý đắp dữ liệu (ETB/ETD bị khuyết do tàu nằm dài ngày qua các ngày khác nhau)
+  let processedList = rawList.map(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let master = masterGlobalVesselMap.get(vName);
+
+    if (master) {
+      return {
+        ...c,
+        etb: c.etb || master.etb || '',
+        etd: c.etd || master.etd || '',
+        terminal: c.terminal || master.terminal || '',
+        berth: c.berth || master.berth || '',
+        operator: c.operator || master.operator || '',
+        loa: c.loa || master.loa || 0,
+        dwt: c.dwt || master.dwt || ''
+      };
+    }
+    return c;
+  });
+
+  // Khử trùng lặp cuối cùng cho tập dữ liệu hiển thị
+  let finalMap = new Map();
+  processedList.forEach(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    if (!vName) return;
+    if (!finalMap.has(vName)) {
+      finalMap.set(vName, c);
+    } else {
+      let existing = finalMap.get(vName);
+      let exScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
+      let curScore = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
+      if (curScore >= exScore) finalMap.set(vName, c);
+    }
+  });
+
+  return Array.from(finalMap.values());
 }
 
 async function loadShiftConfigFromSupabase() {
@@ -1179,7 +1203,6 @@ function filterPlanningArea(area, btn) {
   renderGantt();
 }
 
-// --- HÀM THỐNG KÊ HOÀN CHỈNH TẤT CẢ BIỂU ĐỒ (TERMINAL, HÃNG TÀU, LOA, GIỜ CẬP) ---
 function renderStats() {
   let list = getFilteredCalls();
   if (!list || list.length === 0) {
@@ -1190,7 +1213,6 @@ function renderStats() {
     return;
   }
 
-  // 1. Thống kê theo Terminal
   let termMap = {};
   list.forEach(c => {
     let t = c.terminal || 'Khác';
@@ -1202,7 +1224,6 @@ function renderStats() {
     .map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill" style="width:${(v/maxTerm*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
     .join('');
 
-  // 2. Thống kê theo Hãng tàu
   let opMap = {};
   list.forEach(c => {
     let op = (c.operator || 'Không xác định').trim();
@@ -1211,11 +1232,10 @@ function renderStats() {
   let maxOp = Math.max(1, ...Object.values(opMap));
   $('statOperators').innerHTML = Object.entries(opMap)
     .sort((a,b) => b[1] - a[1])
-    .slice(0, 10) // Lấy top 10 hãng tàu
+    .slice(0, 10)
     .map(([k,v]) => `<div class="barrow"><span>${esc(k)}</span><div class="barbg"><div class="barfill gold" style="width:${(v/maxOp*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
     .join('');
 
-  // 3. Phân khúc LOA
   let loaBins = { '< 150m': 0, '150m - 200m': 0, '200m - 250m': 0, '250m - 300m': 0, '≥ 300m': 0 };
   list.forEach(c => {
     let l = c.loa || 0;
@@ -1230,7 +1250,6 @@ function renderStats() {
     .map(([k,v]) => `<div class="barrow"><span>${k}</span><div class="barbg"><div class="barfill" style="width:${(v/maxLoa*100).toFixed(1)}%"></div></div><b>${v}</b></div>`)
     .join('');
 
-  // 4. Tần suất giờ cập bến (24 Khung giờ)
   let hourArr = new Array(24).fill(0);
   list.forEach(c => {
     if (c.etb) {
