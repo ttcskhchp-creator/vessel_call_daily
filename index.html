@@ -1281,37 +1281,50 @@ function renderTanVuLayout(list) {
   $('tanvuBerthsLayout').innerHTML = html;
 }
 
-// --- HÀM ĐIỀU ĐỘNG TÀU: BAO GỒM CẢ ĐÃ RỜI TRONG NGÀY ---
+// --- HÀM ĐIỀU ĐỘNG TÀU (CẬP NHẬT THEO CÁC QUY TẮC MỚI) ---
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
+  let threeHoursMs = 3 * 3600 * 1000;
   let items = [];
 
   list.forEach(c => {
     let t1 = c.etb ? new Date(c.etb).getTime() : 0;
     let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+    let etbDateStr = (c.etb || '').split('T')[0];
+    let etdDateStr = (c.etd || '').split('T')[0];
 
-    // 1. Sắp cập: Tàu chưa tới thời điểm ETB (t1 > now)
-    if (t1 > 0 && t1 > now && (movementMode === 'all' || movementMode === 'arriving')) {
-      items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
+    // 1. Cập cầu / Sắp cập:
+    // - Chỉ hiển thị tàu có thời gian cập (ETB) thuộc ngày hiện tại
+    // - Tàu đã cập (t1 <= now <= t2) nếu đã cập quá 3 tiếng (now - t1 > 3h) thì không hiển thị nữa
+    if (etbDateStr === todayStr && (movementMode === 'all' || movementMode === 'arriving')) {
+      if (t1 > now) {
+        // Sắp cập trong ngày
+        items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
+      } else if (t1 <= now && (t2 === 0 || now <= t2)) {
+        // Đã cập trong ngày - chỉ giữ lại nếu thời gian cập chưa quá 3 tiếng
+        let timeDocked = now - t1;
+        if (timeDocked <= threeHoursMs) {
+          items.push({ c, type: 'working', time: t1, sortVal: now });
+        }
+      }
     }
-    // 2. Đã cập: Tàu đang nằm trong khoảng ETB đến ETD (t1 <= now <= t2)
-    else if (t1 > 0 && t2 > 0 && t1 <= now && now <= t2 && (movementMode === 'all' || movementMode === 'arriving' || movementMode === 'departing')) {
-      items.push({ c, type: 'working', time: t1, sortVal: now });
-    }
-    // 3. Sắp rời: Tàu đang cập và còn thời gian tới mốc ETD (now < t2)
-    if (t1 <= now && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
+
+    // 2. Sắp rời:
+    // - Chỉ hiển thị các tàu có thời gian rời (ETD) nằm trong ngày hiện tại và ETD > now
+    if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
-    // 4. Đã rời trong ngày: Tàu có ETD đã qua (t2 <= now) và thuộc cùng ngày hiện tại
+
+    // 3. Đã rời:
+    // - Hiển thị tất cả các tàu có ngày giờ rời (ETD) nhỏ hơn hoặc bằng hiện tại (ETD <= now)
+    // - Tuân thủ bộ lọc thời gian (getFilteredCalls() đã xử lý việc này)
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
-      let etdDateStr = (c.etd || '').split('T')[0];
-      if (etdDateStr === todayStr) {
-        items.push({ c, type: 'departed', time: t2, sortVal: t2 });
-      }
+      items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
   });
 
+  // Sắp xếp theo mức độ gần kề thời gian hiện tại
   items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
 
   $('movement').innerHTML = items.slice(0, 10).map(item => {
