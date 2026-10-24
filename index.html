@@ -561,8 +561,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="form-group"><label>ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:10px">
-                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1">💾 Lưu / Cập nhật (6868)</button>
-                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1">🗑️ Xóa bản ghi (6868)</button>
+                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1">💾 Lưu / Cập nhật </button>
+                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1">🗑️ Xóa bản ghi </button>
               </div>
             </div>
           </div>
@@ -638,7 +638,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <div class="tt-item"><small>Còn lại</small><b id="ttRemaining">—</b></div>
   </div>
   <div class="tt-actions">
-    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa (6868)</button>
+    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa </button>
     <button id="ttReportBtn" class="darkbtn" style="flex:1;padding:6px;font-size:10px">✉ Báo lỗi</button>
   </div>
 </div>
@@ -971,7 +971,7 @@ async function saveShiftConfigToSupabase(shiftData) {
 }
 
 function fetchHistoryFromBucketProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực :');
   if (pwd === '6868') fetchHistoryFromBucket();
   else if (pwd !== null) alert('Mật khẩu không chính xác!');
 }
@@ -1029,7 +1029,7 @@ function updateLastSavedDisplay(str) {
 }
 
 function exportConfigAsCSVProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực :');
   if (pwd === '6868') exportConfigAsCSV();
   else if (pwd !== null) alert('Mật khẩu không chính xác!');
 }
@@ -1071,7 +1071,7 @@ function exportConfigAsCSV() {
 }
 
 function triggerImportConfig() {
-  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực :');
   if (pwd === '6868') $('importFileInput').click();
   else if (pwd !== null) alert('Sai mật khẩu!');
 }
@@ -1110,7 +1110,7 @@ function handleFileImport(e) {
 }
 
 function handleManualSave() {
-  let pwd = prompt('Nhập mật khẩu xác thực (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực :');
   if (pwd === '6868') saveCurrentDataToSupabase(false);
   else if (pwd !== null) alert('Sai mật khẩu!');
 }
@@ -1157,7 +1157,7 @@ async function loadData() {
 
 // --- HÀM LƯU VÀ XÓA THÔNG TIN TÀU CHỈNH SỬA (BẢO MẬT 6868) ---
 async function saveVesselOverrideProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực quản trị (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực quản trị :');
   if (pwd !== '6868') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
 
   let vName = ($('editVesselName').value || '').trim();
@@ -1189,7 +1189,7 @@ async function saveVesselOverrideProtected() {
 }
 
 async function deleteVesselOverrideProtected() {
-  let pwd = prompt('Nhập mật khẩu xác thực quản trị (6868):');
+  let pwd = prompt('Nhập mật khẩu xác thực quản trị :');
   if (pwd !== '6868') { if(pwd !== null) alert('Mật khẩu không chính xác!'); return; }
 
   let vName = ($('editVesselName').value || '').trim();
@@ -1505,7 +1505,7 @@ $('shipTooltip').onmouseleave = () => {
 
 $('ttEditBtn').onclick = () => {
   if (selectedShipForReport) {
-    let pwd = prompt('Nhập mật khẩu quản trị (6868):');
+    let pwd = prompt('Nhập mật khẩu quản trị :');
     if (pwd === '6868') {
       $('editVesselName').value = selectedShipForReport.vessel || '';
       $('editVesselOperator').value = selectedShipForReport.operator || '';
@@ -1540,7 +1540,7 @@ function initDates() {
 }
 
 function openShiftModalWithPassword() {
-  let pwd = prompt('Nhập mật khẩu (6868):');
+  let pwd = prompt('Nhập mật khẩu :');
   if (pwd === '6868') $('modalShade').classList.add('open');
   else if (pwd !== null) alert('Sai mật khẩu!');
 }
