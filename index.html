@@ -738,10 +738,15 @@ function formatDuration(ms) {
   return `${mins} phút`;
 }
 
-// KHÔNG TỰ ĐỘNG CỘNG THÊM GIỜ VÀO ETD NẾU THIẾU
+// BỔ SUNG QUY TẮC RÀNG BUỘC: NẾU ETD <= ETB THÌ ĐỂ TRỐNG ETD
 function parseEtbEtd(etbStr, etdStr) {
   let t1 = etbStr ? new Date(etbStr).getTime() : 0;
   let t2 = etdStr ? new Date(etdStr).getTime() : 0;
+
+  if (t1 > 0 && t2 > 0 && t2 <= t1) {
+    etdStr = '';
+    t2 = 0;
+  }
   return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
 }
 
@@ -895,7 +900,7 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// XỬ LÝ TRÙNG TÊN: CHỈ LẤY ETB HỢP LỆ, KHÔNG BỊA HOẶC CỘNG THÊM GIỜ VÀO ETD
+// XỬ LÝ TRÙNG TÊN NÂNG CẤP: NẾU ETD <= ETB THÌ TỰ ĐỘNG ĐỂ TRỐNG ETD
 function filterAndDeduplicateCalls(rawList) {
   let processedList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
@@ -935,9 +940,10 @@ function filterAndDeduplicateCalls(rawList) {
       masterGlobalVesselMap.set(vName, c);
     } else {
       let existing = masterGlobalVesselMap.get(vName);
-      // CHỈ BỔ SUNG ETB HỢP LỆ NẾU TÀU BAN ĐẦU BỊ THIẾU
       if (!existing.etb && c.etb) {
         existing.etb = c.etb;
+        let reValid = parseEtbEtd(existing.etb, existing.etd);
+        existing.etd = reValid.etd;
       }
     }
   });
@@ -947,12 +953,13 @@ function filterAndDeduplicateCalls(rawList) {
     let master = masterGlobalVesselMap.get(vName);
     if (master) {
       let finalEtb = c.etb || master.etb || '';
-      let finalEtd = c.etd || master.etd || ''; // GIỮ NGUYÊN NẾU TRỐNG
+      let finalEtd = c.etd || master.etd || '';
+      let times = parseEtbEtd(finalEtb, finalEtd);
 
       return {
         ...c,
-        etb: finalEtb,
-        etd: finalEtd,
+        etb: times.etb,
+        etd: times.etd,
         terminal: c.terminal || master.terminal || '',
         berth: c.berth || master.berth || '',
         operator: c.operator || master.operator || '',
@@ -1317,7 +1324,7 @@ function renderTanVuLayout(list) {
   $('tanvuBerthsLayout').innerHTML = html;
 }
 
-// --- HÀM RENDER ĐIỀU ĐỘNG TÀU (XỬ LÝ ETD TRỐNG CHUẨN XÁC) ---
+// --- HÀM RENDER ĐIỀU ĐỘNG TÀU ---
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
@@ -1342,12 +1349,12 @@ function renderMovement(list) {
       }
     }
 
-    // 2. Sắp rời (Chỉ xét khi có mốc ETD > now)
+    // 2. Sắp rời
     if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
 
-    // 3. Đã rời (Chỉ xét khi đã có mốc ETD hợp lệ <= now)
+    // 3. Đã rời (ETD <= now)
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
       items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
@@ -1361,7 +1368,6 @@ function renderMovement(list) {
     return;
   }
 
-  // HIỂN THỊ TẤT CẢ CÁC BẢN GHI ĐÁP ỨNG
   let html = items.map(item => {
     let badgeHtml = '';
     if (item.type === 'arriving') {
@@ -1377,7 +1383,6 @@ function renderMovement(list) {
     return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
   }).join('');
 
-  // NẾU NHIỀU HƠN 8 BẢN GHI: NHÂN ĐÔI DANH SÁCH ĐỂ TẠO HIỆU ỨNG VÒNG TRÒN KHÔNG BỊ HỔNG
   if (items.length > 8) {
     $('movement').innerHTML = html + html;
     startAutoScroll();
@@ -1387,20 +1392,19 @@ function renderMovement(list) {
   }
 }
 
-// KHỞI TẠO TỐC ĐỘ CUỘN VÒNG TRÒN CHẬM VỪA PHẢI MƯỢT MÀ
 function startAutoScroll() {
   stopAutoScroll();
   const container = $('movementContainer');
   if (!container) return;
 
   autoScrollTimer = setInterval(() => {
-    if (isUserHovering) return; // TẠM NGỪNG KHI RÊ CHUỘT VÀO KHU VỰC
+    if (isUserHovering) return;
 
     let halfHeight = container.scrollHeight / 2;
     if (container.scrollTop >= halfHeight) {
-      container.scrollTop = 0; // TỰ ĐỘNG CHUYỂN VỀ ĐẦU VÒNG TRÒN MƯỢT MÀ
+      container.scrollTop = 0;
     } else {
-      container.scrollTop += 0.5; // TỐC ĐỘ CUỘN CHẬM CHUẨN VỪA PHẢI (0.5px mỗi 35ms)
+      container.scrollTop += 0.5;
     }
   }, 35);
 }
