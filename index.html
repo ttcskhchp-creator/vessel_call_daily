@@ -123,7 +123,7 @@ button:hover{filter:brightness(.95)}
 .movement-tools button{padding:5px 9px;font-size:10px}
 .movement-tools button.active{background:var(--navy2);color:#fff}
 
-/* KHU VỰC ĐIỀU ĐỘNG TÀU - VÒNG TRÒN CUỘN TỰ ĐỘNG */
+/* KHU VỰC ĐIỀU ĐỘNG TÀU - CUỘN VÒNG TRÒN TỰ ĐỘNG */
 .movement-scroll-wrapper{
   max-height: 380px;
   overflow-y: auto;
@@ -738,16 +738,11 @@ function formatDuration(ms) {
   return `${mins} phút`;
 }
 
-// BẢO ĐẢM TÍNH HỢP LỆ LOGIC: ETD LUÔN NẰM SAU ETB
-function ensureValidEtbDtd(etbStr, etdStr) {
+// KHÔNG TỰ ĐỘNG CỘNG THÊM GIỜ VÀO ETD NẾU THIẾU
+function parseEtbEtd(etbStr, etdStr) {
   let t1 = etbStr ? new Date(etbStr).getTime() : 0;
   let t2 = etdStr ? new Date(etdStr).getTime() : 0;
-
-  if (t1 > 0 && (t2 === 0 || t2 <= t1)) {
-    t2 = t1 + 12 * 3600 * 1000;
-    etdStr = new Date(t2).toISOString();
-  }
-  return { etb: etbStr, etd: etdStr, t1, t2 };
+  return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
 }
 
 async function loadVesselOverrides() {
@@ -900,7 +895,7 @@ function nav(page, saveState = true){
 document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
 document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-// HÀM XỬ LÝ TRÙNG TÊN: CHỈ LẤY ETB HỢP LỆ VÀ NỔI BẬT THEO QUY TẮC MỚI
+// XỬ LÝ TRÙNG TÊN: CHỈ LẤY ETB HỢP LỆ, KHÔNG BỊA HOẶC CỘNG THÊM GIỜ VÀO ETD
 function filterAndDeduplicateCalls(rawList) {
   let processedList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
@@ -909,7 +904,7 @@ function filterAndDeduplicateCalls(rawList) {
     if (override) {
       let mergedEtb = override.etb || c.etb || '';
       let mergedEtd = override.etd || c.etd || '';
-      let validatedTimes = ensureValidEtbDtd(mergedEtb, mergedEtd);
+      let times = parseEtbEtd(mergedEtb, mergedEtd);
 
       return {
         ...c,
@@ -918,16 +913,16 @@ function filterAndDeduplicateCalls(rawList) {
         berth: override.berth || c.berth || '',
         loa: override.loa !== null && override.loa !== undefined && override.loa !== '' ? Number(override.loa) : c.loa,
         dwt: override.dwt || c.dwt || '',
-        etb: validatedTimes.etb,
-        etd: validatedTimes.etd
+        etb: times.etb,
+        etd: times.etd
       };
     }
 
-    let validatedTimes = ensureValidEtbDtd(c.etb, c.etd);
+    let times = parseEtbEtd(c.etb, c.etd);
     return {
       ...c,
-      etb: validatedTimes.etb,
-      etd: validatedTimes.etd
+      etb: times.etb,
+      etd: times.etd
     };
   });
 
@@ -940,11 +935,9 @@ function filterAndDeduplicateCalls(rawList) {
       masterGlobalVesselMap.set(vName, c);
     } else {
       let existing = masterGlobalVesselMap.get(vName);
-      // CHỈ BỔ SUNG HOẶC CẬP NHẬT ETB HỢP LỆ NẾU TÀU BAN ĐẦU BỊ THIẾU
+      // CHỈ BỔ SUNG ETB HỢP LỆ NẾU TÀU BAN ĐẦU BỊ THIẾU
       if (!existing.etb && c.etb) {
         existing.etb = c.etb;
-        let reValid = ensureValidEtbDtd(existing.etb, existing.etd);
-        existing.etd = reValid.etd;
       }
     }
   });
@@ -954,13 +947,12 @@ function filterAndDeduplicateCalls(rawList) {
     let master = masterGlobalVesselMap.get(vName);
     if (master) {
       let finalEtb = c.etb || master.etb || '';
-      let finalEtd = c.etd || master.etd || '';
-      let validatedTimes = ensureValidEtbDtd(finalEtb, finalEtd);
+      let finalEtd = c.etd || master.etd || ''; // GIỮ NGUYÊN NẾU TRỐNG
 
       return {
         ...c,
-        etb: validatedTimes.etb,
-        etd: validatedTimes.etd,
+        etb: finalEtb,
+        etd: finalEtd,
         terminal: c.terminal || master.terminal || '',
         berth: c.berth || master.berth || '',
         operator: c.operator || master.operator || '',
@@ -1275,7 +1267,7 @@ function renderAll() {
   let working = list.filter(c => {
     let t1 = c.etb ? new Date(c.etb).getTime() : 0;
     let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-    return now >= t1 && now <= t2;
+    return now >= t1 && (t2 === 0 || now <= t2);
   });
   $('kWorking').textContent = working.length;
 
@@ -1325,7 +1317,7 @@ function renderTanVuLayout(list) {
   $('tanvuBerthsLayout').innerHTML = html;
 }
 
-// --- HÀM RENDER ĐIỀU ĐỘNG TÀU & CUỘN VÒNG TRÒN VỚI TỐC ĐỘ MƯỢT VỪA PHẢI ---
+// --- HÀM RENDER ĐIỀU ĐỘNG TÀU (XỬ LÝ ETD TRỐNG CHUẨN XÁC) ---
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
@@ -1350,12 +1342,12 @@ function renderMovement(list) {
       }
     }
 
-    // 2. Sắp rời
+    // 2. Sắp rời (Chỉ xét khi có mốc ETD > now)
     if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
 
-    // 3. Đã rời
+    // 3. Đã rời (Chỉ xét khi đã có mốc ETD hợp lệ <= now)
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
       items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
