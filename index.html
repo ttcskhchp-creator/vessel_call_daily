@@ -135,7 +135,7 @@ button:hover{filter:brightness(.95)}
 }
 .date-input-inline:focus{border-color:var(--cyan)}
 
-/* NÚT BỨC THƯ THÔNG BÁO */
+/* NÚT BỨC THƯ THÔNG BÁO VỚI SỐ ĐỎ NỔI LÊN */
 .topbar-right-actions{
   display: flex;
   align-items: center;
@@ -1508,18 +1508,49 @@ function renderOverrideTable() {
   tbody.innerHTML = html;
 }
 
-function populateEditForm(vesselName) {
-  let item = vesselOverridesMap.get(vesselName);
-  if (!item) return;
-  $('editVesselName').value = item.vessel_name || '';
-  $('editVesselOperator').value = item.operator || '';
-  $('editVesselTerminal').value = item.terminal || '';
-  $('editVesselBerth').value = item.berth || '';
-  $('editVesselLoa').value = item.loa || '';
-  $('editVesselDwt').value = item.dwt || '';
-  $('editVesselEtb').value = formatDateTimeLocal(item.etb);
-  $('editVesselEtd').value = formatDateTimeLocal(item.etd);
-  nav('edit-vessel', false);
+/**
+ * TỰ ĐỘNG KẾ THỪA THÔNG TIN TÀU VÀ ĐIỀN VÀO FORM SỬA
+ * Hỗ trợ truyền vào tên tàu (string) hoặc đối tượng tàu trực tiếp (object)
+ */
+function populateEditForm(vesselOrName) {
+  let item = null;
+  let vName = '';
+
+  if (typeof vesselOrName === 'string') {
+    vName = vesselOrName.trim().toUpperCase();
+    // 1. Tìm trong danh sách overrides
+    item = vesselOverridesMap.get(vName);
+    // 2. Nếu chưa có override, tìm trong danh sách tổng masterGlobalVesselMap
+    if (!item && masterGlobalVesselMap.has(vName)) {
+      item = masterGlobalVesselMap.get(vName);
+    }
+    // 3. Nếu chưa có, tìm trong allCalls
+    if (!item) {
+      item = allCalls.find(c => (c.vessel || '').trim().toUpperCase() === vName);
+    }
+  } else if (vesselOrName && typeof vesselOrName === 'object') {
+    item = vesselOrName;
+    vName = (item.vessel || item.vessel_name || '').trim().toUpperCase();
+    // Kiểm tra xem đã có bản override chi tiết hơn không
+    let ov = vesselOverridesMap.get(vName);
+    if (ov) item = { ...item, ...ov };
+  }
+
+  if (!item && !vName) return;
+
+  // Điền toàn bộ dữ liệu vào Form
+  if ($('editVesselName')) $('editVesselName').value = item ? (item.vessel || item.vessel_name || '') : vName;
+  if ($('editVesselOperator')) $('editVesselOperator').value = item ? (item.operator || '') : '';
+  if ($('editVesselTerminal')) $('editVesselTerminal').value = item ? (item.terminal || '') : '';
+  if ($('editVesselBerth')) $('editVesselBerth').value = item ? (item.berth || '') : '';
+  if ($('editVesselLoa')) $('editVesselLoa').value = (item && item.loa !== undefined && item.loa !== null) ? item.loa : '';
+  if ($('editVesselDwt')) $('editVesselDwt').value = item ? (item.dwt || '') : '';
+  if ($('editVesselEtb')) $('editVesselEtb').value = item ? formatDateTimeLocal(item.etb) : '';
+  if ($('editVesselEtd')) $('editVesselEtd').value = item ? formatDateTimeLocal(item.etd) : '';
+
+  // Chuyển ngay đến Tab "Bổ sung & Sửa tàu"
+  nav('edit-vessel', true);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function saveVesselOverrideProtected() {
@@ -2456,20 +2487,22 @@ function bindAllEventListeners() {
     };
   }
 
-  // Các nút trên Tooltip tàu
+  // NÚT SỬA TRÊN TOOLTIP CẠNH NÚT REPORT
   if ($('ttEditBtn')) {
     $('ttEditBtn').onclick = () => {
-      if (selectedShipForReport) {
-        let pwd = prompt(dict[currentLang].promptPwd);
-        if (pwd === '6868') {
-          populateEditForm(selectedShipForReport.vessel);
-          hideTooltip();
-        } else if (pwd !== null) {
-          alert(dict[currentLang].pwdWrong);
-        }
+      if (!selectedShipForReport) return;
+      let pwd = prompt(dict[currentLang].promptPwd);
+      if (pwd === '6868') {
+        // Truyền thẳng đối tượng selectedShipForReport vào để điền form và chuyển tab
+        populateEditForm(selectedShipForReport);
+        hideTooltip();
+      } else if (pwd !== null) {
+        alert(dict[currentLang].pwdWrong);
       }
     };
   }
+
+  // NÚT BÁO LỖI (REPORT) TRÊN TOOLTIP
   if ($('ttReportBtn')) {
     $('ttReportBtn').onclick = () => {
       if (selectedShipForReport) {
