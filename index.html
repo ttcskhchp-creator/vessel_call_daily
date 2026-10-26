@@ -699,7 +699,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
             <button class="tiny" onclick="filterPlanningArea('HOANG DIEU', this)">Hoàng Diệu</button>
             <button class="tiny" onclick="filterPlanningArea('CHUA VE', this)">Chùa Vẽ</button>
-            <button class="tiny" onclick="filterPlanningArea('DINH VU', this)">Đình Vũ</button>
+            <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
           </div>
           <div class="gantt" id="fullGantt">
             <div class="empty">Chưa có dữ liệu Gantt.</div>
@@ -1779,15 +1779,16 @@ async function fetchRealWeatherHaiPhong() {
   }
 }
 
-// --- MODULE TỰ ĐỘNG BÓC TÁCH CHUẨN XÁC THEO ĐỊNH DANH HON-DAU TRÊN THEGIOIMOICAU.COM ---
+// --- MODULE BÓC TÁCH CHUẨN XÁC TRẠM HÒN DÁU TỪ NGUỒN CHUYÊN BIỆT hon-dau/trang-1 ---
 async function fetchTideFromTheGioiMoiCau() {
   const d = new Date();
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
   const dateKey = `${year}-${month}-${day}`;
+  const targetDateLabel = `Dương lịch ${day}/${month}/${year}`;
 
-  // 1. Kiểm tra cấu hình cài đặt tay ca trực nếu có
+  // 1. Kiểm tra cấu hình cài đặt tay của ca trực
   try {
     let custom = localStorage.getItem('hp_tide_custom_' + dateKey);
     if (custom) {
@@ -1798,7 +1799,7 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   } catch(e) {}
 
-  // 2. Xóa cache cũ nếu từng đọc nhầm số liệu cao > 3.2m của trạm khác
+  // 2. Tự động dọn sạch cache sai (>3.2m)
   try {
     let cached = localStorage.getItem('hp_tide_cache_' + dateKey);
     if (cached) {
@@ -1814,83 +1815,55 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   } catch(e) {}
 
-  const targetUrl = `https://thegioimoicau.com/lich-thuy-trieu/${day}/${month}/${year}`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+  // 3. Tải trực tiếp từ trang chuyên biệt chỉ có Hòn Dấu
+  const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
+  // Hỗ trợ cơ chế Proxy kép nếu proxy 1 bận
+  const proxyList = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+  ];
 
-  try {
-    if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Đang đọc Hòn Dáu...';
-    const res = await fetch(proxyUrl);
-    const data = await res.json();
+  let rawHtml = '';
+  for (let pUrl of proxyList) {
+    try {
+      if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Đang đọc Hòn Dáu...';
+      const res = await fetch(pUrl);
+      if (pUrl.includes('allorigins')) {
+        const json = await res.json();
+        rawHtml = json.contents || '';
+      } else {
+        rawHtml = await res.text();
+      }
+      if (rawHtml && rawHtml.includes('Hòn Dấu')) break;
+    } catch(e) {}
+  }
 
-    if (data && data.contents) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(data.contents, 'text/html');
+  if (rawHtml) {
+    try {
+      let tempDiv = document.createElement('div');
+      tempDiv.innerHTML = rawHtml;
+      let textContent = tempDiv.innerText || tempDiv.textContent || '';
+
+      // TÌM CHÍNH XÁC Ô CỦA NGÀY HÔM NAY (Ví dụ: "Dương lịch 26/10/2026")
+      let dateIdx = textContent.indexOf(targetDateLabel);
+      if (dateIdx === -1) {
+        // Dự phòng tìm dạng không có chữ "Dương lịch"
+        dateIdx = textContent.indexOf(`${day}/${month}/${year}`);
+      }
 
       let hourlyTides = [];
 
-      // CHIẾN LƯỢC 1: Dò tìm qua thẻ chứa đường dẫn tĩnh 'hon-dau' (Dựa theo ảnh F12 dòng 95)[cite: 6, 7, 8]
-      let honDauAnchor = doc.querySelector('a[href*="hon-dau"], a[href*="hon_dau"]');
-      let targetSection = null;
-
-      if (honDauAnchor) {
-        // Leo lên container cha chứa bảng số liệu của Hòn Dáu
-        let parent = honDauAnchor.closest('.col-md-6, .col-lg-6, .card, .panel, .col-sm-12, div');
-        while (parent && parent !== doc.body) {
-          let text = parent.innerText || '';
-          if (text.includes('0h') && text.includes('1h') && text.includes('23h')) {
-            targetSection = parent;
-            break;
-          }
-          parent = parent.parentElement;
+      if (dateIdx !== -1) {
+        // Cắt đoạn nội dung từ ngày hôm nay đến trước ngày hôm sau
+        let dayChunk = textContent.substring(dateIdx, dateIdx + 2000);
+        let nextDayIdx = dayChunk.indexOf('Dương lịch', 25);
+        if (nextDayIdx !== -1) {
+          dayChunk = dayChunk.substring(0, nextDayIdx);
         }
-      }
 
-      // CHIẾN LƯỢC 2: Quét khối DOM có tiêu đề 'Lịch thủy triều Hòn Dấu'[cite: 2, 3]
-      if (!targetSection) {
-        let headers = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, div, a, th, td'));
-        let targetHeader = headers.find(el => {
-          let t = el.innerText || el.textContent || '';
-          return t.includes('Lịch thủy triều Hòn Dấu') || t.includes('Lịch thủy triều Hòn Dáu');
-        });
-
-        if (targetHeader) {
-          let p = targetHeader.parentElement;
-          while (p && p !== doc.body) {
-            let t = p.innerText || '';
-            if (t.includes('0h') && t.includes('23h')) {
-              targetSection = p;
-              break;
-            }
-            p = p.parentElement;
-          }
-        }
-      }
-
-      // Trích xuất số liệu từ Container đã khoanh vùng
-      let scopeText = '';
-      if (targetSection) {
-        scopeText = targetSection.innerText || '';
-        // Đảm bảo không dính sang Nha Trang hay trạm khác[cite: 3]
-        let stopIdx = scopeText.indexOf('Nha Trang');
-        if (stopIdx !== -1) scopeText = scopeText.substring(0, stopIdx);
-      } else {
-        // Dự phòng: Cắt chuỗi chính xác từ vị trí 'hon-dau' trong HTML thô
-        let rawHtml = data.contents;
-        let pos = rawHtml.indexOf('hon-dau');
-        if (pos === -1) pos = rawHtml.indexOf('Hòn Dấu');
-        if (pos === -1) pos = rawHtml.indexOf('Hòn Dáu');
-
-        if (pos !== -1) {
-          let chunk = rawHtml.substring(pos, pos + 2500);
-          let div = document.createElement('div');
-          div.innerHTML = chunk;
-          scopeText = div.innerText || '';
-        }
-      }
-
-      if (scopeText) {
+        // Bóc tách đúng 24 mốc giờ: 0h ... 2.5m, 1h ... 2.6m
         let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
-        let matches = [...scopeText.matchAll(regex)];
+        let matches = [...dayChunk.matchAll(regex)];
 
         for (let m of matches) {
           let hour = parseInt(m[1], 10);
@@ -1900,11 +1873,11 @@ async function fetchTideFromTheGioiMoiCau() {
               hourlyTides.push({ hour, val });
             }
           }
-          if (hourlyTides.length === 24) break; // Chỉ lấy đúng 24 mốc giờ của Hòn Dáu
+          if (hourlyTides.length === 24) break;
         }
       }
 
-      // Tính Đỉnh - Đáy thực tế của Hòn Dấu[cite: 3]
+      // 4. Kết xuất số liệu Đỉnh - Đáy chuẩn của Hòn Dấu
       if (hourlyTides.length >= 12) {
         hourlyTides.sort((a,b) => a.hour - b.hour);
         let maxItem = hourlyTides.reduce((p, c) => (c.val > p.val ? c : p), hourlyTides[0]);
@@ -1927,12 +1900,12 @@ async function fetchTideFromTheGioiMoiCau() {
         updateRealtimeWidgets();
         return;
       }
+    } catch(err) {
+      console.warn("Lỗi bóc tách Hòn Dáu từ thegioimoicau:", err);
     }
-  } catch(err) {
-    console.warn("Lỗi đọc thegioimoicau.com:", err);
   }
 
-  // Chế độ dự phòng khi không kết nối được
+  // 5. Chế độ dự phòng khi lỗi mạng
   fallbackHonDauAstronomical(d);
 }
 
@@ -1987,18 +1960,16 @@ function updateRealtimeWidgets() {
   if ($('tideProgMin')) $('tideProgMin').textContent = `Ròng: ${liveTideData.lowVal}m`;
   if ($('tideProgMax')) $('tideProgMax').textContent = `Lớn: ${liveTideData.highVal}m`;
 
-  // 2. Xác định mực nước tại thời điểm hiện tại:
+  // 2. Xác định mực nước tại thời điểm hiện tại
   let curHour = now.getHours();
   let currentLevel = null;
 
-  // Nếu có bảng 24 giờ lấy từ thegioimoicau.com: nội suy mượt theo phút giữa giờ này và giờ sau[cite: 3]
   if (liveTideData.hourlyList && liveTideData.hourlyList.length >= 12) {
     let curItem = liveTideData.hourlyList.find(x => x.hour === curHour) || { val: liveTideData.lowVal };
     let nextItem = liveTideData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
     let fraction = now.getMinutes() / 60;
     currentLevel = (curItem.val + (nextItem.val - curItem.val) * fraction).toFixed(2);
   } else {
-    // Nếu không có bảng giờ, tính theo chu kỳ hình Sin
     let diffH = (curHour + now.getMinutes() / 60 - liveTideData.lowHour + 24) % 24;
     let cycleLen = (liveTideData.highHour - liveTideData.lowHour + 24) % 24 || 12.42;
     let phaseAngle = (diffH / cycleLen) * Math.PI;
@@ -2809,7 +2780,7 @@ function initApp() {
   loadFeedbacks();
   loadData();
   fetchRealWeatherHaiPhong();
-  fetchTideFromTheGioiMoiCau(); // Tự động đọc và lọc số liệu duy nhất của Hòn Dáu
+  fetchTideFromTheGioiMoiCau(); // Tự động đọc và lọc số liệu duy nhất của Hòn Dáu từ hon-dau/trang-1
   
   setInterval(fetchRealWeatherHaiPhong, 600000);
   setInterval(fetchTideFromTheGioiMoiCau, 3600000); // Tự động làm mới mỗi 1 giờ
