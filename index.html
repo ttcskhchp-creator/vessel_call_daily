@@ -1,4 +1,11 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</title>
+<!-- Tích hợp Supabase JS Client SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --navy:#102b46;--navy2:#173f63;--cyan:#26bdc8;--bg:#f2f5f9;--card:#ffffff;--ink:#192c40;
@@ -24,7 +31,6 @@ button:hover{filter:brightness(.95)}
 .nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 .nav button span.icon{font-size:15px;min-width:20px;text-align:center}
-.nav button span.txt{transition:opacity .15s}
 
 .side-shift-card{
   background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.35);
@@ -37,7 +43,7 @@ button:hover{filter:brightness(.95)}
 .side-shift-item strong{font-size: 10.5px;color: #ffffff;word-break: break-word}
 .side-shift-item span.phone{color: var(--cyan);font-weight: 800}
 
-/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI DƯỚI BỘ PHẬN TRỰC */
+/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI */
 .side-system-box{
   background: rgba(0,0,0,0.18);
   border: 1px solid rgba(255,255,255,0.08);
@@ -82,7 +88,7 @@ button:hover{filter:brightness(.95)}
 .side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:10px 4px 0;color:#91adc2;font-size:9px;line-height:1.35}
 .main{min-width:0}
 
-/* TOPBAR ĐƯỢC TINH CHỈNH TỐI ƯU */
+/* TOPBAR */
 .topbar{
   padding: 8px 20px;
   background: var(--card);
@@ -109,7 +115,6 @@ button:hover{filter:brightness(.95)}
 .topbar h1{font-size:16px;margin:0;font-weight:850;color:var(--navy2);line-height:1.2}
 :root[data-theme="dark"] .topbar h1{color:var(--cyan)}
 
-/* DẢI LỌC NGÀY NẰM SÁT DƯỚI TIÊU ĐỀ */
 .topbar-date-filter{
   display: flex;
   align-items: center;
@@ -130,45 +135,43 @@ button:hover{filter:brightness(.95)}
 }
 .date-input-inline:focus{border-color:var(--cyan)}
 
-/* TOPBAR ACTIONS & BIỂU TƯỢNG BỨC THƯ CÓ SỐ ĐỎ BÁO TIN NHẮN */
-.topbar-right{
+/* NÚT BỨC THƯ THÔNG BÁO VỚI SỐ ĐỎ NỔI LÊN */
+.topbar-right-actions{
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.mail-btn-container{
+.mail-btn-wrap{
   position: relative;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
 }
-.mail-action-btn{
-  background: linear-gradient(135deg, rgba(38,189,200,0.12), rgba(16,43,70,0.08));
-  border: 1px solid rgba(38,189,200,0.35);
+.mail-badge-btn{
+  background: #f0f4f9;
+  border: 1px solid var(--line);
   color: var(--navy2);
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px;
   padding: 0;
-  cursor: pointer;
-  transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  position: relative;
+  transition: all .2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
-:root[data-theme="dark"] .mail-action-btn{
-  background: rgba(38,189,200,0.15);
-  border-color: rgba(38,189,200,0.4);
-  color: #8be4ec;
+:root[data-theme="dark"] .mail-badge-btn{
+  background: #172a40;
+  color: #fff;
+  border-color: var(--line);
 }
-.mail-action-btn:hover{
+.mail-badge-btn:hover{
   background: var(--cyan);
   color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(38,189,200,0.35);
+  transform: translateY(-1px);
 }
-.mail-badge-counter{
+.mail-unread-badge{
   position: absolute;
   top: -5px;
   right: -5px;
@@ -176,167 +179,321 @@ button:hover{filter:brightness(.95)}
   color: #ffffff;
   font-size: 10px;
   font-weight: 900;
-  min-width: 19px;
-  height: 19px;
-  line-height: 19px;
-  padding: 0 4px;
+  padding: 1px 6px;
   border-radius: 10px;
-  text-align: center;
   border: 2px solid var(--card);
-  box-shadow: 0 2px 6px rgba(231,76,60,0.5);
-  pointer-events: none;
-  animation: mailPulse 2s infinite ease-in-out;
+  box-shadow: 0 2px 5px rgba(231,76,60,0.5);
+  display: none;
+  animation: pulseBadge 1.5s infinite;
 }
-.mail-badge-counter.hidden{
-  display: none !important;
-}
-@keyframes mailPulse{
-  0%, 100%{ transform: scale(1); }
-  50%{ transform: scale(1.18); box-shadow: 0 0 10px rgba(231,76,60,0.85); }
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
 .content{padding:14px 20px 30px;max-width:1800px;margin:auto}
-<!-- ... existing code ... -->
+.page{display:block;width:100%;animation:pageIn .15s ease-out}
+.page.hidden{display:none!important}
+@keyframes pageIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.page-head{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.page-head h2{margin:0 0 2px;font-size:18px}
+.muted{color:var(--muted)}
+.tiny{font-size:11px}
+
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0}
+.kpi,.panel{background:var(--card);border:1px solid var(--line);border-radius:11px;box-shadow:0 3px 10px #18314a05}
+.kpi{padding:12px}
+.kpi-top{display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:10px;font-weight:700}
+.kpi-value{font-size:22px;font-weight:850;letter-spacing:-.5px;margin:5px 0 2px}
+.kpi-note{font-size:9px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:12px}
+.panel{overflow:hidden;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h3{font-size:12.5px;margin:0}
+.panel-body{padding:12px 14px}
+
+.header-widgets-grid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;margin-bottom:12px}
+.vivid-weather{background:linear-gradient(135deg,#163d63 0%,#205987 50%,#2fa3b5 100%);color:#ffffff;border-radius:12px;padding:14px 18px;box-shadow:0 6px 20px rgba(16,43,70,0.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+:root[data-theme="dark"] .vivid-weather{background:linear-gradient(135deg,#0d253d 0%,#153b5c 50%,#1a5b7d 100%)}
+.vivid-weather-bg-icon{position:absolute;right:-10px;top:-10px;font-size:110px;opacity:0.12;pointer-events:none;line-height:1}
+.weather-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.weather-city{font-size:10.5px;font-weight:800;letter-spacing:0.5px;color:#8be4ec;text-transform:uppercase}
+.weather-hero{display:flex;align-items:center;gap:12px;margin-top:3px}
+.weather-hero-icon{font-size:38px;line-height:1}
+.weather-hero-temp{font-size:34px;font-weight:900;letter-spacing:-1px}
+.weather-hero-cond{font-size:12.5px;font-weight:800;opacity:0.95}
+
+.weather-indicators-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0;padding:6px 0;border-top:1px solid rgba(255,255,255,0.2);border-bottom:1px solid rgba(255,255,255,0.2)}
+.w-ind-item{background:rgba(0,0,0,0.12);border-radius:7px;padding:5px 8px}
+.w-ind-item small{display:block;font-size:8px;opacity:0.8;font-weight:700}
+.w-ind-item strong{font-size:11px;font-weight:800;display:block;margin-top:1px;color:#ffffff}
+.weather-hourly{display:flex;gap:8px;overflow-x:auto;padding-top:2px}
+.w-hour-item{text-align:center;min-width:48px;background:rgba(255,255,255,0.1);padding:4px;border-radius:6px;font-size:9px}
+.w-hour-item small{display:block;opacity:0.8;font-size:8px}
+
+.vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:12px;padding:14px 16px;box-shadow:0 6px 20px rgba(16,43,70,0.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+:root[data-theme="dark"] .vivid-tide{background:linear-gradient(135deg,#092133 0%,#103b54 50%,#165675 100%)}
+.vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:95px;opacity:0.15;pointer-events:none;line-height:1}
+.tide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+.tide-title{font-size:10.5px;font-weight:800;letter-spacing:0.4px;color:#8be4ec}
+.tide-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+.tide-box{background:rgba(255,255,255,0.1);border-radius:8px;padding:7px}
+.tide-box.high{border-left:3px solid #26bdc8}
+.tide-box.low{border-left:3px solid #ffb347}
+.tide-box small{display:block;font-size:8.5px;opacity:0.85;font-weight:700}
+.tide-box strong{font-size:17px;font-weight:900;display:block;margin:1px 0}
+.tide-box span{font-size:9.5px;opacity:0.95;font-weight:700}
+
+.tide-progress-wrap{margin-top:6px}
+.tide-progress-labels{display:flex;justify-content:space-between;font-size:8.5px;font-weight:700;margin-bottom:3px;opacity:0.9}
+.tide-progress-bar{height:6px;background:rgba(0,0,0,0.25);border-radius:5px;overflow:hidden}
+.tide-progress-fill{height:100%;background:linear-gradient(90deg,#ffb347,#26bdc8);border-radius:5px;width:65%}
+
+.movement-tools{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+.movement-tools button{padding:4px 8px;font-size:10px}
+.movement-tools button.active{background:var(--navy2);color:#fff}
+
+.movement-scroll-wrapper{
+  max-height: 380px;
+  overflow-y: auto;
+  position: relative;
+  scrollbar-width: thin;
+}
+.timeline{display:grid;gap:8px}
+.trow{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:start}
+.t-time{font-weight:800;font-size:11px;color:var(--navy2);padding-top:2px}
+:root[data-theme="dark"] .t-time{color:var(--cyan)}
+.t-card{border-left:3px solid var(--cyan);padding:2px 0 6px 10px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.t-card strong{font-size:11px}
+.tag-vivid{font-size:9px;border-radius:5px;padding:3px 6px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}
+.tag-vivid.arriving{background:#e8f6f1;color:#126e55}
+.tag-vivid.departing{background:#fff0f0;color:#a82e2e}
+.tag-vivid.urgent{background:#fff3d9;color:#8f5c00}
+
+.berth-group{margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.berth-group:last-child{border-bottom:0;padding-bottom:0}
+.berth-group-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.berth-group-title{font-weight:800;font-size:11.5px;color:var(--navy2)}
+:root[data-theme="dark"] .berth-group-title{color:var(--cyan)}
+.berth-row{display:grid;grid-template-columns:36px 1fr;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
+.berth-name{font-weight:800;font-size:10px;color:var(--muted)}
+.berth-ships{display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px}
+.ship-chip{background:linear-gradient(135deg,#1f6d9c,#134c70);color:#fff;border-radius:5px;padding:4px 8px;font-size:10px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.ship-chip.large{background:linear-gradient(135deg,#c48612,#916005)}
+.ship-chip .chip-time{font-size:8px;opacity:.85;font-weight:normal}
+.empty-berth{color:var(--muted);font-size:10px;font-style:italic}
+
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.field{border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--card);min-width:100px;font-size:11px;color:var(--ink)}
+.field.search{flex:1;min-width:150px}
+.table-wrap{overflow:auto;max-height:60vh}
+table{border-collapse:collapse;width:100%;min-width:800px;font-size:11px}
+th{background:rgba(0,0,0,0.03);color:var(--muted);text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody tr:hover{background:rgba(38,189,200,0.04)}
+.vessel{font-weight:800;color:var(--navy2)}
+:root[data-theme="dark"] .vessel{color:var(--cyan)}
+.badge{display:inline-block;border-radius:4px;padding:2px 5px;background:#e7f2fc;color:#1b6599;font-weight:800;font-size:9px}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+
+.chart-list{display:grid;gap:8px}
+.barrow{display:grid;grid-template-columns:140px 1fr 30px;gap:8px;align-items:center;font-size:11px}
+.barrow-label{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s}
+.barrow-label:hover{color:var(--cyan);text-decoration:underline}
+.barbg{height:7px;background:var(--line);border-radius:5px;overflow:hidden}
+.barfill{height:100%;background:var(--cyan);border-radius:5px}
+.barfill.gold{background:var(--amber)}
+.hourly-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.hour-cell{border:1px solid var(--line);border-radius:7px;padding:6px;background:var(--card)}
+.hour-cell-top{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.hour-cell b{font-size:11.5px}
+.hour-meter{height:3px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
+.hour-meter i{display:block;height:100%;background:var(--cyan);border-radius:3px}
+
+.gantt{overflow:auto;padding:10px}
+.gantt-head,.gantt-row{display:grid;grid-template-columns:140px minmax(700px,1fr);min-width:840px}
+.gantt-head{font-size:9px;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--line)}
+.gantt-timeline-header{display:flex;width:100%;background:var(--card)}
+.gantt-time-slot{flex:1;text-align:center;border-left:1px solid var(--line);font-size:9px;font-weight:700;padding:2px 0}
+.gantt-time-slot span{display:block;font-size:8px;color:var(--muted);font-weight:normal}
+.gantt-row{min-height:42px;border-top:1px solid var(--line);align-items:center}
+.berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
+.shipbar{position:absolute;top:2px;height:24px;border-radius:4px;padding:3px 6px;color:#fff;font-size:9px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:30px;cursor:pointer;z-index:2}
+.shipbar.large{background:#d99a24}
+
+#shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:auto;max-width:300px;font-size:11px}
+#shipTooltip strong{font-size:13px;color:var(--navy2);display:block;margin-bottom:2px}
+:root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
+#shipTooltip .tt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:6px}
+#shipTooltip .tt-item small{display:block;color:var(--muted);font-size:8px}
+#shipTooltip .tt-item b{font-size:10px}
+#shipTooltip .tt-actions{display:flex;gap:5px;margin-top:10px}
+
+#statsVesselPopover{
+  position:fixed;display:none;z-index:1000;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:12px;box-shadow:0 8px 26px rgba(0,0,0,0.28);
+  width:290px;font-size:11px;
+}
+#statsVesselPopover .pop-head{
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px;
+}
+#statsVesselPopover .pop-head strong{
+  font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
+}
+:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
+#statsVesselPopover .pop-list{
+  max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
+}
+.pop-item{
+  background:rgba(38,189,200,0.06);border:1px solid var(--line);
+  border-radius:6px;padding:6px 8px;display:grid;gap:2px;
+}
+.pop-item-top{
+  display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:11px;
+}
+.pop-item-meta{
+  font-size:9px;color:var(--muted);display:flex;justify-content:space-between;gap:4px;
+}
+
 .report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
 .form-group{margin-bottom:12px}
 .form-group label{display:block;font-weight:700;font-size:10px;color:var(--muted);margin-bottom:4px}
 .form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--card);color:var(--ink)}
 
-.modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
 .modal-shade.open{display:flex}
-.modal{background:var(--card);border-radius:12px;width:min(420px,90vw);padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2)}
-.modal h3{margin:0 0 12px;font-size:16px}
+.modal{background:var(--card);border-radius:12px;width:min(440px,92vw);padding:20px;box-shadow:0 12px 35px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto}
+.modal h3{margin:0 0 12px;font-size:16px;color:var(--navy2)}
+:root[data-theme="dark"] .modal h3{color:var(--cyan)}
 .modal-form{display:grid;gap:10px}
 .modal-form label{display:block;font-size:10px;font-weight:700;color:var(--muted)}
 .modal-form input{width:100%;margin-top:3px}
 .modal-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:15px}
 
-/* MODAL HÒM THƯ BÁO CÁO & PHẢN ÁNH */
-.modal-inbox-wide{
-  width: min(840px, 95vw);
-  max-height: 86vh;
-  display: flex;
-  flex-direction: column;
-}
-.inbox-header-row{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-.inbox-list-scroll{
-  max-height: calc(86vh - 140px);
-  overflow-y: auto;
-  display: grid;
-  gap: 10px;
-  padding: 12px 2px;
-  scrollbar-width: thin;
-}
-.mail-item-box{
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 12px 14px;
-  display: grid;
-  gap: 6px;
-  transition: all .15s ease;
-}
-.mail-item-box:hover{
-  border-color: var(--cyan);
-  box-shadow: 0 3px 12px rgba(0,0,0,0.06);
-}
-.mail-item-header{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.mail-sender-title{
-  font-weight: 850;
-  font-size: 13px;
-  color: var(--navy2);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-:root[data-theme="dark"] .mail-sender-title{color: var(--cyan);}
-.mail-tag{
-  font-size: 9.5px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: #eaf0f6;
-  color: #205072;
-}
-.mail-tag.urgent{background: #fff0f0; color: #c94d4d;}
-.mail-meta-line{
-  font-size: 10.5px;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.mail-content-text{
-  background: var(--card);
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  font-size: 12px;
-  line-height: 1.48;
-  color: var(--ink);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.mail-actions-row{
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.btn-del-mail{
-  background: rgba(201, 77, 77, 0.12);
-  color: var(--red);
-  font-size: 11px;
-  padding: 5px 10px;
-  border-radius: 6px;
-}
-.btn-del-mail:hover{
-  background: var(--red);
-  color: #ffffff;
-}
-
-/* THÔNG BÁO TOAST */
-#customToastContainer{
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-.toast-notice{
-  background: var(--navy2);
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-left: 4px solid var(--cyan);
-  animation: toastFadeIn .2s ease-out;
-}
-.toast-notice.err{border-left-color: var(--red);}
-@keyframes toastFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.inbox-list{display:grid;gap:10px;max-height:60vh;overflow-y:auto;padding-right:4px}
+.inbox-item{border:1px solid var(--line);border-radius:8px;padding:10px;background:rgba(0,0,0,0.02);position:relative}
+:root[data-theme="dark"] .inbox-item{background:rgba(255,255,255,0.03)}
+.inbox-item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.inbox-item-head strong{color:var(--navy2);font-size:12px}
+:root[data-theme="dark"] .inbox-item-head strong{color:var(--cyan)}
+.inbox-meta{font-size:9.5px;color:var(--muted);margin-bottom:6px}
+.inbox-body{font-size:11px;background:var(--card);padding:8px;border-radius:6px;border:1px dashed var(--line);margin-bottom:8px;white-space:pre-wrap;word-break:break-word}
+.inbox-item-actions{display:flex;justify-content:flex-end;gap:6px}
 
 .port-link-box{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:10px;display:flex;align-items:center;justify-content:space-between}
 .port-link-box a{color:var(--cyan);font-weight:700;text-decoration:none}
-<!-- ... existing code ... -->
+
+@media(max-width:980px){
+  .app{grid-template-columns:60px minmax(0,1fr)}
+  .brand div,.nav-label,.nav button span.txt,.side-foot,.side-shift-card,.side-system-box{display:none}
+  .side{padding:12px 4px;align-items:center}
+  .brand{padding:0;justify-content:center}
+  .nav button{justify-content:center;padding:10px;width:44px;height:44px}
+  .nav button span.icon{font-size:18px;min-width:auto}
+  
+  .side:hover{width:240px}
+  .side:hover .brand div,.side:hover .nav-label,.side:hover .nav button span.txt,.side:hover .side-foot,.side:hover .side-shift-card,.side:hover .side-system-box{display:block}
+  .side:hover .side-quick-grid{display:grid}
+  .side:hover .nav button{justify-content:flex-start;width:100%;padding:9px 10px}
+  .side:hover .brand{justify-content:flex-start}
+
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .header-widgets-grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .topbar{padding:10px 14px}
+  .content{padding:12px 14px 24px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- MENU DỌC TRÁI -->
+  <aside class="side" id="sidebarNav">
+    <div class="brand">
+      <div>
+        <small id="t_opCenter">Operations & Customer Service Center</small>
+        <strong id="t_hpPort">Cảng Hải Phòng</strong>
+      </div>
+    </div>
+    <div>
+      <div class="nav-label" id="t_navWorkspace">Không gian làm việc</div>
+      <nav class="nav">
+        <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt" id="t_menuOverview">Toàn cảnh</span></button>
+        <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt" id="t_menuPlanning">Kế hoạch cầu</span></button>
+        <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt" id="t_menuSearch">Tra cứu tàu</span></button>
+        <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
+        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span></button>
+        <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt" id="t_menuReport">Báo cáo & Góp ý</span></button>
+        <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt" id="t_menuResources">Nguồn & Liên hệ</span></button>
+      </nav>
+    </div>
+
+    <!-- THẺ BỘ PHẬN TRỰC -->
+    <div class="side-shift-card">
+      <div class="side-shift-title" id="t_shiftDutyTitle">⚡ BỘ PHẬN TRỰC</div>
+      <div class="side-shift-item">
+        <small id="t_shiftLabel">CA TRỰC</small>
+        <strong id="dispShift">Ca 1 (06:00 - 14:00)</strong>
+      </div>
+      <div class="side-shift-item">
+        <small id="t_commanderLabel">TRƯỞNG ĐIỀU HÀNH</small>
+        <strong id="dispCommander">Chưa thiết lập</strong>
+      </div>
+      <div class="side-shift-item">
+        <small id="t_safetyLabel">AN TOÀN HẢI</small>
+        <strong id="dispSafety">Chưa thiết lập</strong>
+      </div>
+    </div>
+
+    <!-- KHỐI HỆ THỐNG VÀ ĐIỀU KHIỂN DỌC BÊN TRÁI -->
+    <div class="side-system-box">
+      <!-- Nút Đếm ngược 00h00 / Tự động đồng bộ -->
+      <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
+        ↻ 00h00: (<span id="countdown">00:00:00</span>)
+      </button>
+
+      <!-- Hàng nút Ngôn ngữ & Giao diện sáng tối -->
+      <div class="side-quick-grid">
+        <button id="langToggleBtn" class="side-btn lang-btn" title="Chuyển đổi ngôn ngữ / Switch Language">
+          <span id="langFlag">🇻🇳</span> <span id="langText">VI</span>
+        </button>
+        <button class="side-btn theme-btn" id="themeToggle">
+          ◐ <span id="t_theme">Giao diện</span>
+        </button>
+      </div>
+
+      <!-- Hàng nút Nạp Bucket & Setup trực -->
+      <div class="side-quick-grid">
+        <button id="fetchHistoryBtn" class="side-btn bucket-btn" title="Tải dữ liệu từ Storage Bucket">
+          🔍 <span id="t_loadBucket">Tải Bucket</span>
+        </button>
+        <button id="setupShiftBtn" class="side-btn setup">
+          Setup 🔒
+        </button>
+      </div>
+
+      <!-- Nút Lưu Bucket -->
+      <button id="manualSaveBtn" class="side-btn save">Lưu Bucket 💾</button>
+
+      <!-- Hàng nút Xuất & Nạp Excel -->
+      <div class="side-quick-grid">
+        <button id="exportConfigBtn" class="side-btn export">Xuất Excel 📤</button>
+        <button id="importConfigBtn" class="side-btn import">Nạp Excel 📥</button>
+      </div>
+      <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
+    </div>
+
+    <div class="side-foot">
+      <b id="t_footBrand">Cảng Hải Phòng</b><br>
+      <span id="sideStatus">Sẵn sàng</span><br>
+      <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
+    </div>
+  </aside>
+
   <!-- KHU VỰC CHÍNH -->
   <section class="main">
     <header class="topbar">
@@ -354,73 +511,422 @@ button:hover{filter:brightness(.95)}
         </div>
       </div>
 
-      <!-- CỤM TÁC VỤ PHẢI: Ô BỨC THƯ CÓ SỐ ĐỎ BÁO TIN NHẮN PHẢN ÁNH -->
-      <div class="topbar-right">
-        <div class="mail-btn-container">
-          <button id="mailBtn" class="mail-action-btn" title="Hòm thư Phản ánh & Góp ý (Yêu cầu mật khẩu 6868)">
+      <!-- NÚT BỨC THƯ THÔNG BÁO VỚI SỐ ĐỎ NỔI LÊN -->
+      <div class="topbar-right-actions">
+        <div class="mail-btn-wrap">
+          <button id="mailNotificationBtn" class="mail-badge-btn" title="Hộp thư phản ánh & góp ý (Bảo mật 6868)">
             ✉
-            <span id="mailBadge" class="mail-badge-counter hidden">0</span>
+            <span id="mailBadge" class="mail-unread-badge">0</span>
           </button>
         </div>
       </div>
     </header>
 
     <main class="content">
-<!-- ... existing code ... -->
-      <!-- MÀN HÌNH 6: BÁO CÁO -->
+      <!-- MÀN HÌNH 1: TOÀN CẢNH -->
+      <section id="page-overview" class="page">
+        <div class="header-widgets-grid">
+          <!-- WIDGET THỜI TIẾT -->
+          <div class="vivid-weather">
+            <div class="vivid-weather-bg-icon">☀️</div>
+            <div class="weather-top">
+              <div>
+                <div class="weather-city" id="t_weatherCity">HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI</div>
+                <div class="weather-hero">
+                  <span class="weather-hero-icon" id="wIcon">🌤️</span>
+                  <span class="weather-hero-temp" id="wTemp">--°C</span>
+                  <div>
+                    <div class="weather-hero-cond" id="wCond">Đang đồng bộ...</div>
+                    <div style="font-size:10px;opacity:0.85" id="t_weatherDirect">Cập nhật trực tiếp Cảng HP</div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:16px;font-weight:900" id="liveClock">00:00:00</div>
+                <div style="font-size:9px;opacity:0.85" id="currentFullDate">--/--/----</div>
+                <div style="font-size:9px;color:#8be4ec;margin-top:2px;font-weight:800" id="topLastSaved">Lưu: Chưa có</div>
+              </div>
+            </div>
+
+            <div class="weather-indicators-grid">
+              <div class="w-ind-item"><small id="t_windLabel">GIÓ</small><strong id="wWind">🧭 -- m/s</strong></div>
+              <div class="w-ind-item"><small id="t_visLabel">TẦM NHÌN</small><strong id="wVis">👁️ > 10 km</strong></div>
+              <div class="w-ind-item"><small id="t_humLabel">ĐỘ ẨM</small><strong id="wHum">💧 --%</strong></div>
+            </div>
+
+            <div class="weather-hourly">
+              <div class="w-hour-item"><small id="t_nowLabel">Bây giờ</small><b id="whNow">☀️ --°</b></div>
+              <div class="w-hour-item"><small id="wh1Time">--:--</small><b id="wh1Val">🌤️ --°</b></div>
+              <div class="w-hour-item"><small id="wh2Time">--:--</small><b id="wh2Val">🌥️ --°</b></div>
+              <div class="w-hour-item"><small id="wh3Time">--:--</small><b id="wh3Val">🌙 --°</b></div>
+              <div class="w-hour-item"><small id="wh4Time">--:--</small><b id="wh4Val">🌙 --°</b></div>
+            </div>
+          </div>
+
+          <!-- WIDGET THỦY TRIỀU CHUẨN TRẠM HÒN DÁU -->
+          <div class="vivid-tide">
+            <div class="vivid-tide-bg-icon">🌊</div>
+            <div class="tide-top">
+              <div>
+                <div class="tide-title" id="t_tideTitle">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
+                <div style="font-size:10px;opacity:0.9" id="t_tideSub">Nhật triều thuần nhất · Cảng chính</div>
+              </div>
+              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn Hòn Dấu</span>
+            </div>
+
+            <div class="tide-grid">
+              <div class="tide-box high">
+                <small id="t_highTideLabel">▲ NƯỚC LỚN (ĐỈNH)</small>
+                <strong id="tideHighVal">2.30 m</strong>
+                <span id="tideHighTime">🕒 14:19</span>
+              </div>
+              <div class="tide-box low">
+                <small id="t_lowTideLabel">▼ NƯỚC RÒNG (ĐÁY)</small>
+                <strong id="tideLowVal">1.60 m</strong>
+                <span id="tideLowTime">🕒 04:12</span>
+              </div>
+            </div>
+
+            <div class="tide-progress-wrap">
+              <div class="tide-progress-labels">
+                <span id="tideProgMin">Ròng: 1.60m</span>
+                <span style="color:#8be4ec" id="tideProgStatus">Đang dâng...</span>
+                <span id="tideProgMax">Lớn: 2.30m</span>
+              </div>
+              <div class="tide-progress-bar">
+                <div class="tide-progress-fill" id="tideProgressBar" style="width: 65%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-top" id="t_kWorking">Đang làm hàng</div>
+            <div class="kpi-value" id="kWorking">0</div>
+            <div class="kpi-note" id="t_kWorkingSub">Tại cầu bến</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top" id="t_kArrivals">Đến trong 24h</div>
+            <div class="kpi-value" id="kArrivals">0</div>
+            <div class="kpi-note" id="t_kArrivalsSub">Theo ETB</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top" id="t_kDepartures">Rời trong 24h</div>
+            <div class="kpi-value" id="kDepartures">0</div>
+            <div class="kpi-note" id="t_kDeparturesSub">Theo ETD</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top" id="t_kLoa">Tổng LOA</div>
+            <div class="kpi-value" id="kLoa">0m</div>
+            <div class="kpi-note" id="t_kLoaSub">Cảng HP</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top" id="t_kLarge">Tàu ≥ 300m</div>
+            <div class="kpi-value" id="kLarge">0</div>
+            <div class="kpi-note" id="t_kLargeSub">Cỡ lớn</div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <section class="panel">
+            <div class="panel-head">
+              <h3 id="t_tanvuTitle">Cảng Tân Vũ (Tiêu điểm)</h3>
+              <span class="muted tiny" id="tanvuCount">Đang nạp...</span>
+            </div>
+            <div class="panel-body">
+              <div id="tanvuBerthsLayout">
+                <div class="empty">Đang tải cầu bến Tân Vũ...</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3 id="t_moveTitle">Điều động tàu</h3>
+              <button data-goto="search" id="t_viewAllBtn">Xem tất cả →</button>
+            </div>
+            <div class="panel-body">
+              <div class="movement-tools">
+                <button class="active" onclick="filterMovement('all', this)" id="btnMoveAll">Tất cả</button>
+                <button onclick="filterMovement('arriving', this)" id="btnMoveArr">Cập cầu</button>
+                <button onclick="filterMovement('departing', this)" id="btnMoveDep">Rời cầu</button>
+                <button onclick="filterMovement('departed', this)" id="btnMoveDepted">Đã rời</button>
+              </div>
+              <div class="movement-scroll-wrapper" id="movementContainer" onmouseenter="pauseAutoScroll()" onmouseleave="resumeAutoScroll()">
+                <div class="timeline" id="movement">
+                  <div class="empty">Chưa có dữ liệu.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="port-link-box">
+          <span><span id="t_unitLabel">Vận hành bởi:</span> <b id="t_unitName">Trung tâm Khai thác & DVKH - Cảng Hải Phòng</b></span>
+          <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">haiphongport.com.vn ↗</a>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 2: KẾ HOẠCH CẦU -->
+      <section id="page-planning" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2 id="t_planHead">Kế hoạch cầu bến</h2>
+            <div class="muted" id="t_planSub">Sơ đồ chiếm bến trực quan</div>
+          </div>
+          <span class="status" id="planningCount">Chưa có dữ liệu</span>
+        </div>
+        <div class="panel">
+          <div class="toolbar" style="background:var(--card)">
+            <input id="planningSearch" class="field search" placeholder="🔍 Tìm kiếm tàu, hãng, bến..." oninput="renderGantt()">
+            <label class="tiny" style="display:flex;align-items:center;gap:4px">
+              <span id="t_windowLabel">Cửa sổ:</span>
+              <select id="days" class="field" style="padding:5px 8px" onchange="renderGantt()">
+                <option value="2">2 ngày</option>
+                <option value="4" selected>4 ngày</option>
+                <option value="7">7 ngày</option>
+              </select>
+            </label>
+          </div>
+          <div class="toolbar" style="border-top:0;padding-top:0;gap:5px">
+            <button class="primary tiny" onclick="filterPlanningArea('ALL', this)" id="btnPlanAll">Tất cả</button>
+            <button class="tiny" onclick="filterPlanningArea('TAN VU', this)">Tân Vũ</button>
+            <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
+            <button class="tiny" onclick="filterPlanningArea('HOANG DIEU', this)">Hoàng Diệu</button>
+            <button class="tiny" onclick="filterPlanningArea('CHUA VE', this)">Chùa Vẽ</button>
+            <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
+          </div>
+          <div class="gantt" id="fullGantt">
+            <div class="empty">Chưa có dữ liệu Gantt.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 3: TRA CỨU -->
+      <section id="page-search" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2 id="t_searchHead">Tra cứu lịch tàu</h2>
+            <div class="muted" id="t_searchSub">Danh sách chi tiết lượt tàu</div>
+          </div>
+          <button id="exportBtn" onclick="exportConfigAsCSVProtected()">⇩ <span id="t_exportBtnText">Xuất Báo Cáo Excel/CSV</span></button>
+        </div>
+        <div class="panel">
+          <div class="toolbar">
+            <input id="search" class="field search" placeholder="Tìm tên tàu, hãng..." oninput="renderTable(getFilteredCalls())">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th id="th_vessel">Tàu</th>
+                  <th id="th_operator">Hãng</th>
+                  <th>LOA (m)</th>
+                  <th>DWT</th>
+                  <th id="th_berth">Cảng · Bến</th>
+                  <th id="th_etb">Cập (ETB)</th>
+                  <th id="th_etd">Rời (ETD)</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr><td colspan="8" class="empty">Đang tải dữ liệu…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 4: THỐNG KÊ -->
+      <section id="page-stats" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2 id="t_statsHead">Thống kê & Báo cáo</h2>
+            <div class="muted" id="statsSubtitle">Phân tích tần suất lượt tàu (Rê chuột vào tên mục để xem chi tiết tàu)</div>
+          </div>
+        </div>
+        <div class="grid2">
+          <section class="panel">
+            <div class="panel-head"><h3 id="t_statTerm">Theo Terminal</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statTerminals"><div class="empty">Trống</div></div></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h3 id="t_statOper">Theo Hãng tàu</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statOperators"><div class="empty">Trống</div></div></div>
+          </section>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <section class="panel">
+            <div class="panel-head"><h3 id="t_statLoa">Phân khúc LOA</h3></div>
+            <div class="panel-body"><div class="chart-list" id="statLoaBins"><div class="empty">Trống</div></div></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h3 id="t_statHours">Tần suất giờ cập</h3></div>
+            <div class="panel-body"><div class="hourly-grid" id="statHours"></div></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU -->
+      <section id="page-edit-vessel" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2 id="t_editVesselHead">Bổ sung & Sửa thông tin tàu</h2>
+            <div class="muted" id="t_editVesselSub">Quản lý và ghi đè thông tin tàu thủ công (Yêu cầu mật khẩu quản trị)</div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="panel">
+            <div class="panel-head"><h3 id="t_editFormHead">Cập nhật / Thêm mới thông tin tàu</h3></div>
+            <div class="panel-body">
+              <div class="form-group"><label id="lbl_vesselName">Tên tàu (*)</label><input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu..."></div>
+              <div class="form-group"><label id="lbl_operator">Hãng tàu</label><input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu..."></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label id="lbl_terminal">Terminal</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: Tân Vũ"></div>
+                <div class="form-group"><label id="lbl_berth">Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label>LOA (m)</label><input id="editVesselLoa" type="number" class="field" style="width:100%" placeholder="0"></div>
+                <div class="form-group"><label>DWT</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="Trọng tải"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="form-group"><label id="lbl_etb">ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
+                <div class="form-group"><label id="lbl_etd">ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <button class="primary" onclick="saveVesselOverrideProtected()" style="flex:1" id="btnSaveOverride">💾 Lưu / Cập nhật</button>
+                <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);flex:1" id="btnDeleteOverride">🗑️ Xóa bản ghi</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3 id="t_overrideListHead">Danh sách tàu đã chỉnh sửa thủ công</h3></div>
+            <div class="panel-body table-wrap" style="max-height:400px">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="th_ovVessel">Tên tàu</th>
+                    <th id="th_ovOperator">Hãng</th>
+                    <th id="th_ovBerth">Bến</th>
+                    <th id="th_ovAction">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="overrideTableRows">
+                  <tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 6: BÁO CÁO & GÓP Ý -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
             <h2 id="t_reportHead">Phản ánh & Báo cáo sai lệch</h2>
-            <div class="muted" id="t_reportSub">Gửi phản ánh tới Trung tâm Khai thác & DVKH</div>
+            <div class="muted" id="t_reportSub">Gửi phản ánh trực tiếp tới Trung tâm Khai thác & DVKH Cảng Hải Phòng</div>
           </div>
         </div>
         <div class="report-card">
-          <form id="reportForm" onsubmit="submitFeedbackReport(event)">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group">
-                <label id="lbl_repName">Họ tên (*)</label>
-                <input id="repName" required placeholder="Nhập tên...">
-              </div>
-              <div class="form-group">
-                <label id="lbl_repContact">SĐT / Email (*)</label>
-                <input id="repContact" required placeholder="Nhập liên hệ...">
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="form-group">
-                <label id="lbl_repCompany">Đơn vị</label>
-                <input id="repCompany" placeholder="Hãng tàu / Đại lý...">
-              </div>
-              <div class="form-group">
-                <label id="lbl_repType">Nội dung phản ánh</label>
-                <select id="repType">
-                  <option value="Sai thời gian ETB/ETD">Sai thời gian ETB/ETD</option>
-                  <option value="Sai tên tàu / LOA / DWT">Sai tên tàu / LOA / DWT</option>
-                  <option value="Sai vị trí cầu bến">Sai vị trí cầu bến</option>
-                  <option value="Yêu cầu điều động khẩn">Yêu cầu điều động khẩn</option>
-                  <option value="Góp ý khác">Góp ý khác</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label id="lbl_repVessel">Tàu / Cầu bến liên quan</label>
-              <input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1">
-            </div>
-            <div class="form-group">
-              <label id="lbl_repContent">Chi tiết (*)</label>
-              <textarea id="repContent" required rows="4" placeholder="Mô tả nội dung..."></textarea>
-            </div>
-            <button type="submit" id="sendFeedbackBtn" class="primary" style="width:100%;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px">
-              ✉ <span id="t_sendReportBtn">Gửi phản ánh</span>
-            </button>
-          </form>
+          <div class="form-group"><label id="lbl_repName">Họ tên (*)</label><input id="repName" placeholder="Nhập tên người gửi..."></div>
+          <div class="form-group"><label id="lbl_repContact">SĐT / Email (*)</label><input id="repContact" placeholder="Nhập số điện thoại hoặc email..."></div>
+          <div class="form-group"><label id="lbl_repCompany">Đơn vị</label><input id="repCompany" placeholder="Hãng tàu / Đại lý..."></div>
+          <div class="form-group">
+            <label id="lbl_repType">Nội dung phản ánh</label>
+            <select id="repType">
+              <option>Sai thời gian ETB/ETD</option>
+              <option>Sai tên tàu / LOA / DWT</option>
+              <option>Sai vị trí cầu bến</option>
+              <option>Góp ý khác</option>
+            </select>
+          </div>
+          <div class="form-group"><label id="lbl_repVessel">Tàu / Cầu bến liên quan</label><input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1"></div>
+          <div class="form-group"><label id="lbl_repContent">Chi tiết phản ánh (*)</label><textarea id="repContent" rows="4" placeholder="Mô tả nội dung cần điều chỉnh..."></textarea></div>
+          <button id="sendReportSubmitBtn" class="primary" style="width:100%;padding:10px;font-size:13px">✉ <span id="t_sendReportBtn">Gửi phản ánh</span></button>
         </div>
       </section>
 
       <!-- MÀN HÌNH 7: NGUỒN -->
-<!-- ... existing code ... -->
-<!-- SETUP MODAL -->
+      <section id="page-resources" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2 id="t_resHead">Nguồn & Liên hệ</h2>
+            <div class="muted" id="t_resSub">Thông tin hệ thống</div>
+          </div>
+        </div>
+        <div class="panel" style="padding:16px">
+          <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
+          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
+          <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
+        </div>
+      </section>
+    </main>
+  </section>
+</div>
+
+<!-- SMART TOOLTIP CHO TÀU Ở TOÀN CẢNH / GANTT -->
+<div id="shipTooltip">
+  <strong id="ttName">—</strong>
+  <div id="ttOperator" class="muted tiny"></div>
+  <div class="tt-grid">
+    <div class="tt-item"><small>LOA</small><b id="ttLoa">—</b></div>
+    <div class="tt-item"><small>DWT</small><b id="ttDwt">—</b></div>
+    <div class="tt-item"><small>ETB</small><b id="ttEtb">—</b></div>
+    <div class="tt-item"><small>ETD</small><b id="ttEtd">—</b></div>
+    <div class="tt-item"><small id="tt_dockedLabel">Đã ở cầu</small><b id="ttDocked">—</b></div>
+    <div class="tt-item"><small id="tt_remainLabel">Còn lại</small><b id="ttRemaining">—</b></div>
+  </div>
+  <div class="tt-actions">
+    <button id="ttEditBtn" class="primary" style="flex:1;padding:6px;font-size:10px">✏️ Sửa</button>
+    <button id="ttReportBtn" class="darkbtn" style="flex:1;padding:6px;font-size:10px">✉ Báo lỗi</button>
+  </div>
+</div>
+
+<!-- POPOVER XEM CHI TIẾT DANH SÁCH TÀU TẠI TAB THỐNG KÊ -->
+<div id="statsVesselPopover" onmouseenter="clearStatsPopoverTimeout()" onmouseleave="scheduleHideStatsPopover()">
+  <div class="pop-head">
+    <strong id="popTitle">—</strong>
+    <span class="badge" id="popBadge">0 tàu</span>
+  </div>
+  <div class="pop-list" id="popList"></div>
+</div>
+
+<!-- MODAL 1: BẢO MẬT NHẬP MẬT KHẨU (6868 ẨN) ĐỂ VÀO HÒM THƯ -->
+<div id="mailAuthModal" class="modal-shade">
+  <div class="modal">
+    <h3>🔒 Bảo mật Hòm Thư Phản Ánh</h3>
+    <p class="muted tiny" style="margin-bottom:12px">Vui lòng nhập mã PIN quản trị để xem và xử lý các phản ánh / góp ý gửi đến.</p>
+    <div class="form-group">
+      <input type="password" id="mailPasswordInput" class="field" placeholder="Nhập mã PIN (••••)" style="font-size:16px;text-align:center;letter-spacing:4px">
+      <div id="mailAuthError" style="color:var(--red);font-size:11px;margin-top:4px;display:none">Mật khẩu không chính xác!</div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeMailAuthModal()">Hủy</button>
+      <button class="primary" onclick="verifyMailPassword()">Mở Hòm Thư</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: XEM VÀ QUẢN LÝ HÒM THƯ TRỰC TIẾP -->
+<div id="inboxModal" class="modal-shade">
+  <div class="modal" style="width:min(640px,94vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:8px">
+      <h3 style="margin:0">📬 Hòm Thư Phản Ánh & Góp Ý</h3>
+      <span class="badge" id="inboxCountBadge">0 thư</span>
+    </div>
+    <div id="inboxList" class="inbox-list">
+      <div class="empty">Chưa có phản ánh hoặc góp ý nào.</div>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+      <button class="darkbtn" style="background:var(--red);color:#fff" onclick="clearAllFeedbacks()">🗑️ Xóa tất cả</button>
+      <button class="primary" onclick="closeInboxModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: THIẾT LẬP BỘ PHẬN TRỰC -->
 <div id="modalShade" class="modal-shade">
   <div class="modal">
     <h3 id="t_modalDutyHead">Thiết lập Bộ phận Trực</h3>
@@ -449,71 +955,31 @@ button:hover{filter:brightness(.95)}
   </div>
 </div>
 
-<!-- MODAL XÁC THỰC MẬT KHẨU BỨC THƯ (TYPE=PASSWORD BẢO MẬT) -->
-<div id="mailAuthModal" class="modal-shade">
-  <div class="modal">
-    <h3>🔒 <span id="t_mailAuthHead">Xác thực Quản trị Hòm thư</span></h3>
-    <p class="muted tiny" style="margin-top:-6px;margin-bottom:12px" id="t_mailAuthSub">Vui lòng nhập mật khẩu để xem các thông tin phản ánh & góp ý.</p>
-    <div class="modal-form">
-      <div>
-        <label id="lbl_authMailPwd">MẬT KHẨU BẢO MẬT</label>
-        <input type="password" id="authMailPasswordInput" class="field" style="width:100%;font-size:16px;letter-spacing:3px" placeholder="••••" maxlength="16" autofocus>
-      </div>
-      <div id="mailAuthErrMsg" style="color:var(--red);font-size:11px;font-weight:700;display:none">Mật khẩu không chính xác! Vui lòng thử lại.</div>
-    </div>
-    <div class="modal-actions">
-      <button id="btnCancelMailAuth">Hủy</button>
-      <button id="btnConfirmMailAuth" class="primary">Mở hòm thư 🔓</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL HÒM THƯ HIỂN THỊ DANH SÁCH PHẢN ÁNH (#inboxModal) -->
-<div id="inboxModal" class="modal-shade">
-  <div class="modal modal-inbox-wide">
-    <div class="inbox-header-row">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:6px">✉ <span id="t_inboxHeading">Hòm thư Báo cáo & Phản ánh</span></h3>
-        <span class="muted tiny" id="inboxSummaryText">Đang tải danh sách...</span>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="darkbtn tiny" onclick="clearAllProcessedFeedbacks()" id="btnClearAllMail" title="Xóa tất cả phản ánh">🗑️ Xóa tất cả</button>
-        <button class="tiny" onclick="fetchFeedbacksList(true)" title="Tải lại hòm thư">↻ Tải lại</button>
-        <button class="tiny" id="btnCloseInboxModal">Đóng ✕</button>
-      </div>
-    </div>
-    <div class="inbox-list-scroll" id="inboxListContainer">
-      <div class="empty">Đang tải danh sách thư...</div>
-    </div>
-  </div>
-</div>
-
-<!-- CONTAINER THÔNG BÁO TOAST -->
-<div id="customToastContainer"></div>
-
 <script>
+// --- KHỞI TẠO CLIENT VÀ BIẾN TOÀN CỤC ---
 const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ZQdpAmhE4LLfsbKGsRiHIw_ShoTsfIe';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient = null;
+try {
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch(e) { console.warn("Supabase init error:", e); }
 
-const API='https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3wzAgRL82GT125zpflvIhxcdtEsaWNsZdGwiwqtL/exec?format=public';
+const API = 'https://script.google.com/macros/s/AKfycbwBqSuNYcJnfZBsfFtO2HuB8nHV3wzAgRL82GT125zpflvIhxcdtEsaWNsZdGwiwqtL/exec?format=public';
 let allCalls = [];
 let masterGlobalVesselMap = new Map();
 let vesselOverridesMap = new Map();
 let movementMode = 'all';
 let planningAreaFilter = 'ALL';
+let feedbackList = [];
 
 let selectedShipForReport = null;
 let tooltipHideTimeout = null;
-
 let autoScrollTimer = null;
 let isUserHovering = false;
 let statsPopoverTimeout = null;
-
 let currentLang = localStorage.getItem('hp_lang') || 'vi';
-
-/* DỮ LIỆU HÒM THƯ BÁO CÁO PHẢN ÁNH */
-let feedbackReportsList = [];
 
 const dict = {
   vi: {
@@ -635,12 +1101,7 @@ const dict = {
     depRemaining: "Sắp rời còn",
     depElapsed: "Đã rời",
     agoText: "trước",
-    shipsUnit: "tàu",
-    mailAuthHead: "Xác thực Quản trị Hòm thư",
-    mailAuthSub: "Vui lòng nhập mật khẩu để xem các thông tin phản ánh & góp ý.",
-    lbl_authMailPwd: "MẬT KHẨU BẢO MẬT",
-    inboxHeading: "Hòm thư Báo cáo & Phản ánh",
-    btnClearAllMail: "🗑️ Xóa tất cả"
+    shipsUnit: "tàu"
   },
   en: {
     topTitle: "Operations & Customer Service Center",
@@ -761,314 +1222,35 @@ const dict = {
     depRemaining: "Departing in",
     depElapsed: "Departed",
     agoText: "ago",
-    shipsUnit: "vessels",
-    mailAuthHead: "Mailbox Authentication",
-    mailAuthSub: "Please enter administrator password to view incoming reports.",
-    lbl_authMailPwd: "SECURITY PASSWORD",
-    inboxHeading: "Feedback & Reports Inbox",
-    btnClearAllMail: "🗑️ Clear All"
+    shipsUnit: "vessels"
   }
 };
 
 const $ = id => document.getElementById(id);
-const esc = v => String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-function showNotificationToast(msg, isError = false) {
-  let container = $('customToastContainer');
-  if (!container) return;
-  let t = document.createElement('div');
-  t.className = 'toast-notice' + (isError ? ' err' : '');
-  t.innerHTML = `<span>${isError ? '⚠️' : '✓'}</span><span>${esc(msg)}</span>`;
-  container.appendChild(t);
-  setTimeout(() => {
-    t.style.opacity = '0';
-    t.style.transition = 'opacity .35s ease';
-    setTimeout(() => t.remove(), 350);
-  }, 3500);
-}
-
-/* ==========================================================================
-   MODULE BÁO CÁO & GÓP Ý - LƯU TRỮ 2 LỚP VÀ HÒM THƯ BÁO SỐ ĐỎ
-   ========================================================================== */
-
-function getLocalFeedbackReports() {
-  try {
-    return JSON.parse(localStorage.getItem('hp_feedback_reports') || '[]');
-  } catch(e) {
-    return [];
-  }
-}
-
-function saveLocalFeedbackReports(list) {
-  localStorage.setItem('hp_feedback_reports', JSON.stringify(list));
-}
-
-function updateMailBadge() {
-  let badge = $('mailBadge');
-  if (!badge) return;
-  let unreadCount = feedbackReportsList.filter(item => item.status !== 'resolved').length;
-  if (unreadCount > 0) {
-    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-    badge.textContent = '0';
-  }
-}
-
-async function fetchFeedbacksList(silent = false) {
-  let loadedFromSupabase = false;
-  try {
-    let { data, error } = await supabaseClient
-      .from('feedback_reports')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && Array.isArray(data)) {
-      feedbackReportsList = data;
-      loadedFromSupabase = true;
-      saveLocalFeedbackReports(data);
-    }
-  } catch(err) {
-    console.warn('Lỗi đọc feedback từ Supabase:', err);
-  }
-
-  if (!loadedFromSupabase) {
-    feedbackReportsList = getLocalFeedbackReports();
-  }
-
-  updateMailBadge();
-  renderInboxContent();
-  if (!silent) {
-    showNotificationToast(currentLang === 'vi' ? 'Đã đồng bộ hòm thư phản ánh' : 'Inbox synchronized');
-  }
-}
-
-async function submitFeedbackReport(e) {
-  e.preventDefault();
-  let name = ($('repName').value || '').trim();
-  let contact = ($('repContact').value || '').trim();
-  let company = ($('repCompany').value || '').trim();
-  let reportType = $('repType').value;
-  let vessel = ($('repVessel').value || '').trim();
-  let content = ($('repContent').value || '').trim();
-
-  if (!name || !contact || !content) {
-    showNotificationToast(currentLang === 'vi' ? 'Vui lòng điền đủ các trường (*)' : 'Please fill all required fields (*)', true);
-    return;
-  }
-
-  let submitBtn = $('sendFeedbackBtn');
-  submitBtn.disabled = true;
-  submitBtn.style.opacity = '0.7';
-
-  let newReportObj = {
-    id: 'rep_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-    name: name,
-    contact: contact,
-    company: company,
-    report_type: reportType,
-    vessel: vessel,
-    content: content,
-    status: 'unread',
-    created_at: new Date().toISOString()
-  };
-
-  // 1. Lưu lớp 1 vào LocalStorage ngay lập tức
-  let localList = getLocalFeedbackReports();
-  localList.unshift(newReportObj);
-  saveLocalFeedbackReports(localList);
-
-  feedbackReportsList.unshift(newReportObj);
-  updateMailBadge();
-  renderInboxContent();
-
-  // 2. Lưu lớp 2 vào Supabase Table
-  try {
-    let { data, error } = await supabaseClient.from('feedback_reports').insert([{
-      name: name,
-      contact: contact,
-      company: company,
-      report_type: reportType,
-      vessel: vessel,
-      content: content,
-      status: 'unread'
-    }]).select();
-
-    if (!error && data && data.length > 0) {
-      newReportObj.id = data[0].id;
-      saveLocalFeedbackReports(feedbackReportsList);
-    }
-  } catch(err) {
-    console.warn('Gửi lên Supabase gặp lỗi, đã lưu bền vững LocalStorage:', err);
-  }
-
-  submitBtn.disabled = false;
-  submitBtn.style.opacity = '1';
-  $('reportForm').reset();
-
-  showNotificationToast(currentLang === 'vi' 
-    ? 'Đã gửi phản ánh thành công tới Trung tâm Khai thác!' 
-    : 'Feedback sent successfully!');
-
-  setTimeout(() => {
-    nav('overview');
-  }, 1200);
-}
-
-function renderInboxContent() {
-  let container = $('inboxListContainer');
-  if (!container) return;
-
-  let totalActive = feedbackReportsList.length;
-  let summaryText = currentLang === 'vi' 
-    ? `Có ${totalActive} thư phản ánh (${feedbackReportsList.filter(x => x.status !== 'resolved').length} chưa xử lý)` 
-    : `Total ${totalActive} feedbacks (${feedbackReportsList.filter(x => x.status !== 'resolved').length} unread)`;
-  $('inboxSummaryText').textContent = summaryText;
-
-  if (feedbackReportsList.length === 0) {
-    container.innerHTML = `<div class="empty">${currentLang === 'vi' ? '📭 Hòm thư trống. Chưa có phản ánh nào.' : '📭 Inbox is empty. No feedbacks yet.'}</div>`;
-    return;
-  }
-
-  let delBtnText = currentLang === 'vi' ? '🗑️ Xóa thư (Đã xử lý)' : '🗑️ Delete (Resolved)';
-  let contactLabel = currentLang === 'vi' ? 'Liên hệ: ' : 'Contact: ';
-  let unitLabel = currentLang === 'vi' ? 'Đơn vị: ' : 'Unit: ';
-  let vesselLabel = currentLang === 'vi' ? 'Tàu/Bến: ' : 'Vessel: ';
-
-  let html = feedbackReportsList.map(item => {
-    let itemId = item.id;
-    let isUrgent = (item.report_type || '').includes('khẩn') || (item.report_type || '').includes('ETB');
-    let senderName = item.name || item.sender_name || 'Khách hàng';
-    let vesselName = item.vessel || item.vessel_info || '';
-    return `
-      <div class="mail-item-box" id="mail_card_${itemId}">
-        <div class="mail-item-header">
-          <div class="mail-sender-title">
-            <span>👤 ${esc(senderName)}</span>
-            <span class="mail-tag ${isUrgent ? 'urgent' : ''}">${esc(item.report_type || 'Góp ý')}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);font-weight:700">🕒 ${dt(item.created_at)}</div>
-        </div>
-        <div class="mail-meta-line">
-          <span><b>${contactLabel}</b>${esc(item.contact || '—')}</span>
-          <span><b>${unitLabel}</b>${esc(item.company || '—')}</span>
-          ${vesselName ? `<span><b>${vesselLabel}</b><b style="color:var(--cyan)">${esc(vesselName)}</b></span>` : ''}
-        </div>
-        <div class="mail-content-text">${esc(item.content)}</div>
-        <div class="mail-actions-row">
-          <button class="btn-del-mail" onclick="deleteSingleFeedback('${itemId}')">${delBtnText}</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = html;
-}
-
-async function deleteSingleFeedback(id) {
-  let confirmMsg = currentLang === 'vi' 
-    ? 'Bạn có chắc chắn muốn xóa thư này sau khi đã giải quyết?' 
-    : 'Are you sure you want to delete this resolved feedback?';
-  
-  if (!confirm(confirmMsg)) return;
-
-  try {
-    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('rep_'))) {
-      await supabaseClient.from('feedback_reports').delete().eq('id', id);
-    }
-  } catch(err) {
-    console.warn('Lỗi khi xóa trên Supabase:', err);
-  }
-
-  feedbackReportsList = feedbackReportsList.filter(item => String(item.id) !== String(id));
-  saveLocalFeedbackReports(feedbackReportsList);
-
-  updateMailBadge();
-  renderInboxContent();
-  showNotificationToast(currentLang === 'vi' ? 'Đã xóa phản ánh thành công!' : 'Feedback deleted successfully!');
-}
-
-async function clearAllProcessedFeedbacks() {
-  if (feedbackReportsList.length === 0) return;
-  let confirmMsg = currentLang === 'vi' 
-    ? 'Bạn có chắc chắn muốn dọn sạch tất cả thư trong hòm thư?' 
-    : 'Are you sure you want to delete all messages in inbox?';
-  
-  if (!confirm(confirmMsg)) return;
-
-  try {
-    await supabaseClient.from('feedback_reports').delete().neq('id', 0);
-  } catch(err) {}
-
-  feedbackReportsList = [];
-  saveLocalFeedbackReports([]);
-
-  updateMailBadge();
-  renderInboxContent();
-  showNotificationToast(currentLang === 'vi' ? 'Đã làm sạch toàn bộ hòm thư!' : 'Cleared all inbox messages!');
-}
-
-/* SỰ KIỆN MỞ HÒM THƯ VỚI MẬT KHẨU 6868 TYPE=PASSWORD */
-$('mailBtn').onclick = () => {
-  $('authMailPasswordInput').value = '';
-  $('mailAuthErrMsg').style.display = 'none';
-  $('mailAuthModal').classList.add('open');
-  setTimeout(() => $('authMailPasswordInput').focus(), 150);
-};
-
-$('btnCancelMailAuth').onclick = () => {
-  $('mailAuthModal').classList.remove('open');
-};
-
-function verifyMailboxPassword() {
-  let val = $('authMailPasswordInput').value;
-  if (val === '6868') {
-    $('mailAuthModal').classList.remove('open');
-    $('inboxModal').classList.add('open');
-    fetchFeedbacksList(true);
-  } else {
-    $('mailAuthErrMsg').style.display = 'block';
-    $('authMailPasswordInput').select();
-  }
-}
-
-$('btnConfirmMailAuth').onclick = verifyMailboxPassword;
-$('authMailPasswordInput').onkeydown = (e) => {
-  if (e.key === 'Enter') verifyMailboxPassword();
-};
-
-$('btnCloseInboxModal').onclick = () => {
-  $('inboxModal').classList.remove('open');
-};
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function applyLanguage(lang) {
-  currentLang = lang;
-  localStorage.setItem('hp_lang', lang);
-  const d = dict[lang];
+  try {
+    currentLang = lang;
+    localStorage.setItem('hp_lang', lang);
+    const d = dict[lang];
 
-  $('langFlag').textContent = lang === 'vi' ? '🇻🇳' : '🇬🇧';
-  $('langText').textContent = lang === 'vi' ? 'VI' : 'EN';
+    if ($('langFlag')) $('langFlag').textContent = lang === 'vi' ? '🇻🇳' : '🇬🇧';
+    if ($('langText')) $('langText').textContent = lang === 'vi' ? 'VI' : 'EN';
 
-  for (let key in d) {
-    let elem = $(key) || $('t_' + key) || $('lbl_' + key) || $('th_' + key);
-    if (elem) {
-      if (elem.tagName === 'INPUT' && elem.type === 'button') elem.value = d[key];
-      else elem.textContent = d[key];
+    for (let key in d) {
+      let elem = $(key) || $('t_' + key) || $('lbl_' + key) || $('th_' + key);
+      if (elem) {
+        if (elem.tagName === 'INPUT' && elem.type === 'button') elem.value = d[key];
+        else elem.textContent = d[key];
+      }
     }
-  }
 
-  $('search').placeholder = lang === 'vi' ? 'Tìm tên tàu, hãng...' : 'Search vessel, operator...';
-  $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
-
-  renderAll();
-  updateMailBadge();
+    if ($('search')) $('search').placeholder = lang === 'vi' ? 'Tìm tên tàu, hãng...' : 'Search vessel, operator...';
+    if ($('planningSearch')) $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
+    renderAll();
+  } catch(e) {}
 }
-
-$('langToggleBtn').onclick = () => {
-  let nextLang = currentLang === 'vi' ? 'en' : 'vi';
-  applyLanguage(nextLang);
-};
 
 function getTodayString() {
   let d = new Date();
@@ -1099,16 +1281,13 @@ function formatDuration(ms) {
   let totalMin = Math.floor(ms / 60000);
   let hrs = Math.floor(totalMin / 60);
   let mins = totalMin % 60;
-  if (hrs > 0) {
-    return `${hrs} ${d.hourUnit} ${mins} ${d.minUnit}`;
-  }
+  if (hrs > 0) return `${hrs} ${d.hourUnit} ${mins} ${d.minUnit}`;
   return `${mins} ${d.minUnit}`;
 }
 
 function parseEtbEtd(etbStr, etdStr) {
   let t1 = etbStr ? new Date(etbStr).getTime() : 0;
   let t2 = etdStr ? new Date(etdStr).getTime() : 0;
-
   if (t1 > 0 && t2 > 0 && t2 <= t1) {
     etdStr = '';
     t2 = 0;
@@ -1116,7 +1295,187 @@ function parseEtbEtd(etbStr, etdStr) {
   return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
 }
 
+// --- MODULE QUẢN LÝ HÒM THƯ (BỨC THƯ, SỐ ĐỎ, MK 6868, XÓA) ---
+async function loadFeedbacks() {
+  let list = [];
+  try {
+    let localData = localStorage.getItem('hp_feedback_reports');
+    if (localData) {
+      list = JSON.parse(localData);
+    }
+  } catch(e) {}
+
+  if (supabaseClient) {
+    try {
+      let { data, error } = await supabaseClient.from('feedback_reports').select('*').order('created_at', { ascending: false });
+      if (data && !error && data.length >= 0) {
+        list = data;
+        localStorage.setItem('hp_feedback_reports', JSON.stringify(list));
+      }
+    } catch(err) {}
+  }
+
+  feedbackList = list;
+  updateMailBadge();
+}
+
+function updateMailBadge() {
+  let unread = feedbackList.filter(f => f.status !== 'resolved' && f.status !== 'deleted');
+  let badge = $('mailBadge');
+  if (!badge) return;
+  if (unread.length > 0) {
+    badge.textContent = unread.length;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.textContent = '0';
+    badge.style.display = 'none';
+  }
+  if ($('inboxCountBadge')) {
+    $('inboxCountBadge').textContent = `${unread.length} thư`;
+  }
+}
+
+function openMailAuthModal() {
+  let m = $('mailAuthModal');
+  if (m) {
+    m.classList.add('open');
+    $('mailPasswordInput').value = '';
+    $('mailAuthError').style.display = 'none';
+    $('mailPasswordInput').focus();
+  }
+}
+
+function closeMailAuthModal() {
+  let m = $('mailAuthModal');
+  if (m) m.classList.remove('open');
+}
+
+function verifyMailPassword() {
+  let pwd = $('mailPasswordInput').value;
+  if (pwd === '6868') {
+    closeMailAuthModal();
+    renderInboxModal();
+    $('inboxModal').classList.add('open');
+  } else {
+    $('mailAuthError').style.display = 'block';
+    $('mailPasswordInput').select();
+  }
+}
+
+function closeInboxModal() {
+  let m = $('inboxModal');
+  if (m) m.classList.remove('open');
+}
+
+function renderInboxModal() {
+  let container = $('inboxList');
+  if (!container) return;
+  let active = feedbackList.filter(f => f.status !== 'deleted');
+
+  if (active.length === 0) {
+    container.innerHTML = `<div class="empty">Hòm thư trống. Chưa có phản ánh hay góp ý mới.</div>`;
+    return;
+  }
+
+  container.innerHTML = active.map(item => `
+    <div class="inbox-item" id="inbox-card-${item.id}">
+      <div class="inbox-item-head">
+        <strong>${esc(item.name || 'Người dùng ẩn danh')}</strong>
+        <span class="badge">${esc(item.report_type || 'Góp ý')}</span>
+      </div>
+      <div class="inbox-meta">
+        <span>📞 ${esc(item.contact || '—')}</span> | 
+        <span>🏢 ${esc(item.company || '—')}</span> | 
+        <span>🚢 ${esc(item.vessel || '—')}</span> | 
+        <span>🕒 ${dt(item.created_at)}</span>
+      </div>
+      <div class="inbox-body">${esc(item.content || '')}</div>
+      <div class="inbox-item-actions">
+        <button class="darkbtn tiny" style="background:var(--red);color:#fff" onclick="deleteFeedback('${item.id}')">🗑️ Xóa thư (Đã xử lý)</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteFeedback(id) {
+  if (!confirm('Bạn có chắc chắn đã xử lý và muốn xóa phản ánh này?')) return;
+
+  feedbackList = feedbackList.filter(f => String(f.id) !== String(id));
+  localStorage.setItem('hp_feedback_reports', JSON.stringify(feedbackList));
+  renderInboxModal();
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').delete().eq('id', id);
+    } catch(err) {}
+  }
+}
+
+async function clearAllFeedbacks() {
+  if (!confirm('Bạn có chắc muốn xóa TẤT CẢ các thư phản ánh trong hòm thư?')) return;
+  feedbackList = [];
+  localStorage.setItem('hp_feedback_reports', JSON.stringify([]));
+  renderInboxModal();
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').delete().neq('id', 0);
+    } catch(err) {}
+  }
+}
+
+async function submitFeedbackReport() {
+  let name = $('repName').value.trim();
+  let contact = $('repContact').value.trim();
+  let content = $('repContent').value.trim();
+  let company = $('repCompany').value.trim();
+  let report_type = $('repType').value;
+  let vessel = $('repVessel').value.trim();
+
+  if (!name) { alert('Vui lòng nhập họ và tên của bạn!'); return; }
+  if (!contact) { alert('Vui lòng nhập số điện thoại hoặc email liên hệ!'); return; }
+  if (!content) { alert('Vui lòng nhập chi tiết nội dung phản ánh!'); return; }
+
+  let record = {
+    id: Date.now().toString(),
+    name,
+    contact,
+    company,
+    report_type,
+    vessel,
+    content,
+    status: 'unread',
+    created_at: new Date().toISOString()
+  };
+
+  feedbackList.unshift(record);
+  localStorage.setItem('hp_feedback_reports', JSON.stringify(feedbackList));
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').insert([{
+        name, contact, company, report_type, vessel, content, status: 'unread'
+      }]);
+    } catch(err) {
+      console.warn("Supabase insert error (using local storage fallback):", err);
+    }
+  }
+
+  alert('Phản ánh của bạn đã được chuyển đến Trung tâm Khai thác & DVKH thành công!');
+  $('repName').value = '';
+  $('repContact').value = '';
+  $('repCompany').value = '';
+  $('repVessel').value = '';
+  $('repContent').value = '';
+  nav('overview');
+}
+
+// --- DỮ LIỆU TÀU VÀ GHI ĐÈ ---
 async function loadVesselOverrides() {
+  if (!supabaseClient) return;
   try {
     let { data, error } = await supabaseClient.from('vessel_overrides').select('*');
     if (data && !error) {
@@ -1134,18 +1493,16 @@ function renderOverrideTable() {
   let tbody = $('overrideTableRows');
   if (!tbody) return;
   if (vesselOverridesMap.size === 0) {
-    let emptyMsg = currentLang === 'vi' ? 'Chưa có bản ghi chỉnh sửa nào.' : 'No override records found.';
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">${emptyMsg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>`;
     return;
   }
-  let btnTxt = currentLang === 'vi' ? 'Sửa' : 'Edit';
   let html = '';
   vesselOverridesMap.forEach((val, key) => {
     html += `<tr>
       <td><b>${esc(val.vessel_name)}</b></td>
       <td><span class="badge">${esc(val.operator || '—')}</span></td>
       <td>${esc(val.terminal || '')} ${esc(val.berth || '')}</td>
-      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">${btnTxt}</button></td>
+      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa</button></td>
     </tr>`;
   });
   tbody.innerHTML = html;
@@ -1165,114 +1522,8 @@ function populateEditForm(vesselName) {
   nav('edit-vessel', false);
 }
 
-async function fetchRealWeatherHaiPhong() {
-  try {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=20.8651&longitude=106.6838&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Asia%2FBangkok';
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data && data.current) {
-      const c = data.current;
-      const curTemp = Math.round(c.temperature_2m);
-      if ($('wTemp')) $('wTemp').textContent = curTemp + '°C';
-      if ($('wWind')) $('wWind').textContent = `🧭 SE · ${c.wind_speed_10m} m/s`;
-      if ($('wHum')) $('wHum').textContent = `💧 ${c.relative_humidity_2m}%`;
-
-      const nowH = new Date().getHours();
-      const isNight = nowH < 6 || nowH >= 18;
-      if ($('wIcon')) $('wIcon').textContent = isNight ? '🌙' : '☀️';
-      if ($('wCond')) $('wCond').textContent = isNight ? (currentLang === 'vi' ? 'Quang đãng · Đêm an toàn' : 'Clear Sky · Safe Night') : (currentLang === 'vi' ? 'Nắng nhẹ · Quang đãng' : 'Sunny · Clear');
-      if ($('whNow')) $('whNow').innerHTML = `${isNight ? '🌙' : '☀️'} ${curTemp}°`;
-
-      if (data.hourly && data.hourly.temperature_2m) {
-        for (let i = 1; i <= 4; i++) {
-          let targetH = (nowH + i * 3) % 24;
-          let idx = nowH + i * 3;
-          let tVal = Math.round(data.hourly.temperature_2m[idx] || curTemp);
-          if ($(`wh${i}Time`)) $(`wh${i}Time`).textContent = String(targetH).padStart(2, '0') + ':00';
-          if ($(`wh${i}Val`)) $(`wh${i}Val`).innerHTML = `${targetH < 6 || targetH >= 18 ? '🌙' : '🌤️'} ${tVal}°`;
-        }
-      }
-    }
-  } catch(e) {
-    let nowH = new Date().getHours();
-    let tempCalculated = Math.round(26 + Math.sin(nowH / 3) * 3);
-    if ($('wTemp')) $('wTemp').textContent = tempCalculated + '°C';
-    if ($('whNow')) $('whNow').innerHTML = `☀️ ${tempCalculated}°`;
-  }
-}
-
-function updateRealtimeWidgets() {
-  let now = new Date();
-  let timeStr = now.toTimeString().split(' ')[0];
-  if ($('liveClock')) $('liveClock').textContent = timeStr;
-  
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
-  let totalMinNow = hours * 60 + minutes;
-
-  let tidePhase = Math.sin((totalMinNow - 252) / (859 - 252) * Math.PI);
-  let currentTideLevel = (1.60 + (tidePhase > 0 ? tidePhase * 0.70 : Math.abs(tidePhase) * 0.40)).toFixed(2);
-
-  if ($('tideProgStatus')) {
-    if (tidePhase >= 0) {
-      $('tideProgStatus').textContent = currentLang === 'vi' ? `Đang dâng (~${currentTideLevel}m)` : `Flooding (~${currentTideLevel}m)`;
-      $('tideProgStatus').style.color = '#8be4ec';
-    } else {
-      $('tideProgStatus').textContent = currentLang === 'vi' ? `Đang rút (~${currentTideLevel}m)` : `Ebbing (~${currentTideLevel}m)`;
-      $('tideProgStatus').style.color = '#ffb347';
-    }
-  }
-  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.60) / (2.30 - 1.60)) * 100)));
-  if ($('tideProgressBar')) $('tideProgressBar').style.width = fillPercent + '%';
-  
-  renderMovement(getFilteredCalls());
-}
-
-function startMidnightCountdown() {
-  setInterval(() => {
-    let now = new Date();
-    let midnight = new Date();
-    midnight.setHours(24, 0, 0, 0); 
-    let diffMs = midnight.getTime() - now.getTime();
-
-    if (diffMs <= 1000) {
-      saveCurrentDataToSupabase(true);
-      loadData();
-      return;
-    }
-
-    let hrs = Math.floor(diffMs / (1000 * 60 * 60));
-    let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    let secs = Math.floor((diffMs % (1000 * 60)) / 1000);
-
-    let dispStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    let cdElem = $('countdown');
-    if (cdElem) cdElem.textContent = dispStr;
-
-    updateRealtimeWidgets();
-  }, 1000);
-}
-
-function nav(page, saveState = true){
-  document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
-  const target = $('page-' + page);
-  if(target) target.classList.remove('hidden');
-  document.querySelectorAll('.nav button').forEach(x => {
-    x.classList.toggle('active', x.dataset.page === page);
-  });
-  
-  let pName = dict[currentLang]['menu' + page.charAt(0).toUpperCase() + page.slice(1).replace('-','')] || page.replace('-', ' ').toUpperCase();
-  $('crumb').textContent = pName.toUpperCase();
-  if (page === 'planning') renderGantt();
-  if (page === 'stats') renderStats();
-  if (page === 'edit-vessel') renderOverrideTable();
-  if (saveState) localStorage.setItem('hp_last_page', page);
-}
-
-document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
-document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
-
 function filterAndDeduplicateCalls(rawList) {
+  if (!Array.isArray(rawList)) return [];
   let processedList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     let override = vesselOverridesMap.get(vName);
@@ -1295,17 +1546,12 @@ function filterAndDeduplicateCalls(rawList) {
     }
 
     let times = parseEtbEtd(c.etb, c.etd);
-    return {
-      ...c,
-      etb: times.etb,
-      etd: times.etd
-    };
+    return { ...c, etb: times.etb, etd: times.etd };
   });
 
   processedList.forEach(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     if (!vName) return;
-
     if (!masterGlobalVesselMap.has(vName)) {
       masterGlobalVesselMap.set(vName, c);
     } else {
@@ -1357,186 +1603,14 @@ function filterAndDeduplicateCalls(rawList) {
   return Array.from(finalMap.values());
 }
 
-async function loadShiftConfigFromSupabase() {
-  let today = getTodayString();
-  try {
-    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).single();
-    if (data && !error) {
-      $('dispShift').textContent = data.shift_name || 'Ca 1';
-      $('dispCommander').textContent = data.commander || (currentLang === 'vi' ? 'Chưa thiết lập' : 'Not Set');
-      $('dispSafety').textContent = data.safety || (currentLang === 'vi' ? 'Chưa thiết lập' : 'Not Set');
-    }
-  } catch(e) {}
-}
-
-async function saveShiftConfigToSupabase(shiftData) {
-  let today = getTodayString();
-  try {
-    await supabaseClient.from('shift_configs').upsert({
-      shift_date: today,
-      shift_name: shiftData.shift,
-      commander: shiftData.commander,
-      safety: shiftData.safety,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'shift_date' });
-  } catch(err) {}
-}
-
-function fetchHistoryFromBucketProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') fetchHistoryFromBucket();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
-
-async function fetchHistoryFromBucket() {
-  let fDate = $('fromDate').value;
-  if (!fDate) { alert(currentLang === 'vi' ? 'Vui lòng chọn ngày tại ô "Từ:" !' : 'Please choose date in "From:" field!'); return; }
-
-  $('sideStatus').textContent = `Bucket (${fDate})...`;
-  try {
-    const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
-    if (error || !data) { alert(currentLang === 'vi' ? `Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.` : `No snapshot found for ${fDate}.`); $('sideStatus').textContent = 'Trống'; return; }
-
-    const text = await data.text();
-    const parsed = JSON.parse(text);
-    if (parsed.calls && Array.isArray(parsed.calls)) {
-      allCalls = filterAndDeduplicateCalls(parsed.calls);
-      if (parsed.shift_info) {
-        $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1';
-        $('dispCommander').textContent = parsed.shift_info.commander || '—';
-        $('dispSafety').textContent = parsed.shift_info.safety || '—';
-      }
-      renderAll();
-      $('sideStatus').textContent = `${allCalls.length} ${dict[currentLang].shipsUnit} (${fDate})`;
-      alert(currentLang === 'vi' ? `Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!` : `Successfully loaded ${fDate} snapshot!`);
-    }
-  } catch(err) { alert('Error: ' + err.message); }
-}
-
-async function saveCurrentDataToSupabase(isAuto = false) {
-  if (!allCalls || allCalls.length === 0) return;
-  const todayStr = getTodayString();
-  const nowStr = new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB');
-
-  const jsonContent = JSON.stringify({
-    saved_at: nowStr,
-    date: todayStr,
-    shift_info: { shift: $('dispShift').textContent, commander: $('dispCommander').textContent, safety: $('dispSafety').textContent },
-    total_calls: allCalls.length,
-    calls: allCalls
-  }, null, 2);
-
-  const blob = new Blob([jsonContent], { type: 'application/json' });
-  await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
-
-  const savedText = `${nowStr} (${isAuto ? 'Auto 00h00' : (currentLang === 'vi' ? 'Thủ công' : 'Manual')})`;
-  localStorage.setItem('hp_last_saved', savedText);
-  updateLastSavedDisplay(savedText);
-  if (!isAuto) alert(currentLang === 'vi' ? 'Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!' : 'Snapshot saved to Storage Bucket successfully!');
-}
-
-function updateLastSavedDisplay(str) {
-  let lbl = currentLang === 'vi' ? 'Lưu: ' : 'Saved: ';
-  let notYet = currentLang === 'vi' ? 'Chưa' : 'None';
-  $('topLastSaved').textContent = lbl + (str || notYet);
-  $('sideLastSaved').textContent = lbl + (str || notYet);
-}
-
-function exportConfigAsCSVProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') exportConfigAsCSV();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
-
-function exportConfigAsCSV() {
-  let list = getFilteredCalls();
-  if (!list || list.length === 0) { alert(currentLang === 'vi' ? 'Không có dữ liệu trong khoảng thời gian đã chọn!' : 'No data in selected date range!'); return; }
-  
-  let csvRows = [
-    `"${dict[currentLang].hpPort} - ${dict[currentLang].topTitle}"`,
-    `"Shift: ${$('dispShift').textContent}","Commander: ${$('dispCommander').textContent}","Safety: ${$('dispSafety').textContent}"`,
-    `"Exported: ${new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')}"`,
-    `""`,
-    `"STT","Vessel Name","Operator","Terminal","Berth","LOA (m)","DWT","ETB","ETD"`
-  ];
-
-  list.forEach((c, i) => {
-    csvRows.push([
-      i + 1,
-      `"${c.vessel}"`,
-      `"${c.operator || '—'}"`,
-      `"${c.terminal || '—'}"`,
-      `"${c.berth || '—'}"`,
-      c.loa || 0,
-      `"${c.dwt || '—'}"`,
-      `"${dt(c.etb)}"`,
-      `"${dt(c.etd)}"`
-    ].join(','));
-  });
-
-  const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `HaiPhongPort_Schedule_${getTodayString()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-function triggerImportConfig() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') $('importFileInput').click();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
-
-function handleFileImport(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    try {
-      const lines = evt.target.result.split('\n');
-      let loaded = [];
-      for (let i = 2; i < lines.length; i++) {
-        let cols = lines[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        if (cols.length >= 9) {
-          loaded.push({
-            vessel: cols[1].replace(/["']/g, ''),
-            operator: cols[2].replace(/["']/g, ''),
-            terminal: cols[3].replace(/["']/g, ''),
-            berth: cols[4].replace(/["']/g, ''),
-            loa: Number(cols[5]) || 0,
-            dwt: cols[6] || '',
-            etb: cols[7].replace(/["']/g, ''),
-            etd: cols[8].replace(/["']/g, '')
-          });
-        }
-      }
-      if (loaded.length > 0) {
-        allCalls = filterAndDeduplicateCalls(loaded);
-        renderAll();
-        alert(currentLang === 'vi' ? `Đã nạp ${allCalls.length} tàu từ file thành công!` : `Imported ${allCalls.length} vessels successfully!`);
-      }
-    } catch(err) { alert('Error: ' + err.message); }
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-function handleManualSave() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') saveCurrentDataToSupabase(false);
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
-
 async function loadData() {
-  $('refreshBtn').disabled = true;
-  $('sideStatus').textContent = currentLang === 'vi' ? 'Đang tải dữ liệu...' : 'Loading data...';
+  if ($('refreshBtn')) $('refreshBtn').disabled = true;
+  if ($('sideStatus')) $('sideStatus').textContent = 'Đang tải dữ liệu...';
   try {
     await loadVesselOverrides();
     let r = await fetch(API, { cache: 'no-store' });
     let d = await r.json();
-    if (Array.isArray(d.calls)) {
+    if (d && Array.isArray(d.calls)) {
       allCalls = filterAndDeduplicateCalls(d.calls.map(c => ({
         vessel: c.vessel || '',
         operator: c.operator || '',
@@ -1548,77 +1622,128 @@ async function loadData() {
         etd: c.etd || ''
       })));
       renderAll();
-      $('sideStatus').textContent = `${allCalls.length} ${dict[currentLang].shipsUnit}`;
+      if ($('sideStatus')) $('sideStatus').textContent = `${allCalls.length} tàu`;
     }
   } catch(e) {
-    $('sideStatus').textContent = 'API Error, checking Bucket...';
+    if ($('sideStatus')) $('sideStatus').textContent = 'Lỗi API, kiểm tra Bucket...';
     try {
-      let today = getTodayString();
-      const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
-      if (data) {
-        let parsed = JSON.parse(await data.text());
-        if (parsed.calls) {
-          allCalls = filterAndDeduplicateCalls(parsed.calls);
-          renderAll();
-          $('sideStatus').textContent = `Offline (${allCalls.length})`;
+      if (supabaseClient) {
+        let today = getTodayString();
+        const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
+        if (data) {
+          let parsed = JSON.parse(await data.text());
+          if (parsed.calls) {
+            allCalls = filterAndDeduplicateCalls(parsed.calls);
+            renderAll();
+            if ($('sideStatus')) $('sideStatus').textContent = `Offline (${allCalls.length} tàu)`;
+          }
         }
       }
     } catch(err) {}
   } finally {
-    $('refreshBtn').disabled = false;
+    if ($('refreshBtn')) $('refreshBtn').disabled = false;
   }
 }
 
-async function saveVesselOverrideProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') { if(pwd !== null) alert(dict[currentLang].pwdWrong); return; }
-
-  let vName = ($('editVesselName').value || '').trim();
-  if (!vName) { alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần sửa/bổ sung!' : 'Please enter vessel name!'); return; }
-
-  let payload = {
-    vessel_name: vName,
-    operator: $('editVesselOperator').value.trim(),
-    terminal: $('editVesselTerminal').value.trim(),
-    berth: $('editVesselBerth').value.trim(),
-    loa: Number($('editVesselLoa').value) || 0,
-    dwt: $('editVesselDwt').value.trim(),
-    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
-    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
-    updated_at: new Date().toISOString()
-  };
-
+// --- THỜI TIẾT & THỦY TRIỀU ---
+async function fetchRealWeatherHaiPhong() {
   try {
-    let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
-    if (error) { alert('Supabase error: ' + error.message); return; }
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=20.8651&longitude=106.6838&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Asia%2FBangkok';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data.current) {
+      const c = data.current;
+      const curTemp = Math.round(c.temperature_2m);
+      if ($('wTemp')) $('wTemp').textContent = curTemp + '°C';
+      if ($('wWind')) $('wWind').textContent = `🧭 SE · ${c.wind_speed_10m} m/s`;
+      if ($('wHum')) $('wHum').textContent = `💧 ${c.relative_humidity_2m}%`;
 
-    vesselOverridesMap.set(vName.toUpperCase(), payload);
-    renderOverrideTable();
-    loadData();
-    alert(currentLang === 'vi' ? `Đã lưu và cập nhật thông tin tàu "${vName}" thành công!` : `Saved vessel "${vName}" successfully!`);
-  } catch(err) {
-    alert('Connection error: ' + err.message);
+      const nowH = new Date().getHours();
+      const isNight = nowH < 6 || nowH >= 18;
+      if ($('wIcon')) $('wIcon').textContent = isNight ? '🌙' : '☀️';
+      if ($('wCond')) $('wCond').textContent = isNight ? 'Quang đãng · Đêm an toàn' : 'Nắng nhẹ · Quang đãng';
+      if ($('whNow')) $('whNow').innerHTML = `${isNight ? '🌙' : '☀️'} ${curTemp}°`;
+
+      if (data.hourly && data.hourly.temperature_2m) {
+        for (let i = 1; i <= 4; i++) {
+          let targetH = (nowH + i * 3) % 24;
+          let idx = nowH + i * 3;
+          let tVal = Math.round(data.hourly.temperature_2m[idx] || curTemp);
+          if ($(`wh${i}Time`)) $(`wh${i}Time`).textContent = String(targetH).padStart(2, '0') + ':00';
+          if ($(`wh${i}Val`)) $(`wh${i}Val`).innerHTML = `${targetH < 6 || targetH >= 18 ? '🌙' : '🌤️'} ${tVal}°`;
+        }
+      }
+    }
+  } catch(e) {
+    let nowH = new Date().getHours();
+    let tempCalculated = Math.round(26 + Math.sin(nowH / 3) * 3);
+    if ($('wTemp')) $('wTemp').textContent = tempCalculated + '°C';
+    if ($('whNow')) $('whNow').innerHTML = `☀️ ${tempCalculated}°`;
   }
 }
 
-async function deleteVesselOverrideProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') { if(pwd !== null) alert(dict[currentLang].pwdWrong); return; }
+function updateRealtimeWidgets() {
+  let now = new Date();
+  if ($('liveClock')) $('liveClock').textContent = now.toTimeString().split(' ')[0];
+  
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+  let totalMinNow = hours * 60 + minutes;
 
-  let vName = ($('editVesselName').value || '').trim();
-  if (!vName) { alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!' : 'Please enter vessel name to delete!'); return; }
+  let tidePhase = Math.sin((totalMinNow - 252) / (859 - 252) * Math.PI);
+  let currentTideLevel = (1.60 + (tidePhase > 0 ? tidePhase * 0.70 : Math.abs(tidePhase) * 0.40)).toFixed(2);
 
-  try {
-    let { error } = await supabaseClient.from('vessel_overrides').delete().eq('vessel_name', vName);
-    if (error) { alert('Supabase error: ' + error.message); return; }
-
-    vesselOverridesMap.delete(vName.toUpperCase());
-    renderOverrideTable();
-    loadData();
-    alert(currentLang === 'vi' ? `Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!` : `Deleted override rule for "${vName}"!`);
-  } catch(err) {
-    alert('Connection error: ' + err.message);
+  if ($('tideProgStatus')) {
+    if (tidePhase >= 0) {
+      $('tideProgStatus').textContent = `Đang dâng (~${currentTideLevel}m)`;
+      $('tideProgStatus').style.color = '#8be4ec';
+    } else {
+      $('tideProgStatus').textContent = `Đang rút (~${currentTideLevel}m)`;
+      $('tideProgStatus').style.color = '#ffb347';
+    }
   }
+  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.60) / (2.30 - 1.60)) * 100)));
+  if ($('tideProgressBar')) $('tideProgressBar').style.width = fillPercent + '%';
+  renderMovement(getFilteredCalls());
+}
+
+function startMidnightCountdown() {
+  setInterval(() => {
+    let now = new Date();
+    let midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); 
+    let diffMs = midnight.getTime() - now.getTime();
+
+    if (diffMs <= 1000) {
+      saveCurrentDataToSupabase(true);
+      loadData();
+      return;
+    }
+
+    let hrs = Math.floor(diffMs / (1000 * 60 * 60));
+    let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    let secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+    let cdElem = $('countdown');
+    if (cdElem) cdElem.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    updateRealtimeWidgets();
+  }, 1000);
+}
+
+// --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
+function nav(page, saveState = true){
+  document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
+  const target = $('page-' + page);
+  if(target) target.classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(x => {
+    x.classList.toggle('active', x.dataset.page === page);
+  });
+  
+  let pName = dict[currentLang]['menu' + page.charAt(0).toUpperCase() + page.slice(1).replace('-','')] || page.replace('-', ' ').toUpperCase();
+  if ($('crumb')) $('crumb').textContent = pName.toUpperCase();
+  if (page === 'planning') renderGantt();
+  if (page === 'stats') renderStats();
+  if (page === 'edit-vessel') renderOverrideTable();
+  if (saveState) localStorage.setItem('hp_last_page', page);
 }
 
 function isHaiPhongPort(term) {
@@ -1627,8 +1752,8 @@ function isHaiPhongPort(term) {
 }
 
 function getFilteredCalls() {
-  let fDate = $('fromDate').value;
-  let tDate = $('toDate').value;
+  let fDate = $('fromDate') ? $('fromDate').value : '';
+  let tDate = $('toDate') ? $('toDate').value : '';
   let filtered = allCalls.filter(c => {
     let shipDate = (c.etb || c.etd || '').split('T')[0];
     if (!shipDate) return true;
@@ -1640,36 +1765,38 @@ function getFilteredCalls() {
 }
 
 function renderAll() {
-  const now = Date.now();
-  let list = getFilteredCalls();
+  try {
+    const now = Date.now();
+    let list = getFilteredCalls();
 
-  let working = list.filter(c => {
-    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-    return now >= t1 && (t2 === 0 || now <= t2);
-  });
-  $('kWorking').textContent = working.length;
+    let working = list.filter(c => {
+      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+      return now >= t1 && (t2 === 0 || now <= t2);
+    });
+    if ($('kWorking')) $('kWorking').textContent = working.length;
 
-  let totalLoa = list.filter(c => isHaiPhongPort(c.terminal)).reduce((s, c) => s + (c.loa || 0), 0);
-  $('kLoa').textContent = totalLoa.toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-US') + 'm';
+    let totalLoa = list.filter(c => isHaiPhongPort(c.terminal)).reduce((s, c) => s + (c.loa || 0), 0);
+    if ($('kLoa')) $('kLoa').textContent = totalLoa.toLocaleString('vi-VN') + 'm';
 
-  let in24 = now + 86400000;
-  $('kArrivals').textContent = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24).length;
-  $('kDepartures').textContent = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24).length;
-  $('kLarge').textContent = list.filter(c => c.loa >= 300).length;
+    let in24 = now + 86400000;
+    if ($('kArrivals')) $('kArrivals').textContent = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24).length;
+    if ($('kDepartures')) $('kDepartures').textContent = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24).length;
+    if ($('kLarge')) $('kLarge').textContent = list.filter(c => c.loa >= 300).length;
 
-  renderTanVuLayout(list);
-  renderMovement(list);
-  renderTable(list);
+    renderTanVuLayout(list);
+    renderMovement(list);
+    renderTable(list);
 
-  let p = localStorage.getItem('hp_last_page') || 'overview';
-  if(p === 'planning') renderGantt();
-  if(p === 'stats') renderStats();
+    let p = localStorage.getItem('hp_last_page') || 'overview';
+    if(p === 'planning') renderGantt();
+    if(p === 'stats') renderStats();
+  } catch(e) {}
 }
 
 function renderTanVuLayout(list) {
   let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
-  $('tanvuCount').textContent = tanVuShips.length + ' ' + (currentLang === 'vi' ? 'lượt tàu' : 'calls');
+  if ($('tanvuCount')) $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu';
 
   let berthMap = {};
   tanVuShips.forEach(c => {
@@ -1679,14 +1806,12 @@ function renderTanVuLayout(list) {
   });
   ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
 
-  let termTitle = currentLang === 'vi' ? 'CẢNG TÂN VŨ' : 'TAN VU TERMINAL';
-  let emptyTxt = currentLang === 'vi' ? 'Trống' : 'Vacant';
-  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${termTitle}</span></div>`;
+  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">CẢNG TÂN VŨ</span></div>`;
   Object.keys(berthMap).sort().forEach(bName => {
     let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
     html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
     if (ships.length === 0) {
-      html += `<span class="empty-berth">${emptyTxt}</span>`;
+      html += `<span class="empty-berth">Trống</span>`;
     } else {
       ships.forEach(s => {
         html += `<div class="ship-chip ${s.loa >= 300 ? 'large' : ''}" onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()"><span>${esc(s.vessel)}</span><span class="chip-time">${s.loa}m</span></div>`;
@@ -1695,7 +1820,7 @@ function renderTanVuLayout(list) {
     html += `</div></div>`;
   });
   html += `</div>`;
-  $('tanvuBerthsLayout').innerHTML = html;
+  if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
 }
 
 function renderMovement(list) {
@@ -1715,50 +1840,41 @@ function renderMovement(list) {
       if (t1 > now) {
         items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
       } else if (t1 <= now && (t2 === 0 || now <= t2)) {
-        let timeDocked = now - t1;
-        if (timeDocked <= threeHoursMs) {
+        if ((now - t1) <= threeHoursMs) {
           items.push({ c, type: 'working', time: t1, sortVal: now });
         }
       }
     }
-
     if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
       items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
     }
-
     if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
       items.push({ c, type: 'departed', time: t2, sortVal: t2 });
     }
   });
 
   items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
-
-  if (items.length === 0) {
-    $('movement').innerHTML = `<div class="empty">${currentLang === 'vi' ? 'Không có dữ liệu điều động phù hợp.' : 'No movements found.'}</div>`;
+  if (!items.length) {
+    if ($('movement')) $('movement').innerHTML = `<div class="empty">Không có dữ liệu điều động phù hợp.</div>`;
     stopAutoScroll();
     return;
   }
 
   let html = items.map(item => {
     let badgeHtml = '';
-    if (item.type === 'arriving') {
-      badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining} ${formatDuration(item.time - now)}</span>`;
-    } else if (item.type === 'working') {
-      badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed} ${formatDuration(now - item.time)}</span>`;
-    } else if (item.type === 'departing_soon') {
-      badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining} ${formatDuration(item.time - now)}</span>`;
-    } else if (item.type === 'departed') {
-      badgeHtml = `<span class="tag-vivid departing">${d.depElapsed} ${formatDuration(now - item.time)} ${d.agoText}</span>`;
-    }
+    if (item.type === 'arriving') badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'working') badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed} ${formatDuration(now - item.time)}</span>`;
+    else if (item.type === 'departing_soon') badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'departed') badgeHtml = `<span class="tag-vivid departing">${d.depElapsed} ${formatDuration(now - item.time)} ${d.agoText}</span>`;
 
     return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
   }).join('');
 
   if (items.length > 8) {
-    $('movement').innerHTML = html + html;
+    if ($('movement')) $('movement').innerHTML = html + html;
     startAutoScroll();
   } else {
-    $('movement').innerHTML = html;
+    if ($('movement')) $('movement').innerHTML = html;
     stopAutoScroll();
   }
 }
@@ -1767,33 +1883,19 @@ function startAutoScroll() {
   stopAutoScroll();
   const container = $('movementContainer');
   if (!container) return;
-
   autoScrollTimer = setInterval(() => {
     if (isUserHovering) return;
-
     let halfHeight = container.scrollHeight / 2;
-    if (container.scrollTop >= halfHeight) {
-      container.scrollTop = 0;
-    } else {
-      container.scrollTop += 0.5;
-    }
+    if (container.scrollTop >= halfHeight) container.scrollTop = 0;
+    else container.scrollTop += 0.5;
   }, 35);
 }
 
 function stopAutoScroll() {
-  if (autoScrollTimer) {
-    clearInterval(autoScrollTimer);
-    autoScrollTimer = null;
-  }
+  if (autoScrollTimer) { clearInterval(autoScrollTimer); autoScrollTimer = null; }
 }
-
-function pauseAutoScroll() {
-  isUserHovering = true;
-}
-
-function resumeAutoScroll() {
-  isUserHovering = false;
-}
+function pauseAutoScroll() { isUserHovering = true; }
+function resumeAutoScroll() { isUserHovering = false; }
 
 function filterMovement(m, btn) {
   movementMode = m;
@@ -1805,20 +1907,21 @@ function filterMovement(m, btn) {
 function renderTable(list) {
   let q = ($('search')?.value || '').toLowerCase();
   let filtered = list.filter(c => !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q));
-  let emptyMsg = currentLang === 'vi' ? 'Không tìm thấy bản ghi.' : 'No records found.';
-  $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
-    <tr><td>${i+1}</td><td class="vessel">${esc(c.vessel)}</td><td><span class="badge">${esc(c.operator)}</span></td><td>${c.loa}</td><td>${c.dwt}</td><td>${esc(c.terminal)} · ${esc(c.berth)}</td><td>${dt(c.etb)}</td><td>${dt(c.etd)}</td></tr>
-  `).join('') : `<tr><td colspan="8" class="empty">${emptyMsg}</td></tr>`;
+  if ($('rows')) {
+    $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
+      <tr><td>${i+1}</td><td class="vessel">${esc(c.vessel)}</td><td><span class="badge">${esc(c.operator)}</span></td><td>${c.loa}</td><td>${c.dwt}</td><td>${esc(c.terminal)} · ${esc(c.berth)}</td><td>${dt(c.etb)}</td><td>${dt(c.etd)}</td></tr>
+    `).join('') : `<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>`;
+  }
 }
 
 function renderGantt() {
-  let days = +$('days').value || 4;
-  let start = new Date($('fromDate').value || getTodayString()); start.setHours(0,0,0,0);
+  let days = +$('days')?.value || 4;
+  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
   let end = new Date(start.getTime() + days * 86400000);
   let list = getFilteredCalls();
   let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
 
-  let headerHtml = `<div class="gantt-head"><div class="berth-label">${currentLang === 'vi' ? 'CẦU BẾN' : 'BERTHS'}</div><div class="gantt-timeline-header">`;
+  let headerHtml = `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
   for (let d = 0; d < days; d++) {
     let curDate = new Date(start.getTime() + d * 86400000);
     let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
@@ -1854,12 +1957,9 @@ function renderGantt() {
     });
     out += `</div></div>`;
   }
-  
-  if (!hasData) {
-    out += `<div class="empty">${currentLang === 'vi' ? 'Không có dữ liệu kế hoạch phù hợp.' : 'No planning data available.'}</div>`;
-  }
-  $('fullGantt').innerHTML = out;
-  $('planningCount').textContent = `${Object.keys(terms).length} ${currentLang === 'vi' ? 'bến có tàu' : 'berths occupied'}`;
+  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
+  if ($('fullGantt')) $('fullGantt').innerHTML = out;
+  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
 }
 
 function filterPlanningArea(area, btn) {
@@ -1870,90 +1970,75 @@ function filterPlanningArea(area, btn) {
 }
 
 let statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
-
 function renderStats() {
   let list = getFilteredCalls();
   statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
 
-  let emptyMsg = currentLang === 'vi' ? 'Không có dữ liệu' : 'No data';
-  if (!list || list.length === 0) {
-    $('statTerminals').innerHTML = `<div class="empty">${emptyMsg}</div>`;
-    $('statOperators').innerHTML = `<div class="empty">${emptyMsg}</div>`;
-    $('statLoaBins').innerHTML = `<div class="empty">${emptyMsg}</div>`;
-    $('statHours').innerHTML = `<div class="empty" style="grid-column:1/-1">${emptyMsg}</div>`;
+  if (!list.length) {
+    if ($('statTerminals')) $('statTerminals').innerHTML = `<div class="empty">Không có dữ liệu</div>`;
     return;
   }
 
   let termMap = {};
   list.forEach(c => {
-    let t = c.terminal || (currentLang === 'vi' ? 'Khác' : 'Other');
+    let t = c.terminal || 'Khác';
     termMap[t] = (termMap[t] || 0) + 1;
     if (!statsVesselCache.terminals[t]) statsVesselCache.terminals[t] = [];
     statsVesselCache.terminals[t].push(c);
   });
   let maxTerm = Math.max(1, ...Object.values(termMap));
-  $('statTerminals').innerHTML = Object.entries(termMap)
-    .sort((a,b) => b[1] - a[1])
-    .map(([k,v]) => `
+  if ($('statTerminals')) {
+    $('statTerminals').innerHTML = Object.entries(termMap).sort((a,b) => b[1] - a[1]).map(([k,v]) => `
       <div class="barrow">
         <span class="barrow-label" onmouseenter="showStatsPopover(event, 'terminals', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
         <div class="barbg"><div class="barfill" style="width:${(v/maxTerm*100).toFixed(1)}%"></div></div>
         <b>${v}</b>
       </div>
     `).join('');
+  }
 
   let opMap = {};
   list.forEach(c => {
-    let op = (c.operator || (currentLang === 'vi' ? 'Không xác định' : 'Unknown')).trim();
+    let op = (c.operator || 'Không xác định').trim();
     opMap[op] = (opMap[op] || 0) + 1;
     if (!statsVesselCache.operators[op]) statsVesselCache.operators[op] = [];
     statsVesselCache.operators[op].push(c);
   });
   let maxOp = Math.max(1, ...Object.values(opMap));
-  $('statOperators').innerHTML = Object.entries(opMap)
-    .sort((a,b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([k,v]) => `
+  if ($('statOperators')) {
+    $('statOperators').innerHTML = Object.entries(opMap).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([k,v]) => `
       <div class="barrow">
         <span class="barrow-label" onmouseenter="showStatsPopover(event, 'operators', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
         <div class="barbg"><div class="barfill gold" style="width:${(v/maxOp*100).toFixed(1)}%"></div></div>
         <b>${v}</b>
       </div>
     `).join('');
+  }
 
   let loaBins = { '< 150m': 0, '150m - 200m': 0, '200m - 250m': 0, '250m - 300m': 0, '≥ 300m': 0 };
   Object.keys(loaBins).forEach(k => { statsVesselCache.loaBins[k] = []; });
-
   list.forEach(c => {
     let l = c.loa || 0;
-    let bKey = '< 150m';
-    if (l < 150) bKey = '< 150m';
-    else if (l < 200) bKey = '150m - 200m';
-    else if (l < 250) bKey = '200m - 250m';
-    else if (l < 300) bKey = '250m - 300m';
-    else bKey = '≥ 300m';
-
+    let bKey = l < 150 ? '< 150m' : (l < 200 ? '150m - 200m' : (l < 250 ? '200m - 250m' : (l < 300 ? '250m - 300m' : '≥ 300m')));
     loaBins[bKey]++;
     statsVesselCache.loaBins[bKey].push(c);
   });
   let maxLoa = Math.max(1, ...Object.values(loaBins));
-  $('statLoaBins').innerHTML = Object.entries(loaBins)
-    .map(([k,v]) => `
+  if ($('statLoaBins')) {
+    $('statLoaBins').innerHTML = Object.entries(loaBins).map(([k,v]) => `
       <div class="barrow">
         <span class="barrow-label" onmouseenter="showStatsPopover(event, 'loaBins', '${k}')" onmouseleave="scheduleHideStatsPopover()">${k}</span>
         <div class="barbg"><div class="barfill" style="width:${(v/maxLoa*100).toFixed(1)}%"></div></div>
         <b>${v}</b>
       </div>
     `).join('');
+  }
 
   let hourArr = new Array(24).fill(0);
   list.forEach(c => {
     if (c.etb) {
       let d = new Date(c.etb);
-      if (!isNaN(d)) {
-        let h = d.getHours();
-        hourArr[h]++;
-      }
+      if (!isNaN(d)) hourArr[d.getHours()]++;
     }
   });
   let maxHour = Math.max(1, ...hourArr);
@@ -1963,107 +2048,68 @@ function renderStats() {
     let pct = (cnt / maxHour * 100).toFixed(1);
     hourHtml += `
       <div class="hour-cell">
-        <div class="hour-cell-top"><span>${String(h).padStart(2,'0')}:00</span><span><b>${cnt}</b> ${dict[currentLang].shipsUnit}</span></div>
+        <div class="hour-cell-top"><span>${String(h).padStart(2,'0')}:00</span><span><b>${cnt}</b> tàu</span></div>
         <div class="hour-meter"><i style="width:${pct}%"></i></div>
       </div>
     `;
   }
-  $('statHours').innerHTML = hourHtml;
+  if ($('statHours')) $('statHours').innerHTML = hourHtml;
 }
 
 function showStatsPopover(e, groupKey, labelName) {
   clearStatsPopoverTimeout();
   let ships = (statsVesselCache[groupKey] && statsVesselCache[groupKey][labelName]) ? statsVesselCache[groupKey][labelName] : [];
-  if (!ships || ships.length === 0) return;
-
+  if (!ships.length) return;
   $('popTitle').textContent = labelName;
-  $('popBadge').textContent = `${ships.length} ${dict[currentLang].shipsUnit}`;
+  $('popBadge').textContent = `${ships.length} tàu`;
 
-  let arrPrefix = currentLang === 'vi' ? 'Cập: ' : 'Arr: ';
-  let listHtml = ships.map((s, idx) => `
+  $('popList').innerHTML = ships.map((s, idx) => `
     <div class="pop-item">
-      <div class="pop-item-top">
-        <span>${idx + 1}. ${esc(s.vessel)}</span>
-        <span style="color:var(--cyan)">${s.loa ? s.loa + 'm' : ''}</span>
-      </div>
-      <div class="pop-item-meta">
-        <span>${esc(s.terminal || '—')} ${esc(s.berth || '')}</span>
-        <span>${arrPrefix}${dt(s.etb)}</span>
-      </div>
+      <div class="pop-item-top"><span>${idx + 1}. ${esc(s.vessel)}</span><span style="color:var(--cyan)">${s.loa ? s.loa + 'm' : ''}</span></div>
+      <div class="pop-item-meta"><span>${esc(s.terminal || '—')} ${esc(s.berth || '')}</span><span>Cập: ${dt(s.etb)}</span></div>
     </div>
   `).join('');
 
-  $('popList').innerHTML = listHtml;
-
   let pop = $('statsVesselPopover');
   pop.style.display = 'block';
-
   let rect = e.target.getBoundingClientRect();
-  let left = rect.right + 10;
-  let top = rect.top - 20;
-
-  if (left + 300 > window.innerWidth) {
-    left = rect.left - 305;
-  }
-  if (top + 230 > window.innerHeight) {
-    top = window.innerHeight - 240;
-  }
-
-  pop.style.left = Math.max(10, left) + 'px';
-  pop.style.top = Math.max(10, top) + 'px';
+  pop.style.left = Math.max(10, Math.min(rect.right + 10, window.innerWidth - 305)) + 'px';
+  pop.style.top = Math.max(10, Math.min(rect.top - 20, window.innerHeight - 240)) + 'px';
 }
 
 function scheduleHideStatsPopover() {
   clearStatsPopoverTimeout();
-  statsPopoverTimeout = setTimeout(() => {
-    hideStatsPopover();
-  }, 1000);
+  statsPopoverTimeout = setTimeout(() => { hideStatsPopover(); }, 1000);
 }
-
 function clearStatsPopoverTimeout() {
-  if (statsPopoverTimeout) {
-    clearTimeout(statsPopoverTimeout);
-    statsPopoverTimeout = null;
-  }
+  if (statsPopoverTimeout) { clearTimeout(statsPopoverTimeout); statsPopoverTimeout = null; }
 }
-
-function hideStatsPopover() {
-  let pop = $('statsVesselPopover');
-  if (pop) pop.style.display = 'none';
-}
+function hideStatsPopover() { if ($('statsVesselPopover')) $('statsVesselPopover').style.display = 'none'; }
 
 function showTooltip(e, s) {
-  if (tooltipHideTimeout) {
-    clearTimeout(tooltipHideTimeout);
-    tooltipHideTimeout = null;
-  }
+  if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
   selectedShipForReport = s;
   let tt = $('shipTooltip');
   $('ttName').textContent = s.vessel;
   $('ttOperator').textContent = s.operator || '—';
   $('ttLoa').textContent = s.loa + 'm';
-  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-US') + ' T' : '—';
+  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString('vi-VN') + ' T' : '—';
   $('ttEtb').textContent = dt(s.etb);
   $('ttEtd').textContent = dt(s.etd);
 
   let now = Date.now();
   let t1 = s.etb ? new Date(s.etb).getTime() : 0;
   let t2 = s.etd ? new Date(s.etd).getTime() : 0;
-
   if (t1 > 0 && now >= t1) {
     let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
     $('ttDocked').textContent = formatDuration(dockedMs);
   } else {
-    $('ttDocked').textContent = currentLang === 'vi' ? 'Chưa cập' : 'Not arrived';
+    $('ttDocked').textContent = 'Chưa cập';
   }
 
-  if (t2 > 0 && t2 > now) {
-    $('ttRemaining').textContent = formatDuration(t2 - now);
-  } else if (t2 > 0 && now >= t2) {
-    $('ttRemaining').textContent = currentLang === 'vi' ? 'Đã rời bến' : 'Departed';
-  } else {
-    $('ttRemaining').textContent = '—';
-  }
+  if (t2 > 0 && t2 > now) $('ttRemaining').textContent = formatDuration(t2 - now);
+  else if (t2 > 0 && now >= t2) $('ttRemaining').textContent = 'Đã rời bến';
+  else $('ttRemaining').textContent = '—';
 
   tt.style.display = 'block';
   tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
@@ -2072,105 +2118,54 @@ function showTooltip(e, s) {
 
 function scheduleHideTooltip() {
   if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
-  tooltipHideTimeout = setTimeout(() => {
-    hideTooltip();
-  }, 3000);
+  tooltipHideTimeout = setTimeout(() => { hideTooltip(); }, 3000);
 }
+function hideTooltip() { if ($('shipTooltip')) $('shipTooltip').style.display = 'none'; }
 
-function hideTooltip() {
-  $('shipTooltip').style.display = 'none';
-}
+// --- KHỞI CHẠY HỆ THỐNG TRÊN DOMContentLoaded ---
+document.addEventListener('DOMContentLoaded', () => {
+  // Gắn sự kiện chuyển trang
+  document.querySelectorAll('.nav button').forEach(b => b.onclick = () => nav(b.dataset.page));
+  document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => nav(b.dataset.goto));
 
-$('shipTooltip').onmouseenter = () => {
-  if (tooltipHideTimeout) {
-    clearTimeout(tooltipHideTimeout);
-    tooltipHideTimeout = null;
+  // Gắn sự kiện nút thư
+  if ($('mailNotificationBtn')) $('mailNotificationBtn').onclick = openMailAuthModal;
+  if ($('mailPasswordInput')) {
+    $('mailPasswordInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') verifyMailPassword();
+    });
   }
-};
-$('shipTooltip').onmouseleave = () => {
-  scheduleHideTooltip();
-};
 
-$('ttEditBtn').onclick = () => {
-  if (selectedShipForReport) {
-    let pwd = prompt(dict[currentLang].promptPwd);
-    if (pwd === '6868') {
-      $('editVesselName').value = selectedShipForReport.vessel || '';
-      $('editVesselOperator').value = selectedShipForReport.operator || '';
-      $('editVesselTerminal').value = selectedShipForReport.terminal || '';
-      $('editVesselBerth').value = selectedShipForReport.berth || '';
-      $('editVesselLoa').value = selectedShipForReport.loa || '';
-      $('editVesselDwt').value = selectedShipForReport.dwt || '';
-      $('editVesselEtb').value = formatDateTimeLocal(selectedShipForReport.etb);
-      $('editVesselEtd').value = formatDateTimeLocal(selectedShipForReport.etd);
-      nav('edit-vessel');
-      hideTooltip();
-    } else if (pwd !== null) {
-      alert(dict[currentLang].pwdWrong);
-    }
-  }
-};
+  // Gửi phản ánh
+  if ($('sendReportSubmitBtn')) $('sendReportSubmitBtn').onclick = submitFeedbackReport;
 
-$('ttReportBtn').onclick = () => {
-  if (selectedShipForReport) {
-    nav('report');
-    $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
-    $('repContent').value = currentLang === 'vi' 
-      ? `Phản ánh sai lệch thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`
-      : `Discrepancy report for vessel ${selectedShipForReport.vessel} (ETB: ${dt(selectedShipForReport.etb)}, ETD: ${dt(selectedShipForReport.etd)}).`;
-    hideTooltip();
-  }
-};
-
-function initDates() {
+  // Ngày mặc định
   let today = getTodayString();
-  if(!$('fromDate').value) $('fromDate').value = today;
-  if(!$('toDate').value) $('toDate').value = today;
-  let loc = currentLang === 'vi' ? 'vi-VN' : 'en-GB';
-  $('currentFullDate').textContent = new Date().toLocaleDateString(loc);
-}
+  if ($('fromDate') && !$('fromDate').value) $('fromDate').value = today;
+  if ($('toDate') && !$('toDate').value) $('toDate').value = today;
+  if ($('currentFullDate')) $('currentFullDate').textContent = new Date().toLocaleDateString('vi-VN');
 
-function openShiftModalWithPassword() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') $('modalShade').classList.add('open');
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
+  // Giao diện theme
+  let savedTheme = localStorage.getItem('hp_theme') || 'light';
+  document.documentElement.dataset.theme = savedTheme;
+  if ($('themeToggle')) {
+    $('themeToggle').onclick = () => {
+      let isDark = document.documentElement.dataset.theme === 'dark';
+      let nextTheme = isDark ? 'light' : 'dark';
+      document.documentElement.dataset.theme = nextTheme;
+      localStorage.setItem('hp_theme', nextTheme);
+    };
+  }
 
-$('manualSaveBtn').onclick = handleManualSave;
-$('setupShiftBtn').onclick = openShiftModalWithPassword;
-$('exportConfigBtn').onclick = exportConfigAsCSVProtected;
-$('importConfigBtn').onclick = triggerImportConfig;
-$('importFileInput').onchange = handleFileImport;
-$('fetchHistoryBtn').onclick = fetchHistoryFromBucketProtected;
-$('closeModalBtn').onclick = () => $('modalShade').classList.remove('open');
-$('saveModalBtn').onclick = () => {
-  saveShiftConfigToSupabase({ shift: $('mShift').value, commander: $('mCommander').value, safety: $('mSafety').value });
-  $('dispShift').textContent = $('mShift').value;
-  $('modalShade').classList.remove('open');
-  showNotificationToast(currentLang === 'vi' ? 'Đã lưu cấu hình ca trực!' : 'Shift configuration saved!');
-};
-$('refreshBtn').onclick = loadData;
-$('fromDate').onchange = renderAll;
-$('toDate').onchange = renderAll;
-$('themeToggle').onclick = () => {
-  let dark = document.documentElement.dataset.theme !== 'dark';
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  localStorage.setItem('hp_theme', dark ? 'dark' : 'light');
-};
-
-initDates();
-let savedTheme = localStorage.getItem('hp_theme');
-if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-applyLanguage(currentLang);
-loadShiftConfigFromSupabase();
-loadData();
-fetchFeedbacksList(true);
-fetchRealWeatherHaiPhong();
-setInterval(fetchRealWeatherHaiPhong, 600000);
-setInterval(() => {
-  fetchFeedbacksList(true);
-}, 30000); // Polling kiểm tra tin nhắn mới mỗi 30s
-startMidnightCountdown();
+  // Khởi động các tiến trình
+  applyLanguage(currentLang);
+  loadFeedbacks();
+  loadData();
+  fetchRealWeatherHaiPhong();
+  setInterval(fetchRealWeatherHaiPhong, 600000);
+  setInterval(loadFeedbacks, 30000);
+  startMidnightCountdown();
+});
 </script>
 </body>
 </html>
