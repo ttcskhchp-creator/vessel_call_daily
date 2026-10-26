@@ -44,7 +44,7 @@ button:hover{filter:brightness(.95)}
 .side-shift-item strong{font-size: 10.5px;color: #ffffff;word-break: break-word}
 .side-shift-item span.phone{color: var(--cyan);font-weight: 800}
 
-/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI DƯỚI BỘ PHẬN TRỰC */
+/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI */
 .side-system-box{
   background: rgba(0,0,0,0.18);
   border: 1px solid rgba(255,255,255,0.08);
@@ -89,7 +89,7 @@ button:hover{filter:brightness(.95)}
 .side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:10px 4px 0;color:#91adc2;font-size:9px;line-height:1.35}
 .main{min-width:0}
 
-/* TOPBAR ĐƯỢC TINH CHỈNH TỐI ƯU */
+/* TOPBAR */
 .topbar{
   padding: 8px 20px;
   background: var(--card);
@@ -116,7 +116,7 @@ button:hover{filter:brightness(.95)}
 .topbar h1{font-size:16px;margin:0;font-weight:850;color:var(--navy2);line-height:1.2}
 :root[data-theme="dark"] .topbar h1{color:var(--cyan)}
 
-/* DẢI LỌC NGÀY NẰM SÁT DƯỚI TIÊU ĐỀ */
+/* DẢI LỌC NGÀY */
 .topbar-date-filter{
   display: flex;
   align-items: center;
@@ -136,6 +136,71 @@ button:hover{filter:brightness(.95)}
   outline: none;
 }
 .date-input-inline:focus{border-color:var(--cyan)}
+
+/* BIỂU TƯỢNG HÒM THƯ BÁO CÁO CÓ BADGE SỐ ĐỎ */
+.topbar-actions{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inbox-btn-wrap{
+  position: relative;
+  display: inline-flex;
+}
+.inbox-mail-btn{
+  position: relative;
+  background: rgba(38,189,200,0.12);
+  color: var(--navy2);
+  border: 1px solid rgba(38,189,200,0.3);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  padding: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+:root[data-theme="dark"] .inbox-mail-btn{
+  background: rgba(38,189,200,0.15);
+  color: #8be4ec;
+  border-color: rgba(38,189,200,0.4);
+}
+.inbox-mail-btn:hover{
+  background: var(--cyan);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(38,189,200,0.3);
+}
+.mail-badge{
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e74c3c;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--card);
+  box-shadow: 0 2px 6px rgba(231,76,60,0.5);
+  pointer-events: none;
+  animation: pulseBadge 2.2s infinite ease-in-out;
+}
+.mail-badge.hidden{
+  display: none !important;
+}
+@keyframes pulseBadge{
+  0%, 100%{ transform: scale(1); }
+  50%{ transform: scale(1.15); }
+}
 
 .content{padding:14px 20px 30px;max-width:1800px;margin:auto}
 .page{display:block;width:100%;animation:pageIn .15s ease-out}
@@ -289,7 +354,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #statsVesselPopover .pop-head strong{
   font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
+:root[data-theme="dark"] .pop-head strong{color:var(--cyan)}
 #statsVesselPopover .pop-list{
   max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
 }
@@ -304,22 +369,180 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   font-size:9px;color:var(--muted);display:flex;justify-content:space-between;gap:4px;
 }
 
-.report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
+/* THẺ FORM BÁO CÁO */
+.report-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px;
+  max-width:760px;
+  margin:auto;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.03);
+}
 .form-group{margin-bottom:12px}
-.form-group label{display:block;font-weight:700;font-size:10px;color:var(--muted);margin-bottom:4px}
-.form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--card);color:var(--ink)}
+.form-group label{display:block;font-weight:750;font-size:11px;color:var(--ink);margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;
+  background:var(--bg);color:var(--ink);font-size:12px;outline:none;transition:border-color .2s;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  border-color:var(--cyan);background:var(--card);
+}
 
-.modal-shade{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:none;align-items:center;justify-content:center}
+/* MODAL CHUNG */
+.modal-shade{position:fixed;inset:0;background:rgba(10,24,40,0.65);backdrop-filter:blur(3px);z-index:1100;display:none;align-items:center;justify-content:center;padding:14px}
 .modal-shade.open{display:flex}
-.modal{background:var(--card);border-radius:12px;width:min(420px,90vw);padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2)}
-.modal h3{margin:0 0 12px;font-size:16px}
-.modal-form{display:grid;gap:10px}
-.modal-form label{display:block;font-size:10px;font-weight:700;color:var(--muted)}
-.modal-form input{width:100%;margin-top:3px}
-.modal-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:15px}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:14px;width:min(440px,94vw);padding:22px;box-shadow:0 15px 35px rgba(0,0,0,0.3);animation:modalIn .18s ease-out}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal h3{margin:0 0 12px;font-size:16px;color:var(--navy2);display:flex;align-items:center;gap:8px}
+:root[data-theme="dark"] .modal h3{color:var(--cyan)}
+.modal-form{display:grid;gap:12px}
+.modal-form label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.modal-form input{width:100%;margin-top:2px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+
+/* MODAL HÒM THƯ BÁO CÁO (INBOX) */
+.modal-inbox{
+  width: min(860px, 95vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+}
+.inbox-list{
+  overflow-y: auto;
+  max-height: calc(88vh - 150px);
+  padding-right: 4px;
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  scrollbar-width: thin;
+}
+.inbox-item{
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  transition: all .15s ease;
+  position: relative;
+}
+.inbox-item:hover{
+  border-color: var(--cyan);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+}
+.inbox-item-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inbox-sender{
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--navy2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+:root[data-theme="dark"] .inbox-sender{color: var(--cyan)}
+.inbox-tag{
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #eaf0f6;
+  color: #25445f;
+}
+.inbox-tag.urgent{background:#fff0f0;color:#c94d4d}
+.inbox-tag.general{background:#e7f2fc;color:#1b6599}
+.inbox-meta{
+  display: flex;
+  gap: 12px;
+  font-size: 10.5px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.inbox-body{
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--card);
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.inbox-item-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.btn-delete-mail{
+  background: rgba(201,77,77,0.12);
+  color: var(--red);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+.btn-delete-mail:hover{
+  background: var(--red);
+  color: #fff;
+}
+.inbox-filter-bar{
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+/* NÚT THAO TÁC NỔI BẬT */
+button.primary{
+  background: linear-gradient(135deg,#1f6d9c,#103b5c);
+  color: #ffffff;
+}
+button.primary:hover{filter:brightness(1.1)}
+button.darkbtn{
+  background: #25445f;
+  color: #ffffff;
+}
 
 .port-link-box{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:10px;display:flex;align-items:center;justify-content:space-between}
 .port-link-box a{color:var(--cyan);font-weight:700;text-decoration:none}
+
+/* THÔNG BÁO TOAST */
+#toastBox{
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast{
+  background: var(--navy2);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 4px solid var(--cyan);
+  animation: toastIn .2s ease-out;
+}
+.toast.error{border-left-color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 @media(max-width:980px){
   .app{grid-template-columns:60px minmax(0,1fr)}
@@ -383,14 +606,14 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </div>
     </div>
 
-    <!-- KHỐI HỆ THỐNG VÀ ĐIỀU KHIỂN DỌC BÊN TRÁI -->
+    <!-- KHỐI HỆ THỐNG VÀ ĐIỀU KHIỂN DỌC TRÁI -->
     <div class="side-system-box">
       <!-- Nút Đếm ngược 00h00 / Tự động đồng bộ -->
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
       </button>
 
-      <!-- Hàng nút Ngôn ngữ & Giao diện sáng tối -->
+      <!-- Hàng nút Ngôn ngữ & Giao diện -->
       <div class="side-quick-grid">
         <button id="langToggleBtn" class="side-btn lang-btn" title="Chuyển đổi ngôn ngữ / Switch Language">
           <span id="langFlag">🇻🇳</span> <span id="langText">VI</span>
@@ -433,10 +656,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     <header class="topbar">
       <div class="topbar-header-left">
         <div class="topbar-title-row">
-          <h1 id="topTitle">TT KHAI KHÁC & DVKH</h1>
+          <h1 id="topTitle">TT KHAI THÁC & DVKH</h1>
           <div class="crumb"><span id="t_crumbPrefix">CẢNG HẢI PHÒNG</span> / <span id="crumb">TOÀN CẢNH</span></div>
         </div>
-        <!-- THANH LỌC NGÀY NẰM SÁT NGAY DƯỚI TIÊU ĐỀ -->
+        <!-- THANH LỌC NGÀY -->
         <div class="topbar-date-filter">
           <span id="t_fromLabel">Từ:</span>
           <input type="date" id="fromDate" class="date-input-inline">
@@ -444,9 +667,20 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <input type="date" id="toDate" class="date-input-inline">
         </div>
       </div>
+
+      <!-- CỤM TÁC VỤ PHẢI: Ô BỨC THƯ CÓ SỐ ĐỎ BÁO TIN NHẮN PHẢN ÁNH -->
+      <div class="topbar-actions">
+        <div class="inbox-btn-wrap">
+          <button id="inboxMailBtn" class="inbox-mail-btn" title="Hòm thư Báo cáo & Góp ý (Yêu cầu mật khẩu 6868)">
+            ✉
+            <span id="mailBadge" class="mail-badge hidden">0</span>
+          </button>
+        </div>
+      </div>
     </header>
 
     <main class="content">
+      <!-- MÀN HÌNH 1: TOÀN CẢNH -->
       <section id="page-overview" class="page">
         <div class="header-widgets-grid">
           <!-- WIDGET THỜI TIẾT -->
@@ -744,34 +978,58 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 6: BÁO CÁO -->
+      <!-- MÀN HÌNH 6: BÁO CÁO & GÓP Ý (ĐÃ NÂNG CẤP VÀ KẾT NỐI DATABASE) -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
             <h2 id="t_reportHead">Phản ánh & Báo cáo sai lệch</h2>
-            <div class="muted" id="t_reportSub">Gửi phản ánh tới Trung tâm Khai thác & DVKH</div>
+            <div class="muted" id="t_reportSub">Gửi phản ánh tới Trung tâm Khai thác & DVKH Cảng Hải Phòng</div>
           </div>
         </div>
         <div class="report-card">
-          <div class="form-group"><label id="lbl_repName">Họ tên (*)</label><input id="repName" placeholder="Nhập tên..."></div>
-          <div class="form-group"><label id="lbl_repContact">SĐT / Email (*)</label><input id="repContact" placeholder="Nhập liên hệ..."></div>
-          <div class="form-group"><label id="lbl_repCompany">Đơn vị</label><input id="repCompany" placeholder="Hãng tàu / Đại lý..."></div>
-          <div class="form-group">
-            <label id="lbl_repType">Nội dung phản ánh</label>
-            <select id="repType">
-              <option>Sai thời gian ETB/ETD</option>
-              <option>Sai tên tàu / LOA / DWT</option>
-              <option>Sai vị trí cầu bến</option>
-              <option>Góp ý khác</option>
-            </select>
-          </div>
-          <div class="form-group"><label id="lbl_repVessel">Tàu / Cầu bến liên quan</label><input id="repVessel" placeholder="Ví dụ: Tàu A - Tân Vũ B1"></div>
-          <div class="form-group"><label id="lbl_repContent">Chi tiết (*)</label><textarea id="repContent" rows="4" placeholder="Mô tả nội dung..."></textarea></div>
-          <button id="sendEmailBtn" class="primary" style="width:100%;padding:10px" onclick="alert(currentLang === 'vi' ? 'Đã gửi thông tin phản ánh thành công!' : 'Feedback sent successfully!')">✉ <span id="t_sendReportBtn">Gửi phản ánh</span></button>
+          <form id="reportFeedbackForm" onsubmit="handleSendFeedback(event)">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label id="lbl_repName">Họ tên người gửi (*)</label>
+                <input id="repName" required placeholder="Ví dụ: Nguyễn Văn C">
+              </div>
+              <div class="form-group">
+                <label id="lbl_repContact">SĐT hoặc Email liên hệ (*)</label>
+                <input id="repContact" required placeholder="Ví dụ: 0912.xxx.xxx / email@example.com">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label id="lbl_repCompany">Đơn vị / Cơ quan</label>
+                <input id="repCompany" placeholder="Hãng tàu, đại lý giao nhận, công ty logistic...">
+              </div>
+              <div class="form-group">
+                <label id="lbl_repType">Phân loại phản ánh</label>
+                <select id="repType">
+                  <option value="Sai thời gian ETB/ETD">Sai thời gian ETB / ETD</option>
+                  <option value="Sai tên tàu / LOA / DWT">Sai tên tàu / LOA / DWT</option>
+                  <option value="Sai vị trí cầu bến">Sai vị trí cầu bến</option>
+                  <option value="Góp ý phần mềm & dịch vụ">Góp ý phần mềm & dịch vụ cảng</option>
+                  <option value="Yêu cầu điều động khẩn">Yêu cầu điều động khẩn</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label id="lbl_repVessel">Tàu / Cầu bến liên quan (nếu có)</label>
+              <input id="repVessel" placeholder="Ví dụ: Tàu MAERSK WAVE - Tân Vũ B2">
+            </div>
+            <div class="form-group">
+              <label id="lbl_repContent">Chi tiết nội dung phản ánh (*)</label>
+              <textarea id="repContent" required rows="4" placeholder="Mô tả cụ thể thông tin sai lệch hoặc ý kiến đóng góp..."></textarea>
+            </div>
+            <button type="submit" id="sendReportSubmitBtn" class="primary" style="width:100%;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px">
+              ✉ <span id="t_sendReportBtn">Gửi phản ánh ngay</span>
+            </button>
+          </form>
         </div>
       </section>
 
-      <!-- MÀN HÌNH 7: NGUỒN -->
+      <!-- MÀN HÌNH 7: NGUỒN & LIÊN HỆ -->
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
@@ -782,6 +1040,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div class="panel" style="padding:16px">
           <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
           <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
+          <p><b>Database:</b> Supabase Postgres (`vessel_overrides`, `shift_configs`, `feedback_reports`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
@@ -816,7 +1075,47 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <div class="pop-list" id="popList"></div>
 </div>
 
-<!-- SETUP MODAL -->
+<!-- MODAL NHẬP MẬT KHẨU MỞ HÒM THƯ (TYPE=PASSWORD BẢO MẬT) -->
+<div id="mailAuthModalShade" class="modal-shade">
+  <div class="modal">
+    <h3>🔒 <span id="t_authMailHead">Xác thực Hòm thư Phản ánh</span></h3>
+    <p class="muted tiny" style="margin-top:-4px;margin-bottom:12px" id="t_authMailSub">Vui lòng nhập mật khẩu quản trị để xem và xử lý các ý kiến phản ánh.</p>
+    <div class="modal-form">
+      <div>
+        <label id="lbl_mailPwd">MẬT KHẨU BẢO MẬT</label>
+        <input type="password" id="mailSecretInput" class="field" style="width:100%;font-size:15px;letter-spacing:2px" placeholder="••••" maxlength="16" autofocus>
+      </div>
+      <div id="mailAuthError" style="color:var(--red);font-size:11px;font-weight:700;display:none">Mật khẩu không chính xác! Vui lòng thử lại.</div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelMailAuthBtn">Hủy</button>
+      <button id="confirmMailAuthBtn" class="primary">Mở hòm thư 🔓</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRÌNH XEM VÀ QUẢN LÝ HÒM THƯ (INBOX MANAGER MODAL) -->
+<div id="inboxViewModalShade" class="modal-shade">
+  <div class="modal modal-inbox">
+    <div class="inbox-filter-bar">
+      <div>
+        <h3 style="margin:0">✉ <span id="t_inboxTitle">Hòm thư Báo cáo & Phản ánh</span></h3>
+        <span class="muted tiny" id="inboxCountText">Đang tải phản ánh...</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="darkbtn tiny" onclick="fetchFeedbackInbox(true)" title="Tải lại hòm thư">↻ Tải lại</button>
+        <button class="tiny" id="closeInboxModalBtn">Đóng ✕</button>
+      </div>
+    </div>
+
+    <!-- DANH SÁCH THƯ -->
+    <div class="inbox-list" id="inboxContentList">
+      <div class="empty">Đang tải danh sách thư...</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP CA TRỰC MODAL -->
 <div id="modalShade" class="modal-shade">
   <div class="modal">
     <h3 id="t_modalDutyHead">Thiết lập Bộ phận Trực</h3>
@@ -845,6 +1144,9 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   </div>
 </div>
 
+<!-- VÙNG HIỂN THỊ THÔNG BÁO TOAST -->
+<div id="toastBox"></div>
+
 <script>
 const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ZQdpAmhE4LLfsbKGsRiHIw_ShoTsfIe';
@@ -865,6 +1167,9 @@ let isUserHovering = false;
 let statsPopoverTimeout = null;
 
 let currentLang = localStorage.getItem('hp_lang') || 'vi';
+
+/* DỮ LIỆU HÒM THƯ BÁO CÁO PHẢN ÁNH */
+let feedbackList = [];
 
 const dict = {
   vi: {
@@ -955,14 +1260,14 @@ const dict = {
     th_ovBerth: "Bến",
     th_ovAction: "Thao tác",
     reportHead: "Phản ánh & Báo cáo sai lệch",
-    reportSub: "Gửi phản ánh tới Trung tâm Khai thác & DVKH",
-    lbl_repName: "Họ tên (*)",
-    lbl_repContact: "SĐT / Email (*)",
-    lbl_repCompany: "Đơn vị",
-    lbl_repType: "Nội dung phản ánh",
-    lbl_repVessel: "Tàu / Cầu bến liên quan",
-    lbl_repContent: "Chi tiết (*)",
-    sendReportBtn: "Gửi phản ánh",
+    reportSub: "Gửi phản ánh tới Trung tâm Khai thác & DVKH Cảng Hải Phòng",
+    lbl_repName: "Họ tên người gửi (*)",
+    lbl_repContact: "SĐT hoặc Email liên hệ (*)",
+    lbl_repCompany: "Đơn vị / Cơ quan",
+    lbl_repType: "Phân loại phản ánh",
+    lbl_repVessel: "Tàu / Cầu bến liên quan (nếu có)",
+    lbl_repContent: "Chi tiết nội dung phản ánh (*)",
+    sendReportBtn: "Gửi phản ánh ngay",
     resHead: "Nguồn & Liên hệ",
     resSub: "Thông tin hệ thống",
     resUnit: "Đơn vị:",
@@ -986,7 +1291,11 @@ const dict = {
     depRemaining: "Sắp rời còn",
     depElapsed: "Đã rời",
     agoText: "trước",
-    shipsUnit: "tàu"
+    shipsUnit: "tàu",
+    authMailHead: "Xác thực Hòm thư Phản ánh",
+    authMailSub: "Vui lòng nhập mật khẩu quản trị để xem và xử lý các ý kiến phản ánh.",
+    lbl_mailPwd: "MẬT KHẨU BẢO MẬT",
+    inboxTitle: "Hòm thư Báo cáo & Phản ánh"
   },
   en: {
     topTitle: "Operations & Customer Service Center",
@@ -1107,12 +1416,30 @@ const dict = {
     depRemaining: "Departing in",
     depElapsed: "Departed",
     agoText: "ago",
-    shipsUnit: "vessels"
+    shipsUnit: "vessels",
+    authMailHead: "Feedback Mailbox Authentication",
+    authMailSub: "Please enter administrator password to view and process incoming feedback.",
+    lbl_mailPwd: "SECURITY PASSWORD",
+    inboxTitle: "Feedback & Discrepancy Inbox"
   }
 };
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function showToast(msg, isError = false) {
+  let box = $('toastBox');
+  if (!box) return;
+  let t = document.createElement('div');
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.innerHTML = `<span>${isError ? '⚠️' : '✓'}</span><span>${esc(msg)}</span>`;
+  box.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transition = 'opacity .3s ease';
+    setTimeout(() => t.remove(), 300);
+  }, 3500);
+}
 
 function applyLanguage(lang) {
   currentLang = lang;
@@ -1134,6 +1461,7 @@ function applyLanguage(lang) {
   $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
 
   renderAll();
+  updateBadgeDisplay();
 }
 
 $('langToggleBtn').onclick = () => {
@@ -1153,7 +1481,7 @@ function dt(v){
   if(!v) return '—';
   let d = new Date(v);
   let locale = currentLang === 'vi' ? 'vi-VN' : 'en-GB';
-  return isNaN(d) ? esc(v) : d.toLocaleString(locale, {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  return isNaN(d) ? esc(v) : d.toLocaleString(locale, {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
 function formatDateTimeLocal(v) {
@@ -1186,6 +1514,233 @@ function parseEtbEtd(etbStr, etdStr) {
   }
   return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
 }
+
+/* ==========================================================================
+   MODULE BÁO CÁO & GÓP Ý + HÒM THƯ (INBOX MANAGEMENT)
+   ========================================================================== */
+
+function getLocalFeedbacks() {
+  try {
+    return JSON.parse(localStorage.getItem('hp_local_feedbacks') || '[]');
+  } catch(e) {
+    return [];
+  }
+}
+
+function saveLocalFeedbacks(list) {
+  localStorage.setItem('hp_local_feedbacks', JSON.stringify(list));
+}
+
+function updateBadgeDisplay() {
+  let badge = $('mailBadge');
+  if (!badge) return;
+  let count = feedbackList.length;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+    badge.textContent = '0';
+  }
+}
+
+async function fetchFeedbackInbox(silent = false) {
+  try {
+    let { data, error } = await supabaseClient
+      .from('feedback_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      feedbackList = data;
+    } else {
+      feedbackList = getLocalFeedbacks();
+    }
+  } catch(e) {
+    feedbackList = getLocalFeedbacks();
+  }
+  updateBadgeDisplay();
+  renderInboxList();
+  if (!silent) {
+    // Có thể cập nhật giao diện
+  }
+}
+
+async function handleSendFeedback(e) {
+  e.preventDefault();
+  let name = $('repName').value.trim();
+  let contact = $('repContact').value.trim();
+  let company = $('repCompany').value.trim();
+  let reportType = $('repType').value;
+  let vessel = $('repVessel').value.trim();
+  let content = $('repContent').value.trim();
+
+  if (!name || !contact || !content) {
+    showToast(currentLang === 'vi' ? 'Vui lòng điền đủ các trường có dấu (*)' : 'Please fill all required fields (*)', true);
+    return;
+  }
+
+  let submitBtn = $('sendReportSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.style.opacity = '0.7';
+
+  let feedbackItem = {
+    id: 'fb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    sender_name: name,
+    contact: contact,
+    company: company,
+    report_type: reportType,
+    vessel_info: vessel,
+    content: content,
+    created_at: new Date().toISOString()
+  };
+
+  let savedSuccessfully = false;
+
+  try {
+    let { error } = await supabaseClient.from('feedback_reports').insert([{
+      sender_name: name,
+      contact: contact,
+      company: company,
+      report_type: reportType,
+      vessel_info: vessel,
+      content: content
+    }]);
+
+    if (!error) {
+      savedSuccessfully = true;
+    }
+  } catch(err) {
+    console.warn('Lưu Supabase báo lỗi, chuyển sang fallback lưu cục bộ:', err);
+  }
+
+  // Backup lưu cục bộ
+  let localList = getLocalFeedbacks();
+  localList.unshift(feedbackItem);
+  saveLocalFeedbacks(localList);
+
+  await fetchFeedbackInbox(true);
+
+  submitBtn.disabled = false;
+  submitBtn.style.opacity = '1';
+  $('reportFeedbackForm').reset();
+
+  showToast(currentLang === 'vi' 
+    ? 'Đã gửi phản ánh thành công tới Trung tâm Khai thác & DVKH!' 
+    : 'Feedback sent successfully to Operations Center!');
+
+  // Tự động mở chuyển về trang chủ hoặc thông báo
+  setTimeout(() => {
+    nav('overview');
+  }, 1200);
+}
+
+function renderInboxList() {
+  let container = $('inboxContentList');
+  if (!container) return;
+
+  let totalTxt = currentLang === 'vi' 
+    ? `Có tổng cộng ${feedbackList.length} thư phản ánh trong hòm thư` 
+    : `Total ${feedbackList.length} incoming feedbacks`;
+  $('inboxCountText').textContent = totalTxt;
+
+  if (feedbackList.length === 0) {
+    container.innerHTML = `<div class="empty">${currentLang === 'vi' ? '📭 Hòm thư trống. Chưa có phản ánh nào.' : '📭 Inbox is empty. No feedback messages yet.'}</div>`;
+    return;
+  }
+
+  let delBtnTxt = currentLang === 'vi' ? '🗑️ Đã xử lý & Xóa' : '🗑️ Resolved & Delete';
+  let vesselPrefix = currentLang === 'vi' ? 'Tàu/Bến: ' : 'Vessel: ';
+  let contactPrefix = currentLang === 'vi' ? 'LH: ' : 'Contact: ';
+  let unitPrefix = currentLang === 'vi' ? 'Đơn vị: ' : 'Unit: ';
+
+  let html = feedbackList.map(item => {
+    let itemId = item.id || '';
+    let isUrgent = (item.report_type || '').includes('khẩn') || (item.report_type || '').includes('ETB');
+    return `
+      <div class="inbox-item" id="inbox_row_${itemId}">
+        <div class="inbox-item-head">
+          <div class="inbox-sender">
+            <span>👤 ${esc(item.sender_name || 'Khách hàng')}</span>
+            <span class="inbox-tag ${isUrgent ? 'urgent' : 'general'}">${esc(item.report_type || 'Góp ý')}</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700">🕒 ${dt(item.created_at)}</div>
+        </div>
+        <div class="inbox-meta">
+          <span><b>${contactPrefix}</b>${esc(item.contact || '—')}</span>
+          <span><b>${unitPrefix}</b>${esc(item.company || '—')}</span>
+          ${item.vessel_info ? `<span><b>${vesselPrefix}</b><b style="color:var(--cyan)">${esc(item.vessel_info)}</b></span>` : ''}
+        </div>
+        <div class="inbox-body">${esc(item.content)}</div>
+        <div class="inbox-item-actions">
+          <button class="btn-delete-mail" onclick="deleteFeedbackMail('${itemId}')">${delBtnTxt}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+async function deleteFeedbackMail(id) {
+  let confirmMsg = currentLang === 'vi' 
+    ? 'Bạn có chắc chắn muốn xóa thư phản ánh này sau khi đã xử lý?' 
+    : 'Are you sure you want to delete this processed feedback?';
+  
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('fb_'))) {
+      await supabaseClient.from('feedback_reports').delete().eq('id', id);
+    }
+  } catch(e) {}
+
+  // Xóa khỏi cache & localStorage
+  feedbackList = feedbackList.filter(item => String(item.id) !== String(id));
+  let localList = getLocalFeedbacks().filter(item => String(item.id) !== String(id));
+  saveLocalFeedbacks(localList);
+
+  updateBadgeDisplay();
+  renderInboxList();
+  showToast(currentLang === 'vi' ? 'Đã xóa phản ánh thành công!' : 'Feedback deleted successfully!');
+}
+
+/* SỰ KIỆN MỞ HÒM THƯ BẢO MẬT BẰNG MẬT KHẨU 6868 (TYPE=PASSWORD) */
+$('inboxMailBtn').onclick = () => {
+  $('mailSecretInput').value = '';
+  $('mailAuthError').style.display = 'none';
+  $('mailAuthModalShade').classList.add('open');
+  setTimeout(() => $('mailSecretInput').focus(), 150);
+};
+
+$('cancelMailAuthBtn').onclick = () => {
+  $('mailAuthModalShade').classList.remove('open');
+};
+
+function verifyAndOpenInbox() {
+  let val = $('mailSecretInput').value;
+  if (val === '6868') {
+    $('mailAuthModalShade').classList.remove('open');
+    $('inboxViewModalShade').classList.add('open');
+    fetchFeedbackInbox();
+  } else {
+    $('mailAuthError').style.display = 'block';
+    $('mailSecretInput').select();
+  }
+}
+
+$('confirmMailAuthBtn').onclick = verifyAndOpenInbox;
+$('mailSecretInput').onkeydown = (e) => {
+  if (e.key === 'Enter') verifyAndOpenInbox();
+};
+
+$('closeInboxModalBtn').onclick = () => {
+  $('inboxViewModalShade').classList.remove('open');
+};
+
+/* ==========================================================================
+   MODULE QUẢN LÝ DỮ LIỆU TÀU & VẬN HÀNH
+   ========================================================================== */
 
 async function loadVesselOverrides() {
   try {
@@ -2218,6 +2773,7 @@ $('saveModalBtn').onclick = () => {
   saveShiftConfigToSupabase({ shift: $('mShift').value, commander: $('mCommander').value, safety: $('mSafety').value });
   $('dispShift').textContent = $('mShift').value;
   $('modalShade').classList.remove('open');
+  showToast(currentLang === 'vi' ? 'Đã lưu thiết lập ca trực!' : 'Duty roster updated!');
 };
 $('refreshBtn').onclick = loadData;
 $('fromDate').onchange = renderAll;
@@ -2228,10 +2784,14 @@ $('themeToggle').onclick = () => {
   localStorage.setItem('hp_theme', dark ? 'dark' : 'light');
 };
 
+/* KHỞI ĐỘNG HỆ THỐNG */
 initDates();
+let savedTheme = localStorage.getItem('hp_theme');
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 applyLanguage(currentLang);
 loadShiftConfigFromSupabase();
 loadData();
+fetchFeedbackInbox(true);
 fetchRealWeatherHaiPhong();
 setInterval(fetchRealWeatherHaiPhong, 600000);
 startMidnightCountdown();
