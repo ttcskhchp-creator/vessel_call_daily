@@ -564,7 +564,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG Ô THỨ 5 TRẠM HÒN DÁU -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -699,7 +699,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
             <button class="tiny" onclick="filterPlanningArea('HOANG DIEU', this)">Hoàng Diệu</button>
             <button class="tiny" onclick="filterPlanningArea('CHUA VE', this)">Chùa Vẽ</button>
-            <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
+            <button class="tiny" onclick="filterPlanningArea('DINH VU', this)">Đình Vũ</button>
           </div>
           <div class="gantt" id="fullGantt">
             <div class="empty">Chưa có dữ liệu Gantt.</div>
@@ -862,7 +862,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
         <div class="panel" style="padding:16px">
           <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
-          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)[span_28](start_span)[span_28](end_span)</p>
+          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)[cite: 1]</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
@@ -1779,7 +1779,7 @@ async function fetchRealWeatherHaiPhong() {
   }
 }
 
-// --- MODULE TỰ ĐỘNG BÓC TÁCH VÀ LỌC DUY NHẤT TRẠM HÒN DÁU TỪ THEGIOIMOICAU.COM ---
+// --- MODULE TỰ ĐỘNG BÓC TÁCH CHUẨN XÁC THEO ĐỊNH DANH HON-DAU TRÊN THEGIOIMOICAU.COM ---
 async function fetchTideFromTheGioiMoiCau() {
   const d = new Date();
   const day = String(d.getDate()).padStart(2, '0');
@@ -1787,7 +1787,7 @@ async function fetchTideFromTheGioiMoiCau() {
   const year = d.getFullYear();
   const dateKey = `${year}-${month}-${day}`;
 
-  // 1. Kiểm tra cấu hình chỉnh tay ca trực nếu có
+  // 1. Kiểm tra cấu hình cài đặt tay ca trực nếu có
   try {
     let custom = localStorage.getItem('hp_tide_custom_' + dateKey);
     if (custom) {
@@ -1798,18 +1798,22 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   } catch(e) {}
 
-  // 2. Kiểm tra bộ nhớ tạm (Cache trong ngày)
+  // 2. Xóa cache cũ nếu từng đọc nhầm số liệu cao > 3.2m của trạm khác
   try {
     let cached = localStorage.getItem('hp_tide_cache_' + dateKey);
     if (cached) {
-      liveTideData = JSON.parse(cached);
-      if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Hòn Dáu (thegioimoicau)';
-      updateRealtimeWidgets();
-      return;
+      let parsed = JSON.parse(cached);
+      if (parsed.highVal && parsed.highVal > 3.2) {
+        localStorage.removeItem('hp_tide_cache_' + dateKey);
+      } else {
+        liveTideData = parsed;
+        if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Hòn Dáu (thegioimoicau)';
+        updateRealtimeWidgets();
+        return;
+      }
     }
   } catch(e) {}
 
-  // 3. Lấy trực tiếp từ URL thegioimoicau.com/lich-thuy-trieu/DD/MM/YYYY qua Proxy phân giải CORS
   const targetUrl = `https://thegioimoicau.com/lich-thuy-trieu/${day}/${month}/${year}`;
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
@@ -1824,29 +1828,70 @@ async function fetchTideFromTheGioiMoiCau() {
 
       let hourlyTides = [];
 
-      // Tìm vị trí bắt đầu chuẩn xác của "Lịch thủy triều Hòn Dấu"
-      let allText = doc.body.innerText || '';
-      let honDauStart = allText.indexOf('Lịch thủy triều Hòn Dấu');
-      if (honDauStart === -1) honDauStart = allText.indexOf('Lịch thủy triều Hòn Dáu');
-      if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dấu');
-      if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dáu');
+      // CHIẾN LƯỢC 1: Dò tìm qua thẻ chứa đường dẫn tĩnh 'hon-dau' (Dựa theo ảnh F12 dòng 95)[cite: 6, 7, 8]
+      let honDauAnchor = doc.querySelector('a[href*="hon-dau"], a[href*="hon_dau"]');
+      let targetSection = null;
 
-      if (honDauStart !== -1) {
-        // Chỉ lấy đoạn văn bản thuộc về Hòn Dáu (ngắt trước khi gặp Nha Trang, Hồng Gai, Cửa Lục...)
-        let subText = allText.substring(honDauStart);
-        let stopKeywords = ['Lịch thủy triều', 'Hồng Gai', 'Hong Gai', 'Hòn Gai', 'Nha Trang', 'Cửa Lục', 'Cẩm Phả', 'Đồ Sơn'];
-        let stopIndex = -1;
-        for (let kw of stopKeywords) {
-          let idx = subText.indexOf(kw, 35); // Bỏ qua tiêu đề Hòn Dấu hiện tại
-          if (idx !== -1 && (stopIndex === -1 || idx < stopIndex)) {
-            stopIndex = idx;
+      if (honDauAnchor) {
+        // Leo lên container cha chứa bảng số liệu của Hòn Dáu
+        let parent = honDauAnchor.closest('.col-md-6, .col-lg-6, .card, .panel, .col-sm-12, div');
+        while (parent && parent !== doc.body) {
+          let text = parent.innerText || '';
+          if (text.includes('0h') && text.includes('1h') && text.includes('23h')) {
+            targetSection = parent;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+      }
+
+      // CHIẾN LƯỢC 2: Quét khối DOM có tiêu đề 'Lịch thủy triều Hòn Dấu'[cite: 2, 3]
+      if (!targetSection) {
+        let headers = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, div, a, th, td'));
+        let targetHeader = headers.find(el => {
+          let t = el.innerText || el.textContent || '';
+          return t.includes('Lịch thủy triều Hòn Dấu') || t.includes('Lịch thủy triều Hòn Dáu');
+        });
+
+        if (targetHeader) {
+          let p = targetHeader.parentElement;
+          while (p && p !== doc.body) {
+            let t = p.innerText || '';
+            if (t.includes('0h') && t.includes('23h')) {
+              targetSection = p;
+              break;
+            }
+            p = p.parentElement;
           }
         }
+      }
 
-        let honDauChunk = stopIndex !== -1 ? subText.substring(0, stopIndex) : subText.substring(0, 1600);
+      // Trích xuất số liệu từ Container đã khoanh vùng
+      let scopeText = '';
+      if (targetSection) {
+        scopeText = targetSection.innerText || '';
+        // Đảm bảo không dính sang Nha Trang hay trạm khác[cite: 3]
+        let stopIdx = scopeText.indexOf('Nha Trang');
+        if (stopIdx !== -1) scopeText = scopeText.substring(0, stopIdx);
+      } else {
+        // Dự phòng: Cắt chuỗi chính xác từ vị trí 'hon-dau' trong HTML thô
+        let rawHtml = data.contents;
+        let pos = rawHtml.indexOf('hon-dau');
+        if (pos === -1) pos = rawHtml.indexOf('Hòn Dấu');
+        if (pos === -1) pos = rawHtml.indexOf('Hòn Dáu');
 
-        // Quét đúng 24 mốc giờ: 0h đến 23h
-        let matches = [...honDauChunk.matchAll(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/gi)];
+        if (pos !== -1) {
+          let chunk = rawHtml.substring(pos, pos + 2500);
+          let div = document.createElement('div');
+          div.innerHTML = chunk;
+          scopeText = div.innerText || '';
+        }
+      }
+
+      if (scopeText) {
+        let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
+        let matches = [...scopeText.matchAll(regex)];
+
         for (let m of matches) {
           let hour = parseInt(m[1], 10);
           let val = parseFloat(m[2].replace(',', '.'));
@@ -1855,15 +1900,15 @@ async function fetchTideFromTheGioiMoiCau() {
               hourlyTides.push({ hour, val });
             }
           }
-          if (hourlyTides.length === 24) break;
+          if (hourlyTides.length === 24) break; // Chỉ lấy đúng 24 mốc giờ của Hòn Dáu
         }
       }
 
-      // 4. Lọc số ĐỈNH (Nước lớn) và ĐÁY (Nước ròng) CHUẨN CỦA HÒN DÁU
+      // Tính Đỉnh - Đáy thực tế của Hòn Dấu[cite: 3]
       if (hourlyTides.length >= 12) {
         hourlyTides.sort((a,b) => a.hour - b.hour);
-        let maxItem = hourlyTides.reduce((prev, curr) => (curr.val > prev.val ? curr : prev), hourlyTides[0]);
-        let minItem = hourlyTides.reduce((prev, curr) => (curr.val < prev.val ? curr : prev), hourlyTides[0]);
+        let maxItem = hourlyTides.reduce((p, c) => (c.val > p.val ? c : p), hourlyTides[0]);
+        let minItem = hourlyTides.reduce((p, c) => (c.val < p.val ? c : p), hourlyTides[0]);
 
         liveTideData = {
           date: dateKey,
@@ -1874,7 +1919,7 @@ async function fetchTideFromTheGioiMoiCau() {
           lowVal: minItem.val,
           lowTimeStr: `${String(minItem.hour).padStart(2, '0')}:00`,
           lowHour: minItem.hour,
-          hourlyList: hourlyTides // Chỉ chứa đúng 24 mốc của Hòn Dáu
+          hourlyList: hourlyTides
         };
 
         localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(liveTideData));
@@ -1884,10 +1929,10 @@ async function fetchTideFromTheGioiMoiCau() {
       }
     }
   } catch(err) {
-    console.warn("Không thể lấy dữ liệu online từ thegioimoicau.com, kích hoạt chế độ hải văn dự phòng:", err);
+    console.warn("Lỗi đọc thegioimoicau.com:", err);
   }
 
-  // 5. Cơ chế dự phòng thiên văn chuẩn trạm Hòn Dáu nếu mất mạng hoặc proxy quá tải
+  // Chế độ dự phòng khi không kết nối được
   fallbackHonDauAstronomical(d);
 }
 
@@ -1946,7 +1991,7 @@ function updateRealtimeWidgets() {
   let curHour = now.getHours();
   let currentLevel = null;
 
-  // Nếu có bảng 24 giờ lấy từ thegioimoicau.com: nội suy mượt theo phút giữa giờ này và giờ sau
+  // Nếu có bảng 24 giờ lấy từ thegioimoicau.com: nội suy mượt theo phút giữa giờ này và giờ sau[cite: 3]
   if (liveTideData.hourlyList && liveTideData.hourlyList.length >= 12) {
     let curItem = liveTideData.hourlyList.find(x => x.hour === curHour) || { val: liveTideData.lowVal };
     let nextItem = liveTideData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
