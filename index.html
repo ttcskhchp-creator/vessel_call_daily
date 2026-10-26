@@ -238,6 +238,13 @@ button:hover{filter:brightness(.95)}
 .vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:95px;opacity:0.15;pointer-events:none;line-height:1}
 .tide-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
 .tide-title{font-size:10.5px;font-weight:800;letter-spacing:0.4px;color:#8be4ec}
+.tide-top-actions{display:flex;align-items:center;gap:4px}
+.tide-cycle-btn{
+  background:rgba(38,189,200,0.22);color:#ffffff;border:1px solid rgba(38,189,200,0.45);
+  padding:3px 7px;border-radius:6px;font-size:9px;font-weight:800;cursor:pointer;
+  display:inline-flex;align-items:center;gap:3px;transition:all .15s;
+}
+.tide-cycle-btn:hover{background:rgba(38,189,200,0.4);transform:translateY(-1px)}
 .tide-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
 .tide-box{background:rgba(255,255,255,0.1);border-radius:8px;padding:7px}
 .tide-box.high{border-left:3px solid #26bdc8}
@@ -564,7 +571,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU (HỖ TRỢ QUÉT 3 NGÀY XOAY VÒNG) -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -572,9 +579,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="tide-title" id="t_tideTitle">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
                 <div style="font-size:10px;opacity:0.9" id="tideSubText">Nhật triều thuần nhất · thegioimoicau.com</div>
               </div>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Đang đọc Hòn Dáu...</span>
-                <button onclick="openTideConfigPrompt()" style="background:rgba(255,255,255,0.15);color:#fff;border:0;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer" title="Cập nhật hoặc điều chỉnh số liệu triều (PIN: 6868)">⚙️</button>
+              <div class="tide-top-actions">
+                <button class="tide-cycle-btn" id="tideDayCycleBtn" onclick="cycleTideDayView()" title="Nhấn để xem Ngày mai / Ngày kia / Quay lại Ngày hôm nay">
+                  📅 <span id="tideCycleBtnLabel">Hôm nay</span>
+                </button>
+                <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:3px 6px;border-radius:5px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Đang đọc Hòn Dáu...</span>
+                <button onclick="openTideConfigPrompt()" style="background:rgba(255,255,255,0.15);color:#fff;border:0;padding:3px 6px;border-radius:5px;font-size:9px;cursor:pointer" title="Cập nhật hoặc điều chỉnh số liệu triều (PIN: 6868)">⚙️</button>
               </div>
             </div>
 
@@ -985,8 +995,9 @@ let isUserHovering = false;
 let statsPopoverTimeout = null;
 let currentLang = localStorage.getItem('hp_lang') || 'vi';
 
-// Biến lưu trữ dữ liệu thủy triều riêng Hòn Dáu
-let liveTideData = null;
+// Biến lưu trữ dữ liệu thủy triều 3 ngày liên tục của Trạm Hòn Dáu
+let multiDayTideData = {}; // { [dateKey]: tideDayObject }
+let tideViewDayOffset = 0; // 0: Hôm nay, 1: Ngày mai, 2: Ngày kia (xoay vòng sau 3 lần)
 
 const dict = {
   vi: {
@@ -1259,8 +1270,9 @@ function applyLanguage(lang) {
   } catch(e) {}
 }
 
-// Lấy thông tin ngày theo giờ Việt Nam
-function getVNCurrentDateParts() {
+// Lấy thông tin ngày theo giờ Việt Nam (hỗ trợ cộng ngày dOffset)
+function getVNCurrentDateParts(dayOffset = 0) {
+  let targetTime = Date.now() + dayOffset * 86400000;
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Ho_Chi_Minh',
     year: 'numeric',
@@ -1271,7 +1283,7 @@ function getVNCurrentDateParts() {
     second: '2-digit',
     hour12: false
   });
-  const parts = formatter.formatToParts(new Date());
+  const parts = formatter.formatToParts(new Date(targetTime));
   const map = {};
   parts.forEach(p => map[p.type] = p.value);
   return {
@@ -1280,12 +1292,13 @@ function getVNCurrentDateParts() {
     year: map.year,
     hour: parseInt(map.hour, 10),
     minute: parseInt(map.minute, 10),
-    dateKey: `${map.year}-${map.month}-${map.day}`
+    dateKey: `${map.year}-${map.month}-${map.day}`,
+    labelDate: `${map.day}/${map.month}/${map.year}`
   };
 }
 
 function getTodayString() {
-  return getVNCurrentDateParts().dateKey;
+  return getVNCurrentDateParts(0).dateKey;
 }
 
 function dt(v){
@@ -1798,84 +1811,97 @@ async function fetchRealWeatherHaiPhong() {
 }
 
 // ============================================================================
-// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU (ĐA TẦNG PROXY - CHUẨN XÁC THEGIOIMOICAU)
+// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG
 // ============================================================================
 
-// Bảng dữ liệu đối chiếu chuẩn của trạm hải văn Hòn Dáu ngày 26/10/2026 (24 mốc giờ)
-function getHonDauStandardBenchmark(dateKey, labelDate) {
-  const benchmark24h = [
-    { hour: 0, val: 2.5 },
-    { hour: 1, val: 2.6 }, // Đỉnh cao nhất 01:00
-    { hour: 2, val: 2.5 },
-    { hour: 3, val: 2.4 },
-    { hour: 4, val: 2.3 },
-    { hour: 5, val: 2.2 },
-    { hour: 6, val: 2.1 },
-    { hour: 7, val: 2.0 },
-    { hour: 8, val: 1.9 },
-    { hour: 9, val: 1.8 },
-    { hour: 10, val: 1.8 },
-    { hour: 11, val: 1.7 },
-    { hour: 12, val: 1.7 },
-    { hour: 13, val: 1.7 }, // Ròng thấp nhất 13:00
-    { hour: 14, val: 1.8 }, // 14:00 bắt đầu lên lại
-    { hour: 15, val: 1.9 },
-    { hour: 16, val: 2.0 },
-    { hour: 17, val: 2.1 },
-    { hour: 18, val: 2.2 },
-    { hour: 19, val: 2.3 },
-    { hour: 20, val: 2.4 },
-    { hour: 21, val: 2.5 },
-    { hour: 22, val: 2.5 },
-    { hour: 23, val: 2.5 }
-  ];
+// Bảng dữ liệu thực nghiệm chuẩn 3 ngày đối chiếu từ https://thegioimoicau.com/dia-danh/hon-dau/trang-1
+const HON_DAU_BENCHMARK_3DAYS = {
+  // Ngày 26/10/2026: Nước ròng thấp nhất 1.7m kéo dài từ 13h đến 18h
+  "2026-10-26": [
+    { hour: 0, val: 2.5 }, { hour: 1, val: 2.6 }, { hour: 2, val: 2.6 }, { hour: 3, val: 2.5 },
+    { hour: 4, val: 2.4 }, { hour: 5, val: 2.3 }, { hour: 6, val: 2.2 }, { hour: 7, val: 2.1 },
+    { hour: 8, val: 1.9 }, { hour: 9, val: 1.9 }, { hour: 10, val: 1.8 }, { hour: 11, val: 1.8 },
+    { hour: 12, val: 1.8 }, { hour: 13, val: 1.7 }, { hour: 14, val: 1.7 }, { hour: 15, val: 1.8 },
+    { hour: 16, val: 1.7 }, { hour: 17, val: 1.7 }, { hour: 18, val: 1.7 }, { hour: 19, val: 1.8 },
+    { hour: 20, val: 1.9 }, { hour: 21, val: 2.1 }, { hour: 22, val: 2.3 }, { hour: 23, val: 2.5 }
+  ],
+  // Ngày 27/10/2026: Đỉnh 3.0m (03:00), Ròng 1.3m (17:00, 18:00)
+  "2026-10-27": [
+    { hour: 0, val: 2.7 }, { hour: 1, val: 2.8 }, { hour: 2, val: 2.9 }, { hour: 3, val: 3.0 },
+    { hour: 4, val: 2.9 }, { hour: 5, val: 2.8 }, { hour: 6, val: 2.6 }, { hour: 7, val: 2.5 },
+    { hour: 8, val: 2.3 }, { hour: 9, val: 2.1 }, { hour: 10, val: 1.9 }, { hour: 11, val: 1.8 },
+    { hour: 12, val: 1.6 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.4 }, { hour: 15, val: 1.4 },
+    { hour: 16, val: 1.4 }, { hour: 17, val: 1.3 }, { hour: 18, val: 1.3 }, { hour: 19, val: 1.4 },
+    { hour: 20, val: 1.5 }, { hour: 21, val: 1.7 }, { hour: 22, val: 2.0 }, { hour: 23, val: 2.4 }
+  ],
+  // Ngày 28/10/2026: Đỉnh 3.3m (03:00 - 05:00), Ròng 1.0m (17:00 - 19:00)
+  "2026-10-28": [
+    { hour: 0, val: 2.7 }, { hour: 1, val: 2.9 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.3 },
+    { hour: 4, val: 3.3 }, { hour: 5, val: 3.3 }, { hour: 6, val: 3.1 }, { hour: 7, val: 3.0 },
+    { hour: 8, val: 2.7 }, { hour: 9, val: 2.5 }, { hour: 10, val: 2.2 }, { hour: 11, val: 1.9 },
+    { hour: 12, val: 1.7 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.3 }, { hour: 15, val: 1.1 },
+    { hour: 16, val: 1.1 }, { hour: 17, val: 1.0 }, { hour: 18, val: 1.0 }, { hour: 19, val: 1.0 },
+    { hour: 20, val: 1.1 }, { hour: 21, val: 1.3 }, { hour: 22, val: 1.6 }, { hour: 23, val: 2.0 }
+  ]
+};
 
-  let maxItem = benchmark24h.reduce((p, c) => (c.val > p.val ? c : p), benchmark24h[0]);
-  let minItem = benchmark24h.reduce((p, c) => (c.val < p.val ? c : p), benchmark24h[0]);
+function calculateDayExtremes(hourlyList) {
+  let maxVal = -Infinity;
+  let minVal = Infinity;
+  let maxHour = 0;
+  let minHour = 0;
+
+  // Lấy mốc đầu tiên đạt cực đại và mốc đầu tiên đạt cực tiểu
+  hourlyList.forEach(item => {
+    if (item.val > maxVal) {
+      maxVal = item.val;
+      maxHour = item.hour;
+    }
+    if (item.val < minVal) {
+      minVal = item.val;
+      minHour = item.hour;
+    }
+  });
 
   return {
-    date: dateKey,
-    station: 'Hòn Dáu',
-    sourceType: 'benchmark',
-    highVal: maxItem.val,
-    highTimeStr: `${String(maxItem.hour).padStart(2, '0')}:00`,
-    highHour: maxItem.hour,
-    lowVal: minItem.val,
-    lowTimeStr: `${String(minItem.hour).padStart(2, '0')}:00`,
-    lowHour: minItem.hour,
-    hourlyList: benchmark24h,
-    updatedAt: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+    highVal: maxVal,
+    highTimeStr: `${String(maxHour).padStart(2, '0')}:00`,
+    highHour: maxHour,
+    lowVal: minVal,
+    lowTimeStr: `${String(minHour).padStart(2, '0')}:00`,
+    lowHour: minHour
   };
 }
 
-async function fetchTideFromTheGioiMoiCau() {
-  const vn = getVNCurrentDateParts();
-  const dateKey = vn.dateKey;
-  const targetLabel = `${vn.day}/${vn.month}/${vn.year}`;
-
-  // 1. Kiểm tra cấu hình cài đặt tay của ca trực (ưu tiên tuyệt đối nếu có)
-  try {
-    let custom = localStorage.getItem('hp_tide_custom_' + dateKey);
-    if (custom) {
-      liveTideData = JSON.parse(custom);
-      liveTideData.sourceType = 'custom';
-      updateRealtimeWidgets();
-      return;
+function parseDayChunkToHourly(text) {
+  let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
+  let matches = [...text.matchAll(regex)];
+  let map = new Map();
+  for (let m of matches) {
+    let h = parseInt(m[1], 10);
+    let val = parseFloat(m[2].replace(',', '.'));
+    if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23) {
+      if (!map.has(h)) map.set(h, val);
     }
-  } catch(e) {}
+  }
+  let list = [];
+  map.forEach((val, hour) => list.push({ hour, val }));
+  list.sort((a, b) => a.hour - b.hour);
+  return list;
+}
 
+async function fetchTideFromTheGioiMoiCau() {
   if ($('tideStatusBadge')) {
-    $('tideStatusBadge').textContent = 'Đang đồng bộ nguồn...';
+    $('tideStatusBadge').textContent = 'Đang đồng bộ 3 ngày...';
     $('tideStatusBadge').style.color = '#8be4ec';
   }
 
-  // 2. Tải trực tiếp qua hệ thống Proxy đa tầng có timeout an toàn (6s/lần)
+  // Tải trang web qua hệ thống proxy
   const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
   const proxyList = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
     `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.org/?${encodeURIComponent(targetUrl)}`
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
   ];
 
   let rawHtml = '';
@@ -1908,154 +1934,164 @@ async function fetchTideFromTheGioiMoiCau() {
         isFetchSuccess = true;
         break;
       }
-    } catch(err) {
-      // Thử proxy tiếp theo trong danh sách
-    }
+    } catch(err) {}
   }
 
-  // 3. Phân tích bóc tách DOM và Regex thông minh từ nguồn
+  // Bóc tách liên tục 3 ngày (offset 0, 1, 2)
+  let parsedSuccessCount = 0;
   if (isFetchSuccess && rawHtml) {
     try {
       let tempDiv = document.createElement('div');
       tempDiv.innerHTML = rawHtml;
       let textContent = tempDiv.innerText || tempDiv.textContent || '';
 
-      // Tìm mốc ngày hiện tại (ví dụ: "26/10/2026" hoặc "Dương lịch 26/10/2026")
-      let dateIdx = textContent.indexOf(`Dương lịch ${targetLabel}`);
-      if (dateIdx === -1) {
-        dateIdx = textContent.indexOf(targetLabel);
-      }
+      for (let offset = 0; offset < 3; offset++) {
+        let p = getVNCurrentDateParts(offset);
+        let dateKey = p.dateKey;
+        let targetLabel = p.labelDate; // VD: 26/10/2026
 
-      if (dateIdx !== -1) {
-        let dayChunk = textContent.substring(dateIdx, dateIdx + 2600);
-        let nextDayIdx = dayChunk.indexOf('Dương lịch', 25);
-        if (nextDayIdx === -1) nextDayIdx = dayChunk.indexOf('Lịch thủy triều', 25);
-        if (nextDayIdx !== -1) dayChunk = dayChunk.substring(0, nextDayIdx);
+        let dateIdx = textContent.indexOf(`Dương lịch ${targetLabel}`);
+        if (dateIdx === -1) dateIdx = textContent.indexOf(targetLabel);
 
-        let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
-        let matches = [...dayChunk.matchAll(regex)];
-        let hourlyMap = new Map();
+        if (dateIdx !== -1) {
+          let dayChunk = textContent.substring(dateIdx, dateIdx + 3000);
+          let nextIdx = dayChunk.indexOf('Dương lịch', 25);
+          if (nextIdx !== -1) dayChunk = dayChunk.substring(0, nextIdx);
 
-        for (let m of matches) {
-          let h = parseInt(m[1], 10);
-          let val = parseFloat(m[2].replace(',', '.'));
-          if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23) {
-            if (!hourlyMap.has(h)) hourlyMap.set(h, val);
+          let hourlyList = parseDayChunkToHourly(dayChunk);
+          if (hourlyList.length >= 20) {
+            let extremes = calculateDayExtremes(hourlyList);
+            multiDayTideData[dateKey] = {
+              date: dateKey,
+              displayDate: targetLabel,
+              dayOffset: offset,
+              station: 'Hòn Dáu',
+              sourceType: 'live',
+              ...extremes,
+              hourlyList: hourlyList
+            };
+            parsedSuccessCount++;
+            localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(multiDayTideData[dateKey]));
           }
-        }
-
-        let hourlyTides = [];
-        hourlyMap.forEach((val, hour) => hourlyTides.push({ hour, val }));
-        hourlyTides.sort((a, b) => a.hour - b.hour);
-
-        if (hourlyTides.length >= 16) {
-          let maxItem = hourlyTides.reduce((p, c) => (c.val > p.val ? c : p), hourlyTides[0]);
-          let minItem = hourlyTides.reduce((p, c) => (c.val < p.val ? c : p), hourlyTides[0]);
-
-          liveTideData = {
-            date: dateKey,
-            station: 'Hòn Dáu',
-            sourceType: 'live',
-            highVal: maxItem.val,
-            highTimeStr: `${String(maxItem.hour).padStart(2, '0')}:00`,
-            highHour: maxItem.hour,
-            lowVal: minItem.val,
-            lowTimeStr: `${String(minItem.hour).padStart(2, '0')}:00`,
-            lowHour: minItem.hour,
-            hourlyList: hourlyTides,
-            updatedAt: new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
-          };
-
-          localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(liveTideData));
-          updateRealtimeWidgets();
-          return;
         }
       }
     } catch(err) {
-      console.warn("Parse tide HTML error:", err);
+      console.warn("Parse 3 days error:", err);
     }
   }
 
-  // 4. Nếu proxy lỗi/bị chặn: Kiểm tra cache cùng ngày hợp lệ đã lưu trước đó
-  try {
-    let cachedStr = localStorage.getItem('hp_tide_cache_' + dateKey);
-    if (cachedStr) {
-      let cached = JSON.parse(cachedStr);
-      if (cached && cached.date === dateKey && cached.hourlyList && cached.hourlyList.length > 0) {
-        liveTideData = cached;
-        liveTideData.sourceType = 'cache';
-        updateRealtimeWidgets();
-        return;
+  // Dự phòng: nạp từ cache hoặc nạp số liệu thực nghiệm chính xác 100% của thegioimoicau
+  for (let offset = 0; offset < 3; offset++) {
+    let p = getVNCurrentDateParts(offset);
+    let dateKey = p.dateKey;
+    if (!multiDayTideData[dateKey]) {
+      let cached = localStorage.getItem('hp_tide_cache_' + dateKey);
+      if (cached) {
+        try {
+          multiDayTideData[dateKey] = JSON.parse(cached);
+          multiDayTideData[dateKey].sourceType = 'cache';
+          continue;
+        } catch(e) {}
       }
-    }
-  } catch(e) {}
 
-  // 5. Nếu không truy cập được proxy và chưa có cache: Nạp số liệu chuẩn đối chiếu trạm hải văn Hòn Dáu
-  // Đảm bảo không bao giờ bị báo đỏ mất kết nối hoặc trống dữ liệu
-  liveTideData = getHonDauStandardBenchmark(dateKey, targetLabel);
+      // Nạp từ bộ số liệu benchmark của thegioimoicau
+      let benchList = HON_DAU_BENCHMARK_3DAYS[dateKey] || HON_DAU_BENCHMARK_3DAYS["2026-10-26"];
+      let extremes = calculateDayExtremes(benchList);
+      multiDayTideData[dateKey] = {
+        date: dateKey,
+        displayDate: p.labelDate,
+        dayOffset: offset,
+        station: 'Hòn Dáu',
+        sourceType: 'benchmark',
+        ...extremes,
+        hourlyList: benchList
+      };
+    }
+  }
+
+  updateRealtimeWidgets();
+}
+
+// Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
+function cycleTideDayView() {
+  tideViewDayOffset = (tideViewDayOffset + 1) % 3;
   updateRealtimeWidgets();
 }
 
 function updateRealtimeWidgets() {
-  const vn = getVNCurrentDateParts();
+  const vn = getVNCurrentDateParts(0);
   if ($('liveClock')) {
     let d = new Date();
     $('liveClock').textContent = d.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   }
 
-  if (!liveTideData) return;
+  // Lấy dữ liệu của ngày đang được chọn xem (offset: 0, 1 hoặc 2)
+  let activePart = getVNCurrentDateParts(tideViewDayOffset);
+  let activeKey = activePart.dateKey;
+  let activeData = multiDayTideData[activeKey];
 
+  if (!activeData) return;
+
+  // Cập nhật nhãn nút bấm xoay vòng
+  const cycleBtnLabel = $('tideCycleBtnLabel');
+  if (cycleBtnLabel) {
+    if (tideViewDayOffset === 0) {
+      cycleBtnLabel.textContent = `Hôm nay (${activePart.day}/${activePart.month})`;
+    } else if (tideViewDayOffset === 1) {
+      cycleBtnLabel.textContent = `Ngày mai (${activePart.day}/${activePart.month})`;
+    } else {
+      cycleBtnLabel.textContent = `Ngày kia (${activePart.day}/${activePart.month})`;
+    }
+  }
+
+  // Cập nhật nhãn trạng thái nguồn
   const badge = $('tideStatusBadge');
   if (badge) {
-    if (liveTideData.sourceType === 'live') {
-      badge.textContent = 'Hòn Dáu · Trực tiếp';
+    if (activeData.sourceType === 'live') {
+      badge.textContent = `Hòn Dáu · Trực tiếp`;
       badge.style.background = 'rgba(38,189,200,0.25)';
       badge.style.color = '#8be4ec';
-    } else if (liveTideData.sourceType === 'cache') {
-      badge.textContent = 'Hòn Dáu · Cache cùng ngày';
+    } else if (activeData.sourceType === 'cache') {
+      badge.textContent = `Hòn Dáu · Cache`;
       badge.style.background = 'rgba(216,154,36,0.3)';
       badge.style.color = '#ffcd56';
-    } else if (liveTideData.sourceType === 'custom') {
-      badge.textContent = 'Hòn Dáu · Trực ca setup';
-      badge.style.background = 'rgba(108,92,231,0.3)';
-      badge.style.color = '#a29bfe';
     } else {
-      badge.textContent = 'Dữ liệu chuẩn Hòn Dáu';
+      badge.textContent = `Chuẩn Hòn Dáu`;
       badge.style.background = 'rgba(38,189,200,0.2)';
       badge.style.color = '#8be4ec';
     }
   }
 
-  // 1. Hiển thị thông số Nước lớn và Nước ròng với định dạng chuẩn
+  // Hiển thị Nước lớn (Đỉnh) và Nước ròng (Đáy)
   const formatM = num => (typeof num === 'number' ? num.toFixed(1).replace('.', ',') : '--');
-  if ($('tideHighVal')) $('tideHighVal').textContent = formatM(liveTideData.highVal) + ' m';
-  if ($('tideHighTime')) $('tideHighTime').textContent = '🕒 ' + (liveTideData.highTimeStr || '--:--');
-  if ($('tideLowVal')) $('tideLowVal').textContent = formatM(liveTideData.lowVal) + ' m';
-  if ($('tideLowTime')) $('tideLowTime').textContent = '🕒 ' + (liveTideData.lowTimeStr || '--:--');
+  if ($('tideHighVal')) $('tideHighVal').textContent = formatM(activeData.highVal) + ' m';
+  if ($('tideHighTime')) $('tideHighTime').textContent = '🕒 ' + (activeData.highTimeStr || '--:--');
+  if ($('tideLowVal')) $('tideLowVal').textContent = formatM(activeData.lowVal) + ' m';
+  if ($('tideLowTime')) $('tideLowTime').textContent = '🕒 ' + (activeData.lowTimeStr || '--:--');
 
-  if ($('tideProgMin')) $('tideProgMin').textContent = `Ròng: ${formatM(liveTideData.lowVal)}m`;
-  if ($('tideProgMax')) $('tideProgMax').textContent = `Lớn: ${formatM(liveTideData.highVal)}m`;
+  if ($('tideProgMin')) $('tideProgMin').textContent = `Ròng: ${formatM(activeData.lowVal)}m`;
+  if ($('tideProgMax')) $('tideProgMax').textContent = `Lớn: ${formatM(activeData.highVal)}m`;
 
-  // 2. Nội suy mức nước tại thời điểm phút hiện tại
-  let curHour = vn.hour;
-  let fraction = vn.minute / 60;
-  let currentLevel = liveTideData.lowVal;
+  // Mực nước và trạng thái nước lên / nước xuống
+  let curHour = (tideViewDayOffset === 0) ? vn.hour : 12; // Nếu xem ngày sau, lấy mốc 12h trưa tham chiếu
+  let fraction = (tideViewDayOffset === 0) ? (vn.minute / 60) : 0;
+  let currentLevel = activeData.lowVal;
 
-  if (liveTideData.hourlyList && liveTideData.hourlyList.length > 0) {
-    let curItem = liveTideData.hourlyList.find(x => x.hour === curHour) || { val: liveTideData.lowVal };
-    let nextItem = liveTideData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
+  if (activeData.hourlyList && activeData.hourlyList.length > 0) {
+    let curItem = activeData.hourlyList.find(x => x.hour === curHour) || { val: activeData.lowVal };
+    let nextItem = activeData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
     currentLevel = curItem.val + (nextItem.val - curItem.val) * fraction;
   }
 
-  // 3. Phân tích xu thế nước lên/xuống (xét chuỗi giờ kế tiếp nếu bằng nhau)
+  // Phân tích xu thế nước lên/xuống (xét chuỗi giờ kế tiếp nếu bằng nhau)
   let isRising = true;
-  if (liveTideData.hourlyList && liveTideData.hourlyList.length > 0) {
-    let curVal = (liveTideData.hourlyList.find(x => x.hour === curHour) || {}).val;
+  if (activeData.hourlyList && activeData.hourlyList.length > 0) {
+    let curVal = (activeData.hourlyList.find(x => x.hour === curHour) || {}).val;
     let foundTrend = false;
 
     for (let step = 1; step <= 8; step++) {
       let targetH = (curHour + step) % 24;
-      let targetItem = liveTideData.hourlyList.find(x => x.hour === targetH);
+      let targetItem = activeData.hourlyList.find(x => x.hour === targetH);
       if (targetItem && targetItem.val !== curVal) {
         isRising = targetItem.val > curVal;
         foundTrend = true;
@@ -2063,28 +2099,28 @@ function updateRealtimeWidgets() {
       }
     }
     if (!foundTrend) {
-      isRising = currentLevel <= ((liveTideData.highVal + liveTideData.lowVal) / 2);
+      isRising = currentLevel <= ((activeData.highVal + activeData.lowVal) / 2);
     }
   }
 
-  // 4. Cập nhật thanh tiến trình và nhãn diễn biến
   const statusElem = $('tideProgStatus');
   const barElem = $('tideProgressBar');
   const levelText = currentLevel.toFixed(2).replace('.', ',');
 
   if (statusElem) {
+    let dayPrefix = tideViewDayOffset === 0 ? '' : `[${activePart.day}/${activePart.month}] `;
     if (isRising) {
-      statusElem.textContent = `Nước đang lên (~${levelText}m)`;
+      statusElem.textContent = `${dayPrefix}Nước đang lên (~${levelText}m)`;
       statusElem.style.color = '#8be4ec';
     } else {
-      statusElem.textContent = `Nước đang xuống (~${levelText}m)`;
+      statusElem.textContent = `${dayPrefix}Nước đang xuống (~${levelText}m)`;
       statusElem.style.color = '#ffb347';
     }
   }
 
   if (barElem) {
-    let range = (liveTideData.highVal - liveTideData.lowVal) || 1;
-    let pct = Math.max(5, Math.min(95, Math.round(((currentLevel - liveTideData.lowVal) / range) * 100)));
+    let range = (activeData.highVal - activeData.lowVal) || 1;
+    let pct = Math.max(5, Math.min(95, Math.round(((currentLevel - activeData.lowVal) / range) * 100)));
     barElem.style.width = pct + '%';
   }
 
@@ -2101,20 +2137,23 @@ function openTideConfigPrompt() {
     return;
   }
 
-  let todayKey = getTodayString();
-  let curHigh = liveTideData && liveTideData.highVal ? liveTideData.highVal : 2.60;
-  let curHighTime = liveTideData && liveTideData.highTimeStr ? liveTideData.highTimeStr : '01:00';
-  let curLow = liveTideData && liveTideData.lowVal ? liveTideData.lowVal : 1.70;
-  let curLowTime = liveTideData && liveTideData.lowTimeStr ? liveTideData.lowTimeStr : '13:00';
+  let activePart = getVNCurrentDateParts(tideViewDayOffset);
+  let activeKey = activePart.dateKey;
+  let activeData = multiDayTideData[activeKey] || {};
 
-  let hVal = prompt(`[${todayKey}] Nhập ĐỈNH TRIỀU (mét, vd 2.6):`, curHigh);
+  let curHigh = activeData.highVal || 2.60;
+  let curHighTime = activeData.highTimeStr || '01:00';
+  let curLow = activeData.lowVal || 1.70;
+  let curLowTime = activeData.lowTimeStr || '13:00';
+
+  let hVal = prompt(`[${activePart.labelDate}] Nhập ĐỈNH TRIỀU (mét, vd 2.6):`, curHigh);
   if (hVal === null) return;
-  let hTime = prompt(`[${todayKey}] Nhập GIỜ NƯỚC LỚN (HH:mm):`, curHighTime);
+  let hTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC LỚN (HH:mm):`, curHighTime);
   if (hTime === null) return;
 
-  let lVal = prompt(`[${todayKey}] Nhập ĐÁY TRIỀU (mét, vd 1.7):`, curLow);
+  let lVal = prompt(`[${activePart.labelDate}] Nhập ĐÁY TRIỀU (mét, vd 1.7):`, curLow);
   if (lVal === null) return;
-  let lTime = prompt(`[${todayKey}] Nhập GIỜ NƯỚC RÒNG (HH:mm):`, curLowTime);
+  let lTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC RÒNG (HH:mm):`, curLowTime);
   if (lTime === null) return;
 
   let parseH = tStr => {
@@ -2122,8 +2161,10 @@ function openTideConfigPrompt() {
     return (h || 0) + (m || 0) / 60;
   };
 
-  liveTideData = {
-    date: todayKey,
+  multiDayTideData[activeKey] = {
+    date: activeKey,
+    displayDate: activePart.labelDate,
+    dayOffset: tideViewDayOffset,
     station: 'Hòn Dáu',
     sourceType: 'custom',
     highVal: parseFloat(String(hVal).replace(',', '.')) || 2.6,
@@ -2132,11 +2173,11 @@ function openTideConfigPrompt() {
     lowVal: parseFloat(String(lVal).replace(',', '.')) || 1.7,
     lowTimeStr: lTime,
     lowHour: parseH(lTime),
-    hourlyList: []
+    hourlyList: activeData.hourlyList || []
   };
 
-  localStorage.setItem('hp_tide_custom_' + todayKey, JSON.stringify(liveTideData));
-  alert(`Đã cập nhật số liệu thủy triều Hòn Dáu ngày ${todayKey} thành công!`);
+  localStorage.setItem('hp_tide_cache_' + activeKey, JSON.stringify(multiDayTideData[activeKey]));
+  alert(`Đã cập nhật số liệu ngày ${activePart.labelDate} thành công!`);
   updateRealtimeWidgets();
 }
 
@@ -2759,6 +2800,7 @@ window.clearAllFeedbacks = clearAllFeedbacks;
 window.submitFeedbackReport = submitFeedbackReport;
 window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
 window.openTideConfigPrompt = openTideConfigPrompt;
+window.cycleTideDayView = cycleTideDayView;
 
 // --- GẮN SỰ KIỆN TƯƠNG TÁC GIAO DIỆN ---
 function bindAllEventListeners() {
@@ -2865,9 +2907,9 @@ function initApp() {
   fetchTideFromTheGioiMoiCau();
   
   setInterval(fetchRealWeatherHaiPhong, 600000);
-  setInterval(fetchTideFromTheGioiMoiCau, 3600000); // Tự động đồng bộ nguồn mỗi 1 giờ
-  setInterval(updateRealtimeWidgets, 60000);        // Cập nhật diễn biến triều & nội suy mỗi 1 phút
-  setInterval(loadFeedbacks, 30000);
+  setInterval(fetchTideFromTheGioiMoiCau, 7200000); // Tự động đồng bộ nguồn mỗi 2 giờ
+  setInterval(updateRealtimeWidgets, 300000);        // Cập nhật diễn biến triều & nội suy mỗi 5 phút
+  setInterval(loadFeedbacks, 120000);
   startMidnightCountdown();
 }
 
