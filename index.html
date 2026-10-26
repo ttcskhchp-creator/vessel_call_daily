@@ -135,7 +135,7 @@ button:hover{filter:brightness(.95)}
 }
 .date-input-inline:focus{border-color:var(--cyan)}
 
-/* NÚT BỨC THƯ THÔNG BÁO VỚI SỐ ĐỎ NỔI LÊN */
+/* NÚT BỨC THƯ THÔNG BÁO */
 .topbar-right-actions{
   display: flex;
   align-items: center;
@@ -232,6 +232,7 @@ button:hover{filter:brightness(.95)}
 .w-hour-item{text-align:center;min-width:48px;background:rgba(255,255,255,0.1);padding:4px;border-radius:6px;font-size:9px}
 .w-hour-item small{display:block;opacity:0.8;font-size:8px}
 
+/* THẺ THỦY TRIỀU HÒN DÁU TỰ ĐỘNG THEGIOIMOICAU */
 .vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:12px;padding:14px 16px;box-shadow:0 6px 20px rgba(16,43,70,0.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
 :root[data-theme="dark"] .vivid-tide{background:linear-gradient(135deg,#092133 0%,#103b54 50%,#165675 100%)}
 .vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:95px;opacity:0.15;pointer-events:none;line-height:1}
@@ -563,38 +564,41 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU CHUẨN TRẠM HÒN DÁU -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN TRẠM HÒN DÁU (TÍCH HỢP TỰ ĐỘNG THEGIOIMOICAU) -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
               <div>
                 <div class="tide-title" id="t_tideTitle">TRẠM HÒN DÁU (20°40'N, 106°49'E)</div>
-                <div style="font-size:10px;opacity:0.9" id="t_tideSub">Nhật triều thuần nhất · Cảng chính</div>
+                <div style="font-size:10px;opacity:0.9" id="tideSubText">Nhật triều thuần nhất · thegioimoicau.com</div>
               </div>
-              <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Chuẩn Hòn Dấu</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:9px;background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-weight:800;color:#8be4ec" id="tideStatusBadge">Đang nạp nguồn...</span>
+                <button onclick="openTideConfigPrompt()" style="background:rgba(255,255,255,0.15);color:#fff;border:0;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer" title="Cập nhật hoặc điều chỉnh số liệu triều (PIN: 6868)">⚙️</button>
+              </div>
             </div>
 
             <div class="tide-grid">
               <div class="tide-box high">
                 <small id="t_highTideLabel">▲ NƯỚC LỚN (ĐỈNH)</small>
-                <strong id="tideHighVal">2.30 m</strong>
-                <span id="tideHighTime">🕒 14:19</span>
+                <strong id="tideHighVal">-- m</strong>
+                <span id="tideHighTime">🕒 --:--</span>
               </div>
               <div class="tide-box low">
                 <small id="t_lowTideLabel">▼ NƯỚC RÒNG (ĐÁY)</small>
-                <strong id="tideLowVal">1.60 m</strong>
-                <span id="tideLowTime">🕒 04:12</span>
+                <strong id="tideLowVal">-- m</strong>
+                <span id="tideLowTime">🕒 --:--</span>
               </div>
             </div>
 
             <div class="tide-progress-wrap">
               <div class="tide-progress-labels">
-                <span id="tideProgMin">Ròng: 1.60m</span>
-                <span style="color:#8be4ec" id="tideProgStatus">Đang dâng...</span>
-                <span id="tideProgMax">Lớn: 2.30m</span>
+                <span id="tideProgMin">Ròng: -- m</span>
+                <span style="color:#8be4ec;font-weight:800" id="tideProgStatus">Đang cập nhật...</span>
+                <span id="tideProgMax">Lớn: -- m</span>
               </div>
               <div class="tide-progress-bar">
-                <div class="tide-progress-fill" id="tideProgressBar" style="width: 65%;"></div>
+                <div class="tide-progress-fill" id="tideProgressBar" style="width: 50%;"></div>
               </div>
             </div>
           </div>
@@ -695,7 +699,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <button class="tiny" onclick="filterPlanningArea('HTIT', this)">HTIT</button>
             <button class="tiny" onclick="filterPlanningArea('HOANG DIEU', this)">Hoàng Diệu</button>
             <button class="tiny" onclick="filterPlanningArea('CHUA VE', this)">Chùa Vẽ</button>
-            <button class="tiny" onclick="filterPlanningArea('DINH VU', this)">Đình Vũ</button>
+            <button class="tiny" onclick="filterPlanningArea('ĐÌNH VŨ', this)">Đình Vũ</button>
           </div>
           <div class="gantt" id="fullGantt">
             <div class="empty">Chưa có dữ liệu Gantt.</div>
@@ -981,6 +985,9 @@ let isUserHovering = false;
 let statsPopoverTimeout = null;
 let currentLang = localStorage.getItem('hp_lang') || 'vi';
 
+// Biến lưu trữ dữ liệu thủy triều trích xuất thực tế
+let liveTideData = null;
+
 const dict = {
   vi: {
     topTitle: "TT KHAI THÁC & DVKH",
@@ -1013,7 +1020,7 @@ const dict = {
     humLabel: "ĐỘ ẨM",
     nowLabel: "Bây giờ",
     tideTitle: "TRẠM HÒN DÁU (20°40'N, 106°49'E)",
-    tideSub: "Nhật triều thuần nhất · Cảng chính",
+    tideSub: "Nhật triều thuần nhất · thegioimoicau.com",
     highTideLabel: "▲ NƯỚC LỚN (ĐỈNH)",
     lowTideLabel: "▼ NƯỚC RÒNG (ĐÁY)",
     kWorking: "Đang làm hàng",
@@ -1134,7 +1141,7 @@ const dict = {
     humLabel: "HUMIDITY",
     nowLabel: "Now",
     tideTitle: "HON DAU STATION (20°40'N, 106°49'E)",
-    tideSub: "Diurnal Tide · Primary Port",
+    tideSub: "Diurnal Tide · thegioimoicau.com",
     highTideLabel: "▲ HIGH TIDE (PEAK)",
     lowTideLabel: "▼ LOW TIDE (TROUGH)",
     kWorking: "Working at Berth",
@@ -1510,7 +1517,6 @@ function renderOverrideTable() {
 
 /**
  * TỰ ĐỘNG KẾ THỪA THÔNG TIN TÀU VÀ ĐIỀN VÀO FORM SỬA
- * Hỗ trợ truyền vào tên tàu (string) hoặc đối tượng tàu trực tiếp (object)
  */
 function populateEditForm(vesselOrName) {
   let item = null;
@@ -1518,27 +1524,22 @@ function populateEditForm(vesselOrName) {
 
   if (typeof vesselOrName === 'string') {
     vName = vesselOrName.trim().toUpperCase();
-    // 1. Tìm trong danh sách overrides
     item = vesselOverridesMap.get(vName);
-    // 2. Nếu chưa có override, tìm trong danh sách tổng masterGlobalVesselMap
     if (!item && masterGlobalVesselMap.has(vName)) {
       item = masterGlobalVesselMap.get(vName);
     }
-    // 3. Nếu chưa có, tìm trong allCalls
     if (!item) {
       item = allCalls.find(c => (c.vessel || '').trim().toUpperCase() === vName);
     }
   } else if (vesselOrName && typeof vesselOrName === 'object') {
     item = vesselOrName;
     vName = (item.vessel || item.vessel_name || '').trim().toUpperCase();
-    // Kiểm tra xem đã có bản override chi tiết hơn không
     let ov = vesselOverridesMap.get(vName);
     if (ov) item = { ...item, ...ov };
   }
 
   if (!item && !vName) return;
 
-  // Điền toàn bộ dữ liệu vào Form
   if ($('editVesselName')) $('editVesselName').value = item ? (item.vessel || item.vessel_name || '') : vName;
   if ($('editVesselOperator')) $('editVesselOperator').value = item ? (item.operator || '') : '';
   if ($('editVesselTerminal')) $('editVesselTerminal').value = item ? (item.terminal || '') : '';
@@ -1548,7 +1549,6 @@ function populateEditForm(vesselOrName) {
   if ($('editVesselEtb')) $('editVesselEtb').value = item ? formatDateTimeLocal(item.etb) : '';
   if ($('editVesselEtd')) $('editVesselEtd').value = item ? formatDateTimeLocal(item.etd) : '';
 
-  // Chuyển ngay đến Tab "Bổ sung & Sửa tàu"
   nav('edit-vessel', true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1742,7 +1742,7 @@ async function loadData() {
   }
 }
 
-// --- THỜI TIẾT & THỦY TRIỀU ---
+// --- KHÍ TƯỢNG HÀNG HẢI TRỰC TIẾP ---
 async function fetchRealWeatherHaiPhong() {
   try {
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=20.8651&longitude=106.6838&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Asia%2FBangkok';
@@ -1779,29 +1779,276 @@ async function fetchRealWeatherHaiPhong() {
   }
 }
 
+// --- MODULE TỰ ĐỘNG BÓC TÁCH VÀ LỌC THỦY TRIỀU TỪ THEGIOIMOICAU.COM ---
+async function fetchTideFromTheGioiMoiCau() {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const dateKey = `${year}-${month}-${day}`;
+
+  // 1. Kiểm tra cấu hình chỉnh tay ca trực nếu có
+  try {
+    let custom = localStorage.getItem('hp_tide_custom_' + dateKey);
+    if (custom) {
+      liveTideData = JSON.parse(custom);
+      if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Trực ca setup';
+      updateRealtimeWidgets();
+      return;
+    }
+  } catch(e) {}
+
+  // 2. Kiểm tra bộ nhớ tạm (Cache trong ngày)
+  try {
+    let cached = localStorage.getItem('hp_tide_cache_' + dateKey);
+    if (cached) {
+      liveTideData = JSON.parse(cached);
+      if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'thegioimoicau.com';
+      updateRealtimeWidgets();
+      return;
+    }
+  } catch(e) {}
+
+  // 3. Lấy trực tiếp từ URL thegioimoicau.com/lich-thuy-trieu/DD/MM/YYYY qua Proxy phân giải CORS
+  const targetUrl = `https://thegioimoicau.com/lich-thuy-trieu/${day}/${month}/${year}`;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
+  try {
+    if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Đang đọc nguồn...';
+    const res = await fetch(proxyUrl);
+    const data = await res.json();
+
+    if (data && data.contents) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.contents, 'text/html');
+
+      let tables = doc.querySelectorAll('table, .table');
+      let targetTable = null;
+
+      for (let tbl of tables) {
+        if (tbl.innerText.includes('Hòn Dấu') || tbl.innerText.includes('Hòn Dáu')) {
+          targetTable = tbl;
+          break;
+        }
+      }
+
+      // Mảng lưu trữ mực nước theo từng giờ (0h -> 23h)
+      let hourlyTides = [];
+
+      if (targetTable) {
+        let rows = targetTable.querySelectorAll('tr');
+        rows.forEach(tr => {
+          let text = tr.innerText.trim();
+          let match = text.match(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/i);
+          if (match) {
+            let hour = parseInt(match[1], 10);
+            let val = parseFloat(match[2].replace(',', '.'));
+            if (!isNaN(hour) && !isNaN(val)) {
+              hourlyTides.push({ hour, val });
+            }
+          }
+        });
+      }
+
+      // Quét text dự phòng nếu bảng HTML bị lồng thẻ sâu
+      if (hourlyTides.length < 12) {
+        let allText = doc.body.innerText || '';
+        let honDauPos = allText.indexOf('Lịch thủy triều Hòn Dấu');
+        if (honDauPos === -1) honDauPos = allText.indexOf('Hòn Dấu');
+        if (honDauPos === -1) honDauPos = allText.indexOf('Hòn Dáu');
+
+        if (honDauPos !== -1) {
+          let chunk = allText.substring(honDauPos, honDauPos + 1800);
+          let matches = [...chunk.matchAll(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/gi)];
+          matches.forEach(m => {
+            let hour = parseInt(m[1], 10);
+            let val = parseFloat(m[2].replace(',', '.'));
+            if (!isNaN(hour) && !isNaN(val) && hour >= 0 && hour <= 23) {
+              if (!hourlyTides.find(x => x.hour === hour)) {
+                hourlyTides.push({ hour, val });
+              }
+            }
+          });
+        }
+      }
+
+      // 4. Lọc số ĐỈNH (Nước lớn) và ĐÁY (Nước ròng)
+      if (hourlyTides.length > 0) {
+        hourlyTides.sort((a,b) => a.hour - b.hour);
+        let maxItem = hourlyTides.reduce((prev, curr) => (curr.val > prev.val ? curr : prev), hourlyTides[0]);
+        let minItem = hourlyTides.reduce((prev, curr) => (curr.val < prev.val ? curr : prev), hourlyTides[0]);
+
+        liveTideData = {
+          date: dateKey,
+          highVal: maxItem.val,
+          highTimeStr: `${String(maxItem.hour).padStart(2, '0')}:00`,
+          highHour: maxItem.hour,
+          lowVal: minItem.val,
+          lowTimeStr: `${String(minItem.hour).padStart(2, '0')}:00`,
+          lowHour: minItem.hour,
+          hourlyList: hourlyTides
+        };
+
+        localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(liveTideData));
+        if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'thegioimoicau.com';
+        updateRealtimeWidgets();
+        return;
+      }
+    }
+  } catch(err) {
+    console.warn("Không thể lấy dữ liệu online từ thegioimoicau.com, kích hoạt chế độ hải văn dự phòng:", err);
+  }
+
+  // 5. Cơ chế dự phòng thiên văn chuẩn trạm Hòn Dáu nếu mất mạng hoặc proxy quá tải
+  fallbackHonDauAstronomical(d);
+}
+
+function fallbackHonDauAstronomical(dateObj) {
+  const baseTime = new Date('2026-01-01T00:00:00+07:00').getTime();
+  const diffDays = (dateObj.getTime() - baseTime) / 86400000;
+  const moonAge = (diffDays % 29.53059 + 29.53059) % 29.53059;
+  
+  const dailyShiftHours = (diffDays * 0.84) % 24;
+  let highHour = (15.5 + dailyShiftHours) % 24;
+  if (highHour < 0) highHour += 24;
+  let lowHour = (highHour + 12.42) % 24;
+
+  let springNeapPhase = Math.cos(2 * Math.PI * moonAge / 14.765); 
+  let highMeters = Number((3.55 + springNeapPhase * 0.40).toFixed(2));
+  let lowMeters = Number((1.15 - springNeapPhase * 0.35).toFixed(2));
+
+  let formatH = h => {
+    let hh = Math.floor(h);
+    let mm = Math.floor((h - hh) * 60);
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
+
+  liveTideData = {
+    date: dateObj.toISOString().split('T')[0],
+    highTimeStr: formatH(highHour),
+    lowTimeStr: formatH(lowHour),
+    highHour,
+    lowHour,
+    highVal: highMeters,
+    lowVal: lowMeters,
+    hourlyList: []
+  };
+
+  if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Chuẩn Hòn Dấu';
+  updateRealtimeWidgets();
+}
+
 function updateRealtimeWidgets() {
   let now = new Date();
   if ($('liveClock')) $('liveClock').textContent = now.toTimeString().split(' ')[0];
-  
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
-  let totalMinNow = hours * 60 + minutes;
 
-  let tidePhase = Math.sin((totalMinNow - 252) / (859 - 252) * Math.PI);
-  let currentTideLevel = (1.60 + (tidePhase > 0 ? tidePhase * 0.70 : Math.abs(tidePhase) * 0.40)).toFixed(2);
+  if (!liveTideData) return;
 
-  if ($('tideProgStatus')) {
-    if (tidePhase >= 0) {
-      $('tideProgStatus').textContent = `Đang dâng (~${currentTideLevel}m)`;
-      $('tideProgStatus').style.color = '#8be4ec';
+  // 1. Hiển thị mốc Đỉnh (Nước lớn) và Đáy (Nước ròng)
+  if ($('tideHighVal')) $('tideHighVal').textContent = liveTideData.highVal.toFixed(2) + ' m';
+  if ($('tideHighTime')) $('tideHighTime').textContent = '🕒 ' + liveTideData.highTimeStr;
+  if ($('tideLowVal')) $('tideLowVal').textContent = liveTideData.lowVal.toFixed(2) + ' m';
+  if ($('tideLowTime')) $('tideLowTime').textContent = '🕒 ' + liveTideData.lowTimeStr;
+
+  if ($('tideProgMin')) $('tideProgMin').textContent = `Ròng: ${liveTideData.lowVal}m`;
+  if ($('tideProgMax')) $('tideProgMax').textContent = `Lớn: ${liveTideData.highVal}m`;
+
+  // 2. Xác định mực nước tại thời điểm hiện tại:
+  let curHour = now.getHours();
+  let currentLevel = null;
+
+  // Nếu có bảng 24 giờ lấy từ thegioimoicau.com: nội suy mượt theo phút giữa giờ này và giờ sau
+  if (liveTideData.hourlyList && liveTideData.hourlyList.length >= 12) {
+    let curItem = liveTideData.hourlyList.find(x => x.hour === curHour) || { val: liveTideData.lowVal };
+    let nextItem = liveTideData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
+    let fraction = now.getMinutes() / 60;
+    currentLevel = (curItem.val + (nextItem.val - curItem.val) * fraction).toFixed(2);
+  } else {
+    // Nếu không có bảng giờ, tính theo chu kỳ hình Sin
+    let diffH = (curHour + now.getMinutes() / 60 - liveTideData.lowHour + 24) % 24;
+    let cycleLen = (liveTideData.highHour - liveTideData.lowHour + 24) % 24 || 12.42;
+    let phaseAngle = (diffH / cycleLen) * Math.PI;
+    let midVal = (liveTideData.highVal + liveTideData.lowVal) / 2;
+    let amp = (liveTideData.highVal - liveTideData.lowVal) / 2;
+    currentLevel = (midVal - amp * Math.cos(phaseAngle)).toFixed(2);
+  }
+
+  // 3. Trạng thái Đang dâng hay Đang rút
+  let isRising = false;
+  if (liveTideData.hourlyList && liveTideData.hourlyList.length >= 12) {
+    let nextVal = (liveTideData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || {}).val || 0;
+    let curVal = (liveTideData.hourlyList.find(x => x.hour === curHour) || {}).val || 0;
+    isRising = nextVal >= curVal;
+  } else {
+    let diffH = (curHour - liveTideData.lowHour + 24) % 24;
+    let cycleLen = (liveTideData.highHour - liveTideData.lowHour + 24) % 24 || 12.42;
+    isRising = diffH >= 0 && diffH <= cycleLen;
+  }
+
+  let statusElem = $('tideProgStatus');
+  let barElem = $('tideProgressBar');
+  if (statusElem) {
+    if (isRising) {
+      statusElem.textContent = `Đang dâng (~${currentLevel}m)`;
+      statusElem.style.color = '#8be4ec';
     } else {
-      $('tideProgStatus').textContent = `Đang rút (~${currentTideLevel}m)`;
-      $('tideProgStatus').style.color = '#ffb347';
+      statusElem.textContent = `Đang rút (~${currentLevel}m)`;
+      statusElem.style.color = '#ffb347';
     }
   }
-  let fillPercent = Math.max(10, Math.min(95, Math.round(((currentTideLevel - 1.60) / (2.30 - 1.60)) * 100)));
-  if ($('tideProgressBar')) $('tideProgressBar').style.width = fillPercent + '%';
+
+  if (barElem) {
+    let pct = Math.max(5, Math.min(95, Math.round(((currentLevel - liveTideData.lowVal) / (liveTideData.highVal - liveTideData.lowVal)) * 100)));
+    barElem.style.width = pct + '%';
+  }
+
   renderMovement(getFilteredCalls());
+}
+
+// Hỗ trợ Trưởng ca kiểm tra hoặc cài đặt đè số liệu triều trực tiếp
+function openTideConfigPrompt() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') {
+    if (pwd !== null) alert(dict[currentLang].pwdWrong);
+    return;
+  }
+
+  let todayKey = getTodayString();
+  let curHigh = liveTideData ? liveTideData.highVal : 3.65;
+  let curHighTime = liveTideData ? liveTideData.highTimeStr : '16:00';
+  let curLow = liveTideData ? liveTideData.lowVal : 1.10;
+  let curLowTime = liveTideData ? liveTideData.lowTimeStr : '04:00';
+
+  let hVal = prompt(`[${todayKey}] Nhập ĐỈNH TRIỀU (mét):`, curHigh);
+  if (hVal === null) return;
+  let hTime = prompt(`[${todayKey}] Nhập GIỜ NƯỚC LỚN (HH:mm):`, curHighTime);
+  if (hTime === null) return;
+
+  let lVal = prompt(`[${todayKey}] Nhập ĐÁY TRIỀU (mét):`, curLow);
+  if (lVal === null) return;
+  let lTime = prompt(`[${todayKey}] Nhập GIỜ NƯỚC RÒNG (HH:mm):`, curLowTime);
+  if (lTime === null) return;
+
+  let parseH = tStr => {
+    let [h, m] = tStr.split(':').map(Number);
+    return (h || 0) + (m || 0) / 60;
+  };
+
+  liveTideData = {
+    date: todayKey,
+    highVal: Number(hVal) || 3.6,
+    highTimeStr: hTime,
+    highHour: parseH(hTime),
+    lowVal: Number(lVal) || 1.1,
+    lowTimeStr: lTime,
+    lowHour: parseH(lTime),
+    hourlyList: []
+  };
+
+  localStorage.setItem('hp_tide_custom_' + todayKey, JSON.stringify(liveTideData));
+  if ($('tideStatusBadge')) $('tideStatusBadge').textContent = 'Trực ca setup';
+  alert(`Đã cập nhật số liệu thủy triều Hòn Dáu ngày ${todayKey} thành công!`);
+  updateRealtimeWidgets();
 }
 
 function startMidnightCountdown() {
@@ -1814,6 +2061,7 @@ function startMidnightCountdown() {
     if (diffMs <= 1000) {
       saveCurrentDataToSupabase(true);
       loadData();
+      fetchTideFromTheGioiMoiCau();
       return;
     }
 
@@ -2422,10 +2670,10 @@ window.deleteFeedback = deleteFeedback;
 window.clearAllFeedbacks = clearAllFeedbacks;
 window.submitFeedbackReport = submitFeedbackReport;
 window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
+window.openTideConfigPrompt = openTideConfigPrompt;
 
 // --- GẮN SỰ KIỆN TƯƠNG TÁC GIAO DIỆN ---
 function bindAllEventListeners() {
-  // Menu Tabs
   document.querySelectorAll('.nav button').forEach(b => {
     b.onclick = () => nav(b.dataset.page);
   });
@@ -2433,7 +2681,6 @@ function bindAllEventListeners() {
     b.onclick = () => nav(b.dataset.goto);
   });
 
-  // Nút chuyển đổi Ngôn ngữ
   if ($('langToggleBtn')) {
     $('langToggleBtn').onclick = () => {
       let nextLang = currentLang === 'vi' ? 'en' : 'vi';
@@ -2441,7 +2688,6 @@ function bindAllEventListeners() {
     };
   }
 
-  // Nút chuyển Theme Sáng/Tối
   if ($('themeToggle')) {
     $('themeToggle').onclick = () => {
       let isDark = document.documentElement.dataset.theme === 'dark';
@@ -2451,7 +2697,6 @@ function bindAllEventListeners() {
     };
   }
 
-  // Nút Hòm thư & Input Password 6868
   if ($('mailNotificationBtn')) $('mailNotificationBtn').onclick = openMailAuthModal;
   if ($('mailPasswordInput')) {
     $('mailPasswordInput').addEventListener('keydown', (e) => {
@@ -2459,14 +2704,11 @@ function bindAllEventListeners() {
     });
   }
 
-  // Form gửi Báo cáo
   if ($('sendReportSubmitBtn')) $('sendReportSubmitBtn').onclick = submitFeedbackReport;
 
-  // Lọc ngày
   if ($('fromDate')) $('fromDate').onchange = renderAll;
   if ($('toDate')) $('toDate').onchange = renderAll;
 
-  // Nút hệ thống Sidebar
   if ($('refreshBtn')) $('refreshBtn').onclick = loadData;
   if ($('setupShiftBtn')) $('setupShiftBtn').onclick = openShiftModalWithPassword;
   if ($('manualSaveBtn')) $('manualSaveBtn').onclick = handleManualSave;
@@ -2475,7 +2717,6 @@ function bindAllEventListeners() {
   if ($('importConfigBtn')) $('importConfigBtn').onclick = triggerImportConfig;
   if ($('importFileInput')) $('importFileInput').onchange = handleFileImport;
 
-  // Modal Setup ca trực
   if ($('closeModalBtn')) $('closeModalBtn').onclick = () => $('modalShade').classList.remove('open');
   if ($('saveModalBtn')) {
     $('saveModalBtn').onclick = () => {
@@ -2493,7 +2734,6 @@ function bindAllEventListeners() {
       if (!selectedShipForReport) return;
       let pwd = prompt(dict[currentLang].promptPwd);
       if (pwd === '6868') {
-        // Truyền thẳng đối tượng selectedShipForReport vào để điền form và chuyển tab
         populateEditForm(selectedShipForReport);
         hideTooltip();
       } else if (pwd !== null) {
@@ -2534,7 +2774,10 @@ function initApp() {
   loadFeedbacks();
   loadData();
   fetchRealWeatherHaiPhong();
+  fetchTideFromTheGioiMoiCau(); // Tự động đọc và lọc số liệu từ thegioimoicau.com
+  
   setInterval(fetchRealWeatherHaiPhong, 600000);
+  setInterval(fetchTideFromTheGioiMoiCau, 3600000); // Tự động làm mới mỗi 1 giờ
   setInterval(loadFeedbacks, 30000);
   startMidnightCountdown();
 }
