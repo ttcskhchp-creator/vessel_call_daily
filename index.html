@@ -232,7 +232,7 @@ button:hover{filter:brightness(.95)}
 .w-hour-item{text-align:center;min-width:48px;background:rgba(255,255,255,0.1);padding:4px;border-radius:6px;font-size:9px}
 .w-hour-item small{display:block;opacity:0.8;font-size:8px}
 
-/* THẺ THỦY TRIỀU CHỈ RIÊNG TRẠM HÒN DÁU */
+/* THẺ THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU */
 .vivid-tide{background:linear-gradient(135deg,#0e3d59 0%,#185a7d 50%,#1f829c 100%);color:#ffffff;border-radius:12px;padding:14px 16px;box-shadow:0 6px 20px rgba(16,43,70,0.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
 :root[data-theme="dark"] .vivid-tide{background:linear-gradient(135deg,#092133 0%,#103b54 50%,#165675 100%)}
 .vivid-tide-bg-icon{position:absolute;right:-10px;top:-10px;font-size:95px;opacity:0.15;pointer-events:none;line-height:1}
@@ -862,7 +862,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
         <div class="panel" style="padding:16px">
           <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
-          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)[span_4](start_span)[span_4](end_span)</p>
+          <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)[span_28](start_span)[span_28](end_span)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
@@ -1823,78 +1823,44 @@ async function fetchTideFromTheGioiMoiCau() {
       const doc = parser.parseFromString(data.contents, 'text/html');
 
       let hourlyTides = [];
-      let foundHonDauTable = false;
 
-      // CÁCH 1: Tìm đúng bảng có chứa chữ "Hòn Dấu" hoặc "Hòn Dáu"
-      let tables = doc.querySelectorAll('table, .table');
-      for (let tbl of tables) {
-        let tblText = tbl.innerText || '';
-        if (tblText.includes('Hòn Dấu') || tblText.includes('Hòn Dáu')) {
-          foundHonDauTable = true;
-          let rows = tbl.querySelectorAll('tr');
-          rows.forEach(tr => {
-            let rowText = tr.innerText.trim();
-            // Lọc đúng định dạng "0h   2.5m"
-            let match = rowText.match(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/i);
-            if (match) {
-              let hour = parseInt(match[1], 10);
-              let val = parseFloat(match[2].replace(',', '.'));
-              if (!isNaN(hour) && !isNaN(val) && hour >= 0 && hour <= 23) {
-                if (!hourlyTides.find(x => x.hour === hour)) {
-                  hourlyTides.push({ hour, val });
-                }
-              }
-            }
-          });
-          break; // Đã tìm được bảng Hòn Dáu thì dừng ngay, không duyệt các bảng tiếp theo (tránh lọt sang Hòn Gai)
+      // Tìm vị trí bắt đầu chuẩn xác của "Lịch thủy triều Hòn Dấu"
+      let allText = doc.body.innerText || '';
+      let honDauStart = allText.indexOf('Lịch thủy triều Hòn Dấu');
+      if (honDauStart === -1) honDauStart = allText.indexOf('Lịch thủy triều Hòn Dáu');
+      if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dấu');
+      if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dáu');
+
+      if (honDauStart !== -1) {
+        // Chỉ lấy đoạn văn bản thuộc về Hòn Dáu (ngắt trước khi gặp Nha Trang, Hồng Gai, Cửa Lục...)
+        let subText = allText.substring(honDauStart);
+        let stopKeywords = ['Lịch thủy triều', 'Hồng Gai', 'Hong Gai', 'Hòn Gai', 'Nha Trang', 'Cửa Lục', 'Cẩm Phả', 'Đồ Sơn'];
+        let stopIndex = -1;
+        for (let kw of stopKeywords) {
+          let idx = subText.indexOf(kw, 35); // Bỏ qua tiêu đề Hòn Dấu hiện tại
+          if (idx !== -1 && (stopIndex === -1 || idx < stopIndex)) {
+            stopIndex = idx;
+          }
         }
-      }
 
-      // CÁCH 2: Quét text chuẩn có điểm CHẶN DỪNG (BOUNDARY)
-      // Nếu không lấy được qua cấu trúc thẻ bảng, quét theo text nhưng ngắt ngay khi hết 24 giờ hoặc gặp địa danh khác
-      if (hourlyTides.length < 12) {
-        hourlyTides = [];
-        let allText = doc.body.innerText || '';
-        
-        let honDauStart = allText.indexOf('Lịch thủy triều Hòn Dấu');
-        if (honDauStart === -1) honDauStart = allText.indexOf('Lịch thủy triều Hòn Dáu');
-        if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dấu');
-        if (honDauStart === -1) honDauStart = allText.indexOf('Hòn Dáu');
+        let honDauChunk = stopIndex !== -1 ? subText.substring(0, stopIndex) : subText.substring(0, 1600);
 
-        if (honDauStart !== -1) {
-          // Lấy đoạn text bắt đầu từ Hòn Dấu
-          let subText = allText.substring(honDauStart);
-
-          // ĐIỂM CHẶN DỪNG: Cắt bỏ đoạn văn bản từ địa danh tiếp theo (Hồng Gai, Cửa Lục, Cẩm Phả...)
-          let stopKeywords = ['Hồng Gai', 'Hong Gai', 'Hòn Gai', 'Cửa Lục', 'Cẩm Phả', 'Đồ Sơn', 'Bến Thủy'];
-          let stopIndex = -1;
-          for (let kw of stopKeywords) {
-            let idx = subText.indexOf(kw, 30); // tìm sau tiêu đề Hòn Dấu
-            if (idx !== -1 && (stopIndex === -1 || idx < stopIndex)) {
-              stopIndex = idx;
+        // Quét đúng 24 mốc giờ: 0h đến 23h
+        let matches = [...honDauChunk.matchAll(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/gi)];
+        for (let m of matches) {
+          let hour = parseInt(m[1], 10);
+          let val = parseFloat(m[2].replace(',', '.'));
+          if (!isNaN(hour) && !isNaN(val) && hour >= 0 && hour <= 23) {
+            if (!hourlyTides.find(x => x.hour === hour)) {
+              hourlyTides.push({ hour, val });
             }
           }
-
-          // Đoạn text duy nhất của khu vực Hòn Dáu
-          let honDauChunk = stopIndex !== -1 ? subText.substring(0, stopIndex) : subText.substring(0, 1500);
-
-          let matches = [...honDauChunk.matchAll(/(\d{1,2})\s*h\s*.*?(\d+[.,]\d+)\s*m/gi)];
-          for (let m of matches) {
-            let hour = parseInt(m[1], 10);
-            let val = parseFloat(m[2].replace(',', '.'));
-            if (!isNaN(hour) && !isNaN(val) && hour >= 0 && hour <= 23) {
-              if (!hourlyTides.find(x => x.hour === hour)) {
-                hourlyTides.push({ hour, val });
-              }
-            }
-            // Khi đã đủ 24 giờ của Hòn Dấu (0h -> 23h), ngắt ngay lập tức
-            if (hourlyTides.length === 24) break;
-          }
+          if (hourlyTides.length === 24) break;
         }
       }
 
       // 4. Lọc số ĐỈNH (Nước lớn) và ĐÁY (Nước ròng) CHUẨN CỦA HÒN DÁU
-      if (hourlyTides.length > 0) {
+      if (hourlyTides.length >= 12) {
         hourlyTides.sort((a,b) => a.hour - b.hour);
         let maxItem = hourlyTides.reduce((prev, curr) => (curr.val > prev.val ? curr : prev), hourlyTides[0]);
         let minItem = hourlyTides.reduce((prev, curr) => (curr.val < prev.val ? curr : prev), hourlyTides[0]);
@@ -2037,10 +2003,10 @@ function openTideConfigPrompt() {
   }
 
   let todayKey = getTodayString();
-  let curHigh = liveTideData ? liveTideData.highVal : 3.65;
-  let curHighTime = liveTideData ? liveTideData.highTimeStr : '16:00';
-  let curLow = liveTideData ? liveTideData.lowVal : 1.10;
-  let curLowTime = liveTideData ? liveTideData.lowTimeStr : '04:00';
+  let curHigh = liveTideData ? liveTideData.highVal : 2.60;
+  let curHighTime = liveTideData ? liveTideData.highTimeStr : '01:00';
+  let curLow = liveTideData ? liveTideData.lowVal : 1.70;
+  let curLowTime = liveTideData ? liveTideData.lowTimeStr : '14:00';
 
   let hVal = prompt(`[${todayKey}] Nhập ĐỈNH TRIỀU (mét):`, curHigh);
   if (hVal === null) return;
@@ -2060,10 +2026,10 @@ function openTideConfigPrompt() {
   liveTideData = {
     date: todayKey,
     station: 'Hòn Dáu (Trực ca setup)',
-    highVal: Number(hVal) || 3.6,
+    highVal: Number(hVal) || 2.6,
     highTimeStr: hTime,
     highHour: parseH(hTime),
-    lowVal: Number(lVal) || 1.1,
+    lowVal: Number(lVal) || 1.7,
     lowTimeStr: lTime,
     lowHour: parseH(lTime),
     hourlyList: []
