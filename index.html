@@ -328,9 +328,47 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .gantt-row{min-height:42px;border-top:1px solid var(--line);align-items:center}
 .berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
-.shipbar{position:absolute;top:2px;height:24px;border-radius:4px;padding:3px 6px;color:#fff;font-size:9px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:30px;cursor:pointer;z-index:2}
-.shipbar.large{background:#d99a24}
+.shipbar {
+  position: absolute;
+  top: 2px;
+  height: 24px;
+  border-radius: 5px;
+  padding: 3px 6px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  /* Dùng màu nền mờ bán trong suốt kết hợp viền nổi */
+  background: rgba(36, 121, 169, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  min-width: 30px;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(1px);
+}
 
+.shipbar.large {
+  background: rgba(217, 154, 36, 0.82);
+  border-color: rgba(255, 235, 170, 0.8);
+}
+
+/* Khi rê chuột vào: tàu tự động nổi hẳn lên trên, màu đậm 100% và đổ bóng rõ ràng */
+.shipbar:hover {
+  background: #17638f !important;
+  opacity: 1 !important;
+  z-index: 20 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border-color: #ffffff;
+}
+
+.shipbar.large:hover {
+  background: #b57a0f !important;
+}
 #shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:auto;max-width:300px;font-size:11px}
 #shipTooltip strong{font-size:13px;color:var(--navy2);display:block;margin-bottom:2px}
 :root[data-theme="dark"] #shipTooltip strong{color:var(--cyan)}
@@ -2440,15 +2478,24 @@ function renderGantt() {
   for (let [name, ships] of Object.entries(terms)) {
     hasData = true;
     out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
-    ships.forEach(c => {
-      let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
-      let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
-      let left = Math.max(0, Math.min(100, (a - start) / (end - start) * 100));
-      let right = Math.max(left + 2, Math.min(100, (b - start) / (end - start) * 100));
-      if (a < end.getTime() && b >= start.getTime()) {
-        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" style="left:${left}%;width:${right-left}%" onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
-      }
-    });
+    // Sắp xếp: Tàu đỗ thời gian dài hơn vẽ trước (ở dưới), tàu ngắn hơn vẽ sau (ở trên)
+let sortedShips = [...ships].sort((x, y) => {
+  let durX = (new Date(x.etd || 0).getTime()) - (new Date(x.etb || 0).getTime());
+  let durY = (new Date(y.etd || 0).getTime()) - (new Date(y.etb || 0).getTime());
+  return durY - durX;
+});
+
+sortedShips.forEach((c, idx) => {
+  let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
+  let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
+  let left = Math.max(0, Math.min(100, (a - start) / (end - start) * 100));
+  let right = Math.max(left + 2, Math.min(100, (b - start) / (end - start) * 100));
+  if (a < end.getTime() && b >= start.getTime()) {
+    // z-index tăng dần cho các tàu ngắn hơn để luôn nổi lên trên tàu dài
+    let zIdx = 2 + idx;
+    out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" style="left:${left}%;width:${right-left}%;z-index:${zIdx}" onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
+  }
+});
     out += `</div></div>`;
   }
   if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
