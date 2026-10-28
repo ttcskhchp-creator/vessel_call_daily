@@ -1814,36 +1814,9 @@ async function fetchRealWeatherHaiPhong() {
 // HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG
 // ============================================================================
 
-// Bảng dữ liệu thực nghiệm chuẩn 3 ngày đối chiếu từ https://thegioimoicau.com/dia-danh/hon-dau/trang-1
-const HON_DAU_BENCHMARK_3DAYS = {
-  // Ngày 26/10/2026: Nước ròng thấp nhất 1.7m kéo dài từ 13h đến 18h
-  "2026-10-26": [
-    { hour: 0, val: 2.5 }, { hour: 1, val: 2.6 }, { hour: 2, val: 2.6 }, { hour: 3, val: 2.5 },
-    { hour: 4, val: 2.4 }, { hour: 5, val: 2.3 }, { hour: 6, val: 2.2 }, { hour: 7, val: 2.1 },
-    { hour: 8, val: 1.9 }, { hour: 9, val: 1.9 }, { hour: 10, val: 1.8 }, { hour: 11, val: 1.8 },
-    { hour: 12, val: 1.8 }, { hour: 13, val: 1.7 }, { hour: 14, val: 1.7 }, { hour: 15, val: 1.8 },
-    { hour: 16, val: 1.7 }, { hour: 17, val: 1.7 }, { hour: 18, val: 1.7 }, { hour: 19, val: 1.8 },
-    { hour: 20, val: 1.9 }, { hour: 21, val: 2.1 }, { hour: 22, val: 2.3 }, { hour: 23, val: 2.5 }
-  ],
-  // Ngày 27/10/2026: Đỉnh 3.0m (03:00), Ròng 1.3m (17:00, 18:00)
-  "2026-10-27": [
-    { hour: 0, val: 2.7 }, { hour: 1, val: 2.8 }, { hour: 2, val: 2.9 }, { hour: 3, val: 3.0 },
-    { hour: 4, val: 2.9 }, { hour: 5, val: 2.8 }, { hour: 6, val: 2.6 }, { hour: 7, val: 2.5 },
-    { hour: 8, val: 2.3 }, { hour: 9, val: 2.1 }, { hour: 10, val: 1.9 }, { hour: 11, val: 1.8 },
-    { hour: 12, val: 1.6 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.4 }, { hour: 15, val: 1.4 },
-    { hour: 16, val: 1.4 }, { hour: 17, val: 1.3 }, { hour: 18, val: 1.3 }, { hour: 19, val: 1.4 },
-    { hour: 20, val: 1.5 }, { hour: 21, val: 1.7 }, { hour: 22, val: 2.0 }, { hour: 23, val: 2.4 }
-  ],
-  // Ngày 28/10/2026: Đỉnh 3.3m (03:00 - 05:00), Ròng 1.0m (17:00 - 19:00)
-  "2026-10-28": [
-    { hour: 0, val: 2.7 }, { hour: 1, val: 2.9 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.3 },
-    { hour: 4, val: 3.3 }, { hour: 5, val: 3.3 }, { hour: 6, val: 3.1 }, { hour: 7, val: 3.0 },
-    { hour: 8, val: 2.7 }, { hour: 9, val: 2.5 }, { hour: 10, val: 2.2 }, { hour: 11, val: 1.9 },
-    { hour: 12, val: 1.7 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.3 }, { hour: 15, val: 1.1 },
-    { hour: 16, val: 1.1 }, { hour: 17, val: 1.0 }, { hour: 18, val: 1.0 }, { hour: 19, val: 1.0 },
-    { hour: 20, val: 1.1 }, { hour: 21, val: 1.3 }, { hour: 22, val: 1.6 }, { hour: 23, val: 2.0 }
-  ]
-};
+// ============================================================================
+// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG (NO-BACKEND)
+// ============================================================================
 
 function calculateDayExtremes(hourlyList) {
   let maxVal = -Infinity;
@@ -1851,7 +1824,6 @@ function calculateDayExtremes(hourlyList) {
   let maxHour = 0;
   let minHour = 0;
 
-  // Lấy mốc đầu tiên đạt cực đại và mốc đầu tiên đạt cực tiểu
   hourlyList.forEach(item => {
     if (item.val > maxVal) {
       maxVal = item.val;
@@ -1873,9 +1845,11 @@ function calculateDayExtremes(hourlyList) {
   };
 }
 
-// Bóc tách giờ và mực nước linh hoạt theo nhiều định dạng trên thegioimoicau
+// Bóc tách giờ và mực nước linh hoạt, hỗ trợ cả bảng HTML lẫn văn bản
 function parseDayChunkToHourly(chunkText) {
   let map = new Map();
+  
+  // Quét các dạng: "01h - 2.5m", "01:00 / 2.5m", "1 h ... 2,5 m"
   const regexPatterns = [
     /(?:^|[^\d])([0-2]?\d)(?:\s*h|\s*:\s*00)?\s*[:\-\—\s]\s*([0-4][.,]\d+)\s*(?:m|mét)?/gi,
     /([0-2]?\d)\s*h[^\d\n\r]*([0-4][.,]\d+)\s*m/gi
@@ -1906,13 +1880,11 @@ async function fetchTideFromTheGioiMoiCau() {
   }
 
   const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
-  
-  // 1. Danh sách proxy đã lọc bỏ corsproxy.io (tránh lỗi 403)
-  const proxyList = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://thingproxy.freeboard.io/fetch/${targetUrl}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
-    `https://cors.eu.org/${targetUrl}`
+
+  // Danh sách Proxy mở chạy được trên Vercel (bỏ các proxy đã bị lỗi 403, 429 hoặc sập domain)
+  const proxyEndpoints = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
   ];
 
   let rawHtml = '';
@@ -1920,30 +1892,39 @@ async function fetchTideFromTheGioiMoiCau() {
 
   const fetchWithTimeout = async (url, ms = 6000) => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), ms);
+    const timer = setTimeout(() => controller.abort(), ms);
     try {
       const response = await fetch(url, { signal: controller.signal, cache: 'no-cache' });
-      clearTimeout(timeout);
+      clearTimeout(timer);
       return response;
     } catch(err) {
-      clearTimeout(timeout);
+      clearTimeout(timer);
       throw err;
     }
   };
 
-  for (let pUrl of proxyList) {
+  for (let pUrl of proxyEndpoints) {
     try {
       const res = await fetchWithTimeout(pUrl, 5000);
       if (!res.ok) continue;
-      rawHtml = await res.text();
+
+      if (pUrl.includes('allorigins')) {
+        const json = await res.json();
+        rawHtml = json.contents || '';
+      } else {
+        rawHtml = await res.text();
+      }
+
       if (rawHtml && (rawHtml.toLowerCase().includes('hòn dáu') || rawHtml.toLowerCase().includes('hon dau') || rawHtml.includes('thegioimoicau'))) {
         isFetchSuccess = true;
-        break;
+        break; // Lấy thành công thì thoát vòng lặp ngay
       }
-    } catch(err) {}
+    } catch(err) {
+      // Proxy gặp sự cố sẽ tự động chuyển sang endpoint tiếp theo
+    }
   }
 
-  // 2. Bóc tách chính xác 3 ngày liên tiếp
+  // Bóc tách dữ liệu 3 ngày liên tiếp
   if (isFetchSuccess && rawHtml) {
     try {
       let parser = new DOMParser();
@@ -1957,7 +1938,7 @@ async function fetchTideFromTheGioiMoiCau() {
         let monthPadded = p.month;
         let yearFull = p.year;
 
-        // Bắt linh hoạt dạng: "28/10/2026", "28/10"
+        // Định dạng nhận diện linh hoạt
         let searchFormat1 = `${dayPadded}/${monthPadded}/${yearFull}`;
         let searchFormat2 = `${parseInt(dayPadded, 10)}/${parseInt(monthPadded, 10)}/${yearFull}`;
         let searchFormat3 = `${dayPadded}-${monthPadded}-${yearFull}`;
@@ -1978,7 +1959,7 @@ async function fetchTideFromTheGioiMoiCau() {
 
           let hourlyList = parseDayChunkToHourly(dayChunk);
           if (hourlyList.length >= 16) {
-            // Tự bù giờ nếu trang web khuyết 1-2 khung giờ
+            // Tự bù giờ nếu trang web bị khuyết 1-2 khung giờ
             if (hourlyList.length < 24) {
               let full24 = [];
               for (let h = 0; h < 24; h++) {
@@ -2011,7 +1992,7 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   }
 
-  // 3. Fallback tự động tính toán sóng triều theo ngày động (thay vì ngày cố định)
+  // Cơ chế Fallback an toàn: Tự sinh chu kỳ nhật triều Hòn Dáu theo ngày động
   for (let offset = 0; offset < 3; offset++) {
     let p = getVNCurrentDateParts(offset);
     let dateKey = p.dateKey;
@@ -2047,8 +2028,7 @@ async function fetchTideFromTheGioiMoiCau() {
   }
 
   updateRealtimeWidgets();
-}
-  // Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
+}  // Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
 function cycleTideDayView() {
   tideViewDayOffset = (tideViewDayOffset + 1) % 3;
   updateRealtimeWidgets();
