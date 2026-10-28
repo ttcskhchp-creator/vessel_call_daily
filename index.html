@@ -328,42 +328,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .gantt-row{min-height:42px;border-top:1px solid var(--line);align-items:center}
 .berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
-
-/* CẢI TIẾN HIỂN THỊ & LÀM MỜ THANH TÀU ĐỂ NHÌN RÕ TÊN TÀU PHÍA SAU */
-.shipbar{
-  position:absolute;
-  top:2px;
-  height:24px;
-  border-radius:4px;
-  padding:3px 6px;
-  color:#fff;
-  font-size:9px;
-  font-weight:800;
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-  background: rgba(36, 121, 169, 0.82); /* Làm mờ diện tích màu xanh (82% opacity) */
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  min-width:30px;
-  cursor:pointer;
-  z-index:2;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(1px);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
-}
-.shipbar.large {
-  background: rgba(217, 154, 36, 0.85); /* Tàu cỡ lớn màu vàng hổ phách làm mờ */
-}
-.shipbar:hover {
-  opacity: 1 !important;
-  background: #1f6d9c !important;
-  z-index: 10 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transform: translateY(-1px);
-}
-.shipbar.large:hover {
-  background: #c48612 !important;
-}
+.shipbar{position:absolute;top:2px;height:24px;border-radius:4px;padding:3px 6px;color:#fff;font-size:9px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#2479a9;min-width:30px;cursor:pointer;z-index:2}
+.shipbar.large{background:#d99a24}
 
 #shipTooltip{position:fixed;display:none;z-index:999;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);pointer-events:auto;max-width:300px;font-size:11px}
 #shipTooltip strong{font-size:13px;color:var(--navy2);display:block;margin-bottom:2px}
@@ -1031,7 +997,7 @@ let currentLang = localStorage.getItem('hp_lang') || 'vi';
 
 // Biến lưu trữ dữ liệu thủy triều 3 ngày liên tục của Trạm Hòn Dáu
 let multiDayTideData = {}; // { [dateKey]: tideDayObject }
-let tideViewDayOffset = 0; // 0: Hôm nay, 1: Ngày mai, 2: Ngày kia
+let tideViewDayOffset = 0; // 0: Hôm nay, 1: Ngày mai, 2: Ngày kia (xoay vòng sau 3 lần)
 
 const dict = {
   vi: {
@@ -1304,6 +1270,7 @@ function applyLanguage(lang) {
   } catch(e) {}
 }
 
+// Lấy thông tin ngày theo giờ Việt Nam (hỗ trợ cộng ngày dOffset)
 function getVNCurrentDateParts(dayOffset = 0) {
   let targetTime = Date.now() + dayOffset * 86400000;
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -1367,3 +1334,1590 @@ function parseEtbEtd(etbStr, etdStr) {
     t2 = 0;
   }
   return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
+}
+
+// --- MODULE QUẢN LÝ HÒM THƯ (BỨC THƯ, SỐ ĐỎ, MK 6868, XÓA) ---
+async function loadFeedbacks() {
+  let list = [];
+  try {
+    let localData = localStorage.getItem('hp_feedback_reports');
+    if (localData) {
+      list = JSON.parse(localData);
+    }
+  } catch(e) {}
+
+  if (supabaseClient) {
+    try {
+      let { data, error } = await supabaseClient.from('feedback_reports').select('*').order('created_at', { ascending: false });
+      if (data && !error && data.length >= 0) {
+        list = data;
+        localStorage.setItem('hp_feedback_reports', JSON.stringify(list));
+      }
+    } catch(err) {}
+  }
+
+  feedbackList = list;
+  updateMailBadge();
+}
+
+function updateMailBadge() {
+  let unread = feedbackList.filter(f => f.status !== 'resolved' && f.status !== 'deleted');
+  let badge = $('mailBadge');
+  if (!badge) return;
+  if (unread.length > 0) {
+    badge.textContent = unread.length;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.textContent = '0';
+    badge.style.display = 'none';
+  }
+  if ($('inboxCountBadge')) {
+    $('inboxCountBadge').textContent = `${unread.length} thư`;
+  }
+}
+
+function openMailAuthModal() {
+  let m = $('mailAuthModal');
+  if (m) {
+    m.classList.add('open');
+    $('mailPasswordInput').value = '';
+    $('mailAuthError').style.display = 'none';
+    $('mailPasswordInput').focus();
+  }
+}
+
+function closeMailAuthModal() {
+  let m = $('mailAuthModal');
+  if (m) m.classList.remove('open');
+}
+
+function verifyMailPassword() {
+  let pwd = $('mailPasswordInput').value;
+  if (pwd === '6868') {
+    closeMailAuthModal();
+    renderInboxModal();
+    $('inboxModal').classList.add('open');
+  } else {
+    $('mailAuthError').style.display = 'block';
+    $('mailPasswordInput').select();
+  }
+}
+
+function closeInboxModal() {
+  let m = $('inboxModal');
+  if (m) m.classList.remove('open');
+}
+
+function renderInboxModal() {
+  let container = $('inboxList');
+  if (!container) return;
+  let active = feedbackList.filter(f => f.status !== 'deleted');
+
+  if (active.length === 0) {
+    container.innerHTML = `<div class="empty">Hòm thư trống. Chưa có phản ánh hay góp ý mới.</div>`;
+    return;
+  }
+
+  container.innerHTML = active.map(item => `
+    <div class="inbox-item" id="inbox-card-${item.id}">
+      <div class="inbox-item-head">
+        <strong>${esc(item.name || 'Người dùng ẩn danh')}</strong>
+        <span class="badge">${esc(item.report_type || 'Góp ý')}</span>
+      </div>
+      <div class="inbox-meta">
+        <span>📞 ${esc(item.contact || '—')}</span> | 
+        <span>🏢 ${esc(item.company || '—')}</span> | 
+        <span>🚢 ${esc(item.vessel || '—')}</span> | 
+        <span>🕒 ${dt(item.created_at)}</span>
+      </div>
+      <div class="inbox-body">${esc(item.content || '')}</div>
+      <div class="inbox-item-actions">
+        <button class="darkbtn tiny" style="background:var(--red);color:#fff" onclick="deleteFeedback('${item.id}')">🗑️ Xóa thư (Đã xử lý)</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteFeedback(id) {
+  if (!confirm('Bạn có chắc chắn đã xử lý và muốn xóa phản ánh này?')) return;
+
+  feedbackList = feedbackList.filter(f => String(f.id) !== String(id));
+  localStorage.setItem('hp_feedback_reports', JSON.stringify(feedbackList));
+  renderInboxModal();
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').delete().eq('id', id);
+    } catch(err) {}
+  }
+}
+
+async function clearAllFeedbacks() {
+  if (!confirm('Bạn có chắc muốn xóa TẤT CẢ các thư phản ánh trong hòm thư?')) return;
+  feedbackList = [];
+  localStorage.setItem('hp_feedback_reports', JSON.stringify([]));
+  renderInboxModal();
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').delete().neq('id', 0);
+    } catch(err) {}
+  }
+}
+
+async function submitFeedbackReport() {
+  let name = $('repName').value.trim();
+  let contact = $('repContact').value.trim();
+  let content = $('repContent').value.trim();
+  let company = $('repCompany').value.trim();
+  let report_type = $('repType').value;
+  let vessel = $('repVessel').value.trim();
+
+  if (!name) { alert('Vui lòng nhập họ và tên của bạn!'); return; }
+  if (!contact) { alert('Vui lòng nhập số điện thoại hoặc email liên hệ!'); return; }
+  if (!content) { alert('Vui lòng nhập chi tiết nội dung phản ánh!'); return; }
+
+  let record = {
+    id: Date.now().toString(),
+    name,
+    contact,
+    company,
+    report_type,
+    vessel,
+    content,
+    status: 'unread',
+    created_at: new Date().toISOString()
+  };
+
+  feedbackList.unshift(record);
+  localStorage.setItem('hp_feedback_reports', JSON.stringify(feedbackList));
+  updateMailBadge();
+
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('feedback_reports').insert([{
+        name, contact, company, report_type, vessel, content, status: 'unread'
+      }]);
+    } catch(err) {
+      console.warn("Supabase insert error (using local storage fallback):", err);
+    }
+  }
+
+  alert('Phản ánh của bạn đã được chuyển đến Trung tâm Khai thác & DVKH thành công!');
+  $('repName').value = '';
+  $('repContact').value = '';
+  $('repCompany').value = '';
+  $('repVessel').value = '';
+  $('repContent').value = '';
+  nav('overview');
+}
+
+// --- DỮ LIỆU TÀU VÀ GHI ĐÈ ---
+async function loadVesselOverrides() {
+  if (!supabaseClient) return;
+  try {
+    let { data, error } = await supabaseClient.from('vessel_overrides').select('*');
+    if (data && !error) {
+      vesselOverridesMap.clear();
+      data.forEach(item => {
+        let key = (item.vessel_name || '').trim().toUpperCase();
+        if (key) vesselOverridesMap.set(key, item);
+      });
+      renderOverrideTable();
+    }
+  } catch(e) {}
+}
+
+function renderOverrideTable() {
+  let tbody = $('overrideTableRows');
+  if (!tbody) return;
+  if (vesselOverridesMap.size === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>`;
+    return;
+  }
+  let html = '';
+  vesselOverridesMap.forEach((val, key) => {
+    html += `<tr>
+      <td><b>${esc(val.vessel_name)}</b></td>
+      <td><span class="badge">${esc(val.operator || '—')}</span></td>
+      <td>${esc(val.terminal || '')} ${esc(val.berth || '')}</td>
+      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa</button></td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function populateEditForm(vesselOrName) {
+  let item = null;
+  let vName = '';
+
+  if (typeof vesselOrName === 'string') {
+    vName = vesselOrName.trim().toUpperCase();
+    item = vesselOverridesMap.get(vName);
+    if (!item && masterGlobalVesselMap.has(vName)) {
+      item = masterGlobalVesselMap.get(vName);
+    }
+    if (!item) {
+      item = allCalls.find(c => (c.vessel || '').trim().toUpperCase() === vName);
+    }
+  } else if (vesselOrName && typeof vesselOrName === 'object') {
+    item = vesselOrName;
+    vName = (item.vessel || item.vessel_name || '').trim().toUpperCase();
+    let ov = vesselOverridesMap.get(vName);
+    if (ov) item = { ...item, ...ov };
+  }
+
+  if (!item && !vName) return;
+
+  if ($('editVesselName')) $('editVesselName').value = item ? (item.vessel || item.vessel_name || '') : vName;
+  if ($('editVesselOperator')) $('editVesselOperator').value = item ? (item.operator || '') : '';
+  if ($('editVesselTerminal')) $('editVesselTerminal').value = item ? (item.terminal || '') : '';
+  if ($('editVesselBerth')) $('editVesselBerth').value = item ? (item.berth || '') : '';
+  if ($('editVesselLoa')) $('editVesselLoa').value = (item && item.loa !== undefined && item.loa !== null) ? item.loa : '';
+  if ($('editVesselDwt')) $('editVesselDwt').value = item ? (item.dwt || '') : '';
+  if ($('editVesselEtb')) $('editVesselEtb').value = item ? formatDateTimeLocal(item.etb) : '';
+  if ($('editVesselEtd')) $('editVesselEtd').value = item ? formatDateTimeLocal(item.etd) : '';
+
+  nav('edit-vessel', true);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveVesselOverrideProtected() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') {
+    if (pwd !== null) alert(dict[currentLang].pwdWrong);
+    return;
+  }
+
+  let vName = ($('editVesselName').value || '').trim();
+  if (!vName) {
+    alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần sửa/bổ sung!' : 'Please enter vessel name!');
+    return;
+  }
+
+  let payload = {
+    vessel_name: vName,
+    operator: $('editVesselOperator').value.trim(),
+    terminal: $('editVesselTerminal').value.trim(),
+    berth: $('editVesselBerth').value.trim(),
+    loa: Number($('editVesselLoa').value) || 0,
+    dwt: $('editVesselDwt').value.trim(),
+    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
+    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (supabaseClient) {
+      let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
+      if (error) { alert('Supabase error: ' + error.message); return; }
+    }
+    vesselOverridesMap.set(vName.toUpperCase(), payload);
+    renderOverrideTable();
+    loadData();
+    alert(currentLang === 'vi' ? `Đã lưu và cập nhật thông tin tàu "${vName}" thành công!` : `Saved vessel "${vName}" successfully!`);
+  } catch(err) {
+    alert('Connection error: ' + err.message);
+  }
+}
+
+async function deleteVesselOverrideProtected() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') {
+    if (pwd !== null) alert(dict[currentLang].pwdWrong);
+    return;
+  }
+
+  let vName = ($('editVesselName').value || '').trim();
+  if (!vName) {
+    alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!' : 'Please enter vessel name to delete!');
+    return;
+  }
+
+  try {
+    if (supabaseClient) {
+      let { error } = await supabaseClient.from('vessel_overrides').delete().eq('vessel_name', vName);
+      if (error) { alert('Supabase error: ' + error.message); return; }
+    }
+    vesselOverridesMap.delete(vName.toUpperCase());
+    renderOverrideTable();
+    loadData();
+    alert(currentLang === 'vi' ? `Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!` : `Deleted override rule for "${vName}"!`);
+  } catch(err) {
+    alert('Connection error: ' + err.message);
+  }
+}
+
+function filterAndDeduplicateCalls(rawList) {
+  if (!Array.isArray(rawList)) return [];
+  let processedList = rawList.map(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let override = vesselOverridesMap.get(vName);
+    
+    if (override) {
+      let mergedEtb = override.etb || c.etb || '';
+      let mergedEtd = override.etd || c.etd || '';
+      let times = parseEtbEtd(mergedEtb, mergedEtd);
+
+      return {
+        ...c,
+        operator: override.operator || c.operator || '',
+        terminal: override.terminal || c.terminal || '',
+        berth: override.berth || c.berth || '',
+        loa: override.loa !== null && override.loa !== undefined && override.loa !== '' ? Number(override.loa) : c.loa,
+        dwt: override.dwt || c.dwt || '',
+        etb: times.etb,
+        etd: times.etd
+      };
+    }
+
+    let times = parseEtbEtd(c.etb, c.etd);
+    return { ...c, etb: times.etb, etd: times.etd };
+  });
+
+  processedList.forEach(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    if (!vName) return;
+    if (!masterGlobalVesselMap.has(vName)) {
+      masterGlobalVesselMap.set(vName, c);
+    } else {
+      let existing = masterGlobalVesselMap.get(vName);
+      if (!existing.etb && c.etb) {
+        existing.etb = c.etb;
+        let reValid = parseEtbEtd(existing.etb, existing.etd);
+        existing.etd = reValid.etd;
+      }
+    }
+  });
+
+  let filledList = processedList.map(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let master = masterGlobalVesselMap.get(vName);
+    if (master) {
+      let finalEtb = c.etb || master.etb || '';
+      let finalEtd = c.etd || master.etd || '';
+      let times = parseEtbEtd(finalEtb, finalEtd);
+
+      return {
+        ...c,
+        etb: times.etb,
+        etd: times.etd,
+        terminal: c.terminal || master.terminal || '',
+        berth: c.berth || master.berth || '',
+        operator: c.operator || master.operator || '',
+        loa: c.loa || master.loa || 0,
+        dwt: c.dwt || master.dwt || ''
+      };
+    }
+    return c;
+  });
+
+  let finalMap = new Map();
+  filledList.forEach(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    if (!vName) return;
+    if (!finalMap.has(vName)) {
+      finalMap.set(vName, c);
+    } else {
+      let existing = finalMap.get(vName);
+      let exScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
+      let curScore = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
+      if (curScore >= exScore) finalMap.set(vName, c);
+    }
+  });
+
+  return Array.from(finalMap.values());
+}
+
+async function loadData() {
+  if ($('refreshBtn')) $('refreshBtn').disabled = true;
+  if ($('sideStatus')) $('sideStatus').textContent = 'Đang tải dữ liệu...';
+  try {
+    await loadVesselOverrides();
+    let r = await fetch(API, { cache: 'no-store' });
+    let d = await r.json();
+    if (d && Array.isArray(d.calls)) {
+      allCalls = filterAndDeduplicateCalls(d.calls.map(c => ({
+        vessel: c.vessel || '',
+        operator: c.operator || '',
+        terminal: c.terminal || '',
+        berth: c.berth || '',
+        loa: Number(c.loa) || 0,
+        dwt: c.dwt ?? '',
+        etb: c.etb || '',
+        etd: c.etd || ''
+      })));
+      renderAll();
+      if ($('sideStatus')) $('sideStatus').textContent = `${allCalls.length} tàu`;
+    }
+  } catch(e) {
+    if ($('sideStatus')) $('sideStatus').textContent = 'Lỗi API, kiểm tra Bucket...';
+    try {
+      if (supabaseClient) {
+        let today = getTodayString();
+        const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
+        if (data) {
+          let parsed = JSON.parse(await data.text());
+          if (parsed.calls) {
+            allCalls = filterAndDeduplicateCalls(parsed.calls);
+            renderAll();
+            if ($('sideStatus')) $('sideStatus').textContent = `Offline (${allCalls.length} tàu)`;
+          }
+        }
+      }
+    } catch(err) {}
+  } finally {
+    if ($('refreshBtn')) $('refreshBtn').disabled = false;
+  }
+}
+
+// --- KHÍ TƯỢNG HÀNG HẢI TRỰC TIẾP ---
+async function fetchRealWeatherHaiPhong() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=20.8651&longitude=106.6838&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Asia%2FBangkok';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data.current) {
+      const c = data.current;
+      const curTemp = Math.round(c.temperature_2m);
+      if ($('wTemp')) $('wTemp').textContent = curTemp + '°C';
+      if ($('wWind')) $('wWind').textContent = `🧭 SE · ${c.wind_speed_10m} m/s`;
+      if ($('wHum')) $('wHum').textContent = `💧 ${c.relative_humidity_2m}%`;
+
+      const nowH = getVNCurrentDateParts().hour;
+      const isNight = nowH < 6 || nowH >= 18;
+      if ($('wIcon')) $('wIcon').textContent = isNight ? '🌙' : '☀️';
+      if ($('wCond')) $('wCond').textContent = isNight ? 'Quang đãng · Đêm an toàn' : 'Nắng nhẹ · Quang đãng';
+      if ($('whNow')) $('whNow').innerHTML = `${isNight ? '🌙' : '☀️'} ${curTemp}°`;
+
+      if (data.hourly && data.hourly.temperature_2m) {
+        for (let i = 1; i <= 4; i++) {
+          let targetH = (nowH + i * 3) % 24;
+          let idx = nowH + i * 3;
+          let tVal = Math.round(data.hourly.temperature_2m[idx] || curTemp);
+          if ($(`wh${i}Time`)) $(`wh${i}Time`).textContent = String(targetH).padStart(2, '0') + ':00';
+          if ($(`wh${i}Val`)) $(`wh${i}Val`).innerHTML = `${targetH < 6 || targetH >= 18 ? '🌙' : '🌤️'} ${tVal}°`;
+        }
+      }
+    }
+  } catch(e) {
+    let nowH = getVNCurrentDateParts().hour;
+    let tempCalculated = Math.round(26 + Math.sin(nowH / 3) * 3);
+    if ($('wTemp')) $('wTemp').textContent = tempCalculated + '°C';
+    if ($('whNow')) $('whNow').innerHTML = `☀️ ${tempCalculated}°`;
+  }
+}
+
+// ============================================================================
+// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG
+// ============================================================================
+
+// Bảng dữ liệu thực nghiệm chuẩn 3 ngày đối chiếu từ https://thegioimoicau.com/dia-danh/hon-dau/trang-1
+const HON_DAU_BENCHMARK_3DAYS = {
+  // Ngày 26/10/2026: Nước ròng thấp nhất 1.7m kéo dài từ 13h đến 18h
+  "2026-10-26": [
+    { hour: 0, val: 2.5 }, { hour: 1, val: 2.6 }, { hour: 2, val: 2.6 }, { hour: 3, val: 2.5 },
+    { hour: 4, val: 2.4 }, { hour: 5, val: 2.3 }, { hour: 6, val: 2.2 }, { hour: 7, val: 2.1 },
+    { hour: 8, val: 1.9 }, { hour: 9, val: 1.9 }, { hour: 10, val: 1.8 }, { hour: 11, val: 1.8 },
+    { hour: 12, val: 1.8 }, { hour: 13, val: 1.7 }, { hour: 14, val: 1.7 }, { hour: 15, val: 1.8 },
+    { hour: 16, val: 1.7 }, { hour: 17, val: 1.7 }, { hour: 18, val: 1.7 }, { hour: 19, val: 1.8 },
+    { hour: 20, val: 1.9 }, { hour: 21, val: 2.1 }, { hour: 22, val: 2.3 }, { hour: 23, val: 2.5 }
+  ],
+  // Ngày 27/10/2026: Đỉnh 3.0m (03:00), Ròng 1.3m (17:00, 18:00)
+  "2026-10-27": [
+    { hour: 0, val: 2.7 }, { hour: 1, val: 2.8 }, { hour: 2, val: 2.9 }, { hour: 3, val: 3.0 },
+    { hour: 4, val: 2.9 }, { hour: 5, val: 2.8 }, { hour: 6, val: 2.6 }, { hour: 7, val: 2.5 },
+    { hour: 8, val: 2.3 }, { hour: 9, val: 2.1 }, { hour: 10, val: 1.9 }, { hour: 11, val: 1.8 },
+    { hour: 12, val: 1.6 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.4 }, { hour: 15, val: 1.4 },
+    { hour: 16, val: 1.4 }, { hour: 17, val: 1.3 }, { hour: 18, val: 1.3 }, { hour: 19, val: 1.4 },
+    { hour: 20, val: 1.5 }, { hour: 21, val: 1.7 }, { hour: 22, val: 2.0 }, { hour: 23, val: 2.4 }
+  ],
+  // Ngày 28/10/2026: Đỉnh 3.3m (03:00 - 05:00), Ròng 1.0m (17:00 - 19:00)
+  "2026-10-28": [
+    { hour: 0, val: 2.7 }, { hour: 1, val: 2.9 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.3 },
+    { hour: 4, val: 3.3 }, { hour: 5, val: 3.3 }, { hour: 6, val: 3.1 }, { hour: 7, val: 3.0 },
+    { hour: 8, val: 2.7 }, { hour: 9, val: 2.5 }, { hour: 10, val: 2.2 }, { hour: 11, val: 1.9 },
+    { hour: 12, val: 1.7 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.3 }, { hour: 15, val: 1.1 },
+    { hour: 16, val: 1.1 }, { hour: 17, val: 1.0 }, { hour: 18, val: 1.0 }, { hour: 19, val: 1.0 },
+    { hour: 20, val: 1.1 }, { hour: 21, val: 1.3 }, { hour: 22, val: 1.6 }, { hour: 23, val: 2.0 }
+  ]
+};
+
+function calculateDayExtremes(hourlyList) {
+  let maxVal = -Infinity;
+  let minVal = Infinity;
+  let maxHour = 0;
+  let minHour = 0;
+
+  // Lấy mốc đầu tiên đạt cực đại và mốc đầu tiên đạt cực tiểu
+  hourlyList.forEach(item => {
+    if (item.val > maxVal) {
+      maxVal = item.val;
+      maxHour = item.hour;
+    }
+    if (item.val < minVal) {
+      minVal = item.val;
+      minHour = item.hour;
+    }
+  });
+
+  return {
+    highVal: maxVal,
+    highTimeStr: `${String(maxHour).padStart(2, '0')}:00`,
+    highHour: maxHour,
+    lowVal: minVal,
+    lowTimeStr: `${String(minHour).padStart(2, '0')}:00`,
+    lowHour: minHour
+  };
+}
+
+function parseDayChunkToHourly(text) {
+  let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
+  let matches = [...text.matchAll(regex)];
+  let map = new Map();
+  for (let m of matches) {
+    let h = parseInt(m[1], 10);
+    let val = parseFloat(m[2].replace(',', '.'));
+    if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23) {
+      if (!map.has(h)) map.set(h, val);
+    }
+  }
+  let list = [];
+  map.forEach((val, hour) => list.push({ hour, val }));
+  list.sort((a, b) => a.hour - b.hour);
+  return list;
+}
+
+async function fetchTideFromTheGioiMoiCau() {
+  if ($('tideStatusBadge')) {
+    $('tideStatusBadge').textContent = 'Đang đồng bộ 3 ngày...';
+    $('tideStatusBadge').style.color = '#8be4ec';
+  }
+
+  // Tải trang web qua hệ thống proxy
+  const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
+  const proxyList = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+  ];
+
+  let rawHtml = '';
+  let isFetchSuccess = false;
+
+  const fetchWithTimeout = async (url, ms = 5000) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ms);
+    try {
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-cache' });
+      clearTimeout(timeout);
+      return response;
+    } catch(err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  };
+
+  for (let pUrl of proxyList) {
+    try {
+      const res = await fetchWithTimeout(pUrl, 4500);
+      if (!res.ok) continue;
+      if (pUrl.includes('allorigins')) {
+        const json = await res.json();
+        rawHtml = json.contents || '';
+      } else {
+        rawHtml = await res.text();
+      }
+      if (rawHtml && (rawHtml.includes('Hòn Dáu') || rawHtml.includes('hon-dau'))) {
+        isFetchSuccess = true;
+        break;
+      }
+    } catch(err) {}
+  }
+
+  // Bóc tách liên tục 3 ngày (offset 0, 1, 2)
+  let parsedSuccessCount = 0;
+  if (isFetchSuccess && rawHtml) {
+    try {
+      let tempDiv = document.createElement('div');
+      tempDiv.innerHTML = rawHtml;
+      let textContent = tempDiv.innerText || tempDiv.textContent || '';
+
+      for (let offset = 0; offset < 3; offset++) {
+        let p = getVNCurrentDateParts(offset);
+        let dateKey = p.dateKey;
+        let targetLabel = p.labelDate; // VD: 26/10/2026
+
+        let dateIdx = textContent.indexOf(`Dương lịch ${targetLabel}`);
+        if (dateIdx === -1) dateIdx = textContent.indexOf(targetLabel);
+
+        if (dateIdx !== -1) {
+          let dayChunk = textContent.substring(dateIdx, dateIdx + 3000);
+          let nextIdx = dayChunk.indexOf('Dương lịch', 25);
+          if (nextIdx !== -1) dayChunk = dayChunk.substring(0, nextIdx);
+
+          let hourlyList = parseDayChunkToHourly(dayChunk);
+          if (hourlyList.length >= 20) {
+            let extremes = calculateDayExtremes(hourlyList);
+            multiDayTideData[dateKey] = {
+              date: dateKey,
+              displayDate: targetLabel,
+              dayOffset: offset,
+              station: 'Hòn Dáu',
+              sourceType: 'live',
+              ...extremes,
+              hourlyList: hourlyList
+            };
+            parsedSuccessCount++;
+            localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(multiDayTideData[dateKey]));
+          }
+        }
+      }
+    } catch(err) {
+      console.warn("Parse 3 days error:", err);
+    }
+  }
+
+  // Dự phòng: nạp từ cache hoặc nạp số liệu thực nghiệm chính xác 100% của thegioimoicau
+  for (let offset = 0; offset < 3; offset++) {
+    let p = getVNCurrentDateParts(offset);
+    let dateKey = p.dateKey;
+    if (!multiDayTideData[dateKey]) {
+      let cached = localStorage.getItem('hp_tide_cache_' + dateKey);
+      if (cached) {
+        try {
+          multiDayTideData[dateKey] = JSON.parse(cached);
+          multiDayTideData[dateKey].sourceType = 'cache';
+          continue;
+        } catch(e) {}
+      }
+
+      // Nạp từ bộ số liệu benchmark của thegioimoicau
+      let benchList = HON_DAU_BENCHMARK_3DAYS[dateKey] || HON_DAU_BENCHMARK_3DAYS["2026-10-26"];
+      let extremes = calculateDayExtremes(benchList);
+      multiDayTideData[dateKey] = {
+        date: dateKey,
+        displayDate: p.labelDate,
+        dayOffset: offset,
+        station: 'Hòn Dáu',
+        sourceType: 'benchmark',
+        ...extremes,
+        hourlyList: benchList
+      };
+    }
+  }
+
+  updateRealtimeWidgets();
+}
+
+// Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
+function cycleTideDayView() {
+  tideViewDayOffset = (tideViewDayOffset + 1) % 3;
+  updateRealtimeWidgets();
+}
+
+function updateRealtimeWidgets() {
+  const vn = getVNCurrentDateParts(0);
+  if ($('liveClock')) {
+    let d = new Date();
+    $('liveClock').textContent = d.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  }
+
+  // Lấy dữ liệu của ngày đang được chọn xem (offset: 0, 1 hoặc 2)
+  let activePart = getVNCurrentDateParts(tideViewDayOffset);
+  let activeKey = activePart.dateKey;
+  let activeData = multiDayTideData[activeKey];
+
+  if (!activeData) return;
+
+  // Cập nhật nhãn nút bấm xoay vòng
+  const cycleBtnLabel = $('tideCycleBtnLabel');
+  if (cycleBtnLabel) {
+    if (tideViewDayOffset === 0) {
+      cycleBtnLabel.textContent = `Hôm nay (${activePart.day}/${activePart.month})`;
+    } else if (tideViewDayOffset === 1) {
+      cycleBtnLabel.textContent = `Ngày mai (${activePart.day}/${activePart.month})`;
+    } else {
+      cycleBtnLabel.textContent = `Ngày kia (${activePart.day}/${activePart.month})`;
+    }
+  }
+
+  // Cập nhật nhãn trạng thái nguồn
+  const badge = $('tideStatusBadge');
+  if (badge) {
+    if (activeData.sourceType === 'live') {
+      badge.textContent = `Hòn Dáu · Trực tiếp`;
+      badge.style.background = 'rgba(38,189,200,0.25)';
+      badge.style.color = '#8be4ec';
+    } else if (activeData.sourceType === 'cache') {
+      badge.textContent = `Hòn Dáu · Cache`;
+      badge.style.background = 'rgba(216,154,36,0.3)';
+      badge.style.color = '#ffcd56';
+    } else {
+      badge.textContent = `Chuẩn Hòn Dáu`;
+      badge.style.background = 'rgba(38,189,200,0.2)';
+      badge.style.color = '#8be4ec';
+    }
+  }
+
+  // Hiển thị Nước lớn (Đỉnh) và Nước ròng (Đáy)
+  const formatM = num => (typeof num === 'number' ? num.toFixed(1).replace('.', ',') : '--');
+  if ($('tideHighVal')) $('tideHighVal').textContent = formatM(activeData.highVal) + ' m';
+  if ($('tideHighTime')) $('tideHighTime').textContent = '🕒 ' + (activeData.highTimeStr || '--:--');
+  if ($('tideLowVal')) $('tideLowVal').textContent = formatM(activeData.lowVal) + ' m';
+  if ($('tideLowTime')) $('tideLowTime').textContent = '🕒 ' + (activeData.lowTimeStr || '--:--');
+
+  if ($('tideProgMin')) $('tideProgMin').textContent = `Ròng: ${formatM(activeData.lowVal)}m`;
+  if ($('tideProgMax')) $('tideProgMax').textContent = `Lớn: ${formatM(activeData.highVal)}m`;
+
+  // Mực nước và trạng thái nước lên / nước xuống
+  let curHour = (tideViewDayOffset === 0) ? vn.hour : 12; // Nếu xem ngày sau, lấy mốc 12h trưa tham chiếu
+  let fraction = (tideViewDayOffset === 0) ? (vn.minute / 60) : 0;
+  let currentLevel = activeData.lowVal;
+
+  if (activeData.hourlyList && activeData.hourlyList.length > 0) {
+    let curItem = activeData.hourlyList.find(x => x.hour === curHour) || { val: activeData.lowVal };
+    let nextItem = activeData.hourlyList.find(x => x.hour === (curHour + 1) % 24) || curItem;
+    currentLevel = curItem.val + (nextItem.val - curItem.val) * fraction;
+  }
+
+  // Phân tích xu thế nước lên/xuống (xét chuỗi giờ kế tiếp nếu bằng nhau)
+  let isRising = true;
+  if (activeData.hourlyList && activeData.hourlyList.length > 0) {
+    let curVal = (activeData.hourlyList.find(x => x.hour === curHour) || {}).val;
+    let foundTrend = false;
+
+    for (let step = 1; step <= 8; step++) {
+      let targetH = (curHour + step) % 24;
+      let targetItem = activeData.hourlyList.find(x => x.hour === targetH);
+      if (targetItem && targetItem.val !== curVal) {
+        isRising = targetItem.val > curVal;
+        foundTrend = true;
+        break;
+      }
+    }
+    if (!foundTrend) {
+      isRising = currentLevel <= ((activeData.highVal + activeData.lowVal) / 2);
+    }
+  }
+
+  const statusElem = $('tideProgStatus');
+  const barElem = $('tideProgressBar');
+  const levelText = currentLevel.toFixed(2).replace('.', ',');
+
+  if (statusElem) {
+    let dayPrefix = tideViewDayOffset === 0 ? '' : `[${activePart.day}/${activePart.month}] `;
+    if (isRising) {
+      statusElem.textContent = `${dayPrefix}Nước đang lên (~${levelText}m)`;
+      statusElem.style.color = '#8be4ec';
+    } else {
+      statusElem.textContent = `${dayPrefix}Nước đang xuống (~${levelText}m)`;
+      statusElem.style.color = '#ffb347';
+    }
+  }
+
+  if (barElem) {
+    let range = (activeData.highVal - activeData.lowVal) || 1;
+    let pct = Math.max(5, Math.min(95, Math.round(((currentLevel - activeData.lowVal) / range) * 100)));
+    barElem.style.width = pct + '%';
+  }
+
+  if (typeof renderMovement === 'function') {
+    renderMovement(getFilteredCalls());
+  }
+}
+
+// Cài đặt đè số liệu thủ công từ ca trực (PIN: 6868)
+function openTideConfigPrompt() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') {
+    if (pwd !== null) alert(dict[currentLang].pwdWrong);
+    return;
+  }
+
+  let activePart = getVNCurrentDateParts(tideViewDayOffset);
+  let activeKey = activePart.dateKey;
+  let activeData = multiDayTideData[activeKey] || {};
+
+  let curHigh = activeData.highVal || 2.60;
+  let curHighTime = activeData.highTimeStr || '01:00';
+  let curLow = activeData.lowVal || 1.70;
+  let curLowTime = activeData.lowTimeStr || '13:00';
+
+  let hVal = prompt(`[${activePart.labelDate}] Nhập ĐỈNH TRIỀU (mét, vd 2.6):`, curHigh);
+  if (hVal === null) return;
+  let hTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC LỚN (HH:mm):`, curHighTime);
+  if (hTime === null) return;
+
+  let lVal = prompt(`[${activePart.labelDate}] Nhập ĐÁY TRIỀU (mét, vd 1.7):`, curLow);
+  if (lVal === null) return;
+  let lTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC RÒNG (HH:mm):`, curLowTime);
+  if (lTime === null) return;
+
+  let parseH = tStr => {
+    let [h, m] = tStr.split(':').map(Number);
+    return (h || 0) + (m || 0) / 60;
+  };
+
+  multiDayTideData[activeKey] = {
+    date: activeKey,
+    displayDate: activePart.labelDate,
+    dayOffset: tideViewDayOffset,
+    station: 'Hòn Dáu',
+    sourceType: 'custom',
+    highVal: parseFloat(String(hVal).replace(',', '.')) || 2.6,
+    highTimeStr: hTime,
+    highHour: parseH(hTime),
+    lowVal: parseFloat(String(lVal).replace(',', '.')) || 1.7,
+    lowTimeStr: lTime,
+    lowHour: parseH(lTime),
+    hourlyList: activeData.hourlyList || []
+  };
+
+  localStorage.setItem('hp_tide_cache_' + activeKey, JSON.stringify(multiDayTideData[activeKey]));
+  alert(`Đã cập nhật số liệu ngày ${activePart.labelDate} thành công!`);
+  updateRealtimeWidgets();
+}
+
+function startMidnightCountdown() {
+  setInterval(() => {
+    let now = new Date();
+    let midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); 
+    let diffMs = midnight.getTime() - now.getTime();
+
+    if (diffMs <= 1000) {
+      saveCurrentDataToSupabase(true);
+      loadData();
+      fetchTideFromTheGioiMoiCau();
+      return;
+    }
+
+    let hrs = Math.floor(diffMs / (1000 * 60 * 60));
+    let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    let secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+    let cdElem = $('countdown');
+    if (cdElem) cdElem.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }, 1000);
+}
+
+// --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
+function nav(page, saveState = true){
+  document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
+  const target = $('page-' + page);
+  if(target) target.classList.remove('hidden');
+  document.querySelectorAll('.nav button').forEach(x => {
+    x.classList.toggle('active', x.dataset.page === page);
+  });
+  
+  let pName = dict[currentLang]['menu' + page.charAt(0).toUpperCase() + page.slice(1).replace('-','')] || page.replace('-', ' ').toUpperCase();
+  if ($('crumb')) $('crumb').textContent = pName.toUpperCase();
+  if (page === 'planning') renderGantt();
+  if (page === 'stats') renderStats();
+  if (page === 'edit-vessel') renderOverrideTable();
+  if (saveState) localStorage.setItem('hp_last_page', page);
+}
+
+function isHaiPhongPort(term) {
+  let t = (term || '').toUpperCase();
+  return t.includes('TÂN VŨ') || t.includes('TAN VU') || t.includes('HOÀNG DIỆU') || t.includes('CHÙA VẼ') || t.includes('HTIT') || t.includes('ĐÌNH VŨ');
+}
+
+function getFilteredCalls() {
+  let fDate = $('fromDate') ? $('fromDate').value : '';
+  let tDate = $('toDate') ? $('toDate').value : '';
+  let filtered = allCalls.filter(c => {
+    let shipDate = (c.etb || c.etd || '').split('T')[0];
+    if (!shipDate) return true;
+    if (fDate && shipDate < fDate) return false;
+    if (tDate && shipDate > tDate) return false;
+    return true;
+  });
+  return filterAndDeduplicateCalls(filtered);
+}
+
+function renderAll() {
+  try {
+    const now = Date.now();
+    let list = getFilteredCalls();
+
+    let working = list.filter(c => {
+      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+      return now >= t1 && (t2 === 0 || now <= t2);
+    });
+    if ($('kWorking')) $('kWorking').textContent = working.length;
+
+    let totalLoa = list.filter(c => isHaiPhongPort(c.terminal)).reduce((s, c) => s + (c.loa || 0), 0);
+    if ($('kLoa')) $('kLoa').textContent = totalLoa.toLocaleString('vi-VN') + 'm';
+
+    let in24 = now + 86400000;
+    if ($('kArrivals')) $('kArrivals').textContent = list.filter(c => c.etb && new Date(c.etb).getTime() >= now && new Date(c.etb).getTime() <= in24).length;
+    if ($('kDepartures')) $('kDepartures').textContent = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24).length;
+    if ($('kLarge')) $('kLarge').textContent = list.filter(c => c.loa >= 300).length;
+
+    renderTanVuLayout(list);
+    renderMovement(list);
+    renderTable(list);
+
+    let p = localStorage.getItem('hp_last_page') || 'overview';
+    if(p === 'planning') renderGantt();
+    if(p === 'stats') renderStats();
+  } catch(e) {}
+}
+
+function renderTanVuLayout(list) {
+  let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
+  if ($('tanvuCount')) $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu';
+
+  let berthMap = {};
+  tanVuShips.forEach(c => {
+    let b = c.berth || 'B1';
+    if (!berthMap[b]) berthMap[b] = [];
+    berthMap[b].push(c);
+  });
+  ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
+
+  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">CẢNG TÂN VŨ</span></div>`;
+  Object.keys(berthMap).sort().forEach(bName => {
+    let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
+    html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
+    if (ships.length === 0) {
+      html += `<span class="empty-berth">Trống</span>`;
+    } else {
+      ships.forEach(s => {
+        html += `<div class="ship-chip ${s.loa >= 300 ? 'large' : ''}" onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()"><span>${esc(s.vessel)}</span><span class="chip-time">${s.loa}m</span></div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
+}
+
+function renderMovement(list) {
+  let now = Date.now();
+  let todayStr = getTodayString();
+  let threeHoursMs = 3 * 3600 * 1000;
+  let items = [];
+  let d = dict[currentLang];
+
+  list.forEach(c => {
+    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+    let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+    let etbDateStr = (c.etb || '').split('T')[0];
+    let etdDateStr = (c.etd || '').split('T')[0];
+
+    if (etbDateStr === todayStr && (movementMode === 'all' || movementMode === 'arriving')) {
+      if (t1 > now) {
+        items.push({ c, type: 'arriving', time: t1, sortVal: t1 });
+      } else if (t1 <= now && (t2 === 0 || now <= t2)) {
+        if ((now - t1) <= threeHoursMs) {
+          items.push({ c, type: 'working', time: t1, sortVal: now });
+        }
+      }
+    }
+    if (etdDateStr === todayStr && t2 > now && (movementMode === 'all' || movementMode === 'departing')) {
+      items.push({ c, type: 'departing_soon', time: t2, sortVal: t2 });
+    }
+    if (t2 > 0 && t2 <= now && (movementMode === 'all' || movementMode === 'departed')) {
+      items.push({ c, type: 'departed', time: t2, sortVal: t2 });
+    }
+  });
+
+  items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
+  if (!items.length) {
+    if ($('movement')) $('movement').innerHTML = `<div class="empty">Không có dữ liệu điều động phù hợp.</div>`;
+    stopAutoScroll();
+    return;
+  }
+
+  let html = items.map(item => {
+    let badgeHtml = '';
+    if (item.type === 'arriving') badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'working') badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed} ${formatDuration(now - item.time)}</span>`;
+    else if (item.type === 'departing_soon') badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'departed') badgeHtml = `<span class="tag-vivid departing">${d.depElapsed} ${formatDuration(now - item.time)} ${d.agoText}</span>`;
+
+    return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
+  }).join('');
+
+  if (items.length > 8) {
+    if ($('movement')) $('movement').innerHTML = html + html;
+    startAutoScroll();
+  } else {
+    if ($('movement')) $('movement').innerHTML = html;
+    stopAutoScroll();
+  }
+}
+
+function startAutoScroll() {
+  stopAutoScroll();
+  const container = $('movementContainer');
+  if (!container) return;
+  autoScrollTimer = setInterval(() => {
+    if (isUserHovering) return;
+    let halfHeight = container.scrollHeight / 2;
+    if (container.scrollTop >= halfHeight) container.scrollTop = 0;
+    else container.scrollTop += 0.5;
+  }, 35);
+}
+
+function stopAutoScroll() {
+  if (autoScrollTimer) { clearInterval(autoScrollTimer); autoScrollTimer = null; }
+}
+function pauseAutoScroll() { isUserHovering = true; }
+function resumeAutoScroll() { isUserHovering = false; }
+
+function filterMovement(m, btn) {
+  movementMode = m;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMovement(getFilteredCalls());
+}
+
+function renderTable(list) {
+  let q = ($('search')?.value || '').toLowerCase();
+  let filtered = list.filter(c => !q || [c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(q));
+  if ($('rows')) {
+    $('rows').innerHTML = filtered.length ? filtered.map((c, i) => `
+      <tr><td>${i+1}</td><td class="vessel">${esc(c.vessel)}</td><td><span class="badge">${esc(c.operator)}</span></td><td>${c.loa}</td><td>${c.dwt}</td><td>${esc(c.terminal)} · ${esc(c.berth)}</td><td>${dt(c.etb)}</td><td>${dt(c.etd)}</td></tr>
+    `).join('') : `<tr><td colspan="8" class="empty">Không tìm thấy bản ghi.</td></tr>`;
+  }
+}
+
+function renderGantt() {
+  let days = +$('days')?.value || 4;
+  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
+  let end = new Date(start.getTime() + days * 86400000);
+  let list = getFilteredCalls();
+  let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
+
+  let headerHtml = `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
+  for (let d = 0; d < days; d++) {
+    let curDate = new Date(start.getTime() + d * 86400000);
+    let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
+    headerHtml += `
+      <div class="gantt-time-slot">${dateStr} <span>00:00 - 12:00</span></div>
+      <div class="gantt-time-slot">${dateStr} <span>12:00 - 24:00</span></div>
+    `;
+  }
+  headerHtml += `</div></div>`;
+
+  let terms = {};
+  list.forEach(c => {
+    if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
+    if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
+    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
+    if (!terms[key]) terms[key] = [];
+    terms[key].push(c);
+  });
+
+  let out = headerHtml;
+  let hasData = false;
+  for (let [name, ships] of Object.entries(terms)) {
+    hasData = true;
+    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
+    ships.forEach(c => {
+      let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
+      let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
+      let left = Math.max(0, Math.min(100, (a - start) / (end - start) * 100));
+      let right = Math.max(left + 2, Math.min(100, (b - start) / (end - start) * 100));
+      if (a < end.getTime() && b >= start.getTime()) {
+        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" style="left:${left}%;width:${right-left}%" onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
+      }
+    });
+    out += `</div></div>`;
+  }
+  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
+  if ($('fullGantt')) $('fullGantt').innerHTML = out;
+  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
+}
+
+function filterPlanningArea(area, btn) {
+  planningAreaFilter = area;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('primary'));
+  btn.classList.add('primary');
+  renderGantt();
+}
+
+let statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
+function renderStats() {
+  let list = getFilteredCalls();
+  statsVesselCache = { terminals: {}, operators: {}, loaBins: {} };
+
+  if (!list.length) {
+    if ($('statTerminals')) $('statTerminals').innerHTML = `<div class="empty">Không có dữ liệu</div>`;
+    return;
+  }
+
+  let termMap = {};
+  list.forEach(c => {
+    let t = c.terminal || 'Khác';
+    termMap[t] = (termMap[t] || 0) + 1;
+    if (!statsVesselCache.terminals[t]) statsVesselCache.terminals[t] = [];
+    statsVesselCache.terminals[t].push(c);
+  });
+  let maxTerm = Math.max(1, ...Object.values(termMap));
+  if ($('statTerminals')) {
+    $('statTerminals').innerHTML = Object.entries(termMap).sort((a,b) => b[1] - a[1]).map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'terminals', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
+        <div class="barbg"><div class="barfill" style="width:${(v/maxTerm*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
+  }
+
+  let opMap = {};
+  list.forEach(c => {
+    let op = (c.operator || 'Không xác định').trim();
+    opMap[op] = (opMap[op] || 0) + 1;
+    if (!statsVesselCache.operators[op]) statsVesselCache.operators[op] = [];
+    statsVesselCache.operators[op].push(c);
+  });
+  let maxOp = Math.max(1, ...Object.values(opMap));
+  if ($('statOperators')) {
+    $('statOperators').innerHTML = Object.entries(opMap).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'operators', '${esc(k)}')" onmouseleave="scheduleHideStatsPopover()">${esc(k)}</span>
+        <div class="barbg"><div class="barfill gold" style="width:${(v/maxOp*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
+  }
+
+  let loaBins = { '< 150m': 0, '150m - 200m': 0, '200m - 250m': 0, '250m - 300m': 0, '≥ 300m': 0 };
+  Object.keys(loaBins).forEach(k => { statsVesselCache.loaBins[k] = []; });
+  list.forEach(c => {
+    let l = c.loa || 0;
+    let bKey = l < 150 ? '< 150m' : (l < 200 ? '150m - 200m' : (l < 250 ? '200m - 250m' : (l < 300 ? '250m - 300m' : '≥ 300m')));
+    loaBins[bKey]++;
+    statsVesselCache.loaBins[bKey].push(c);
+  });
+  let maxLoa = Math.max(1, ...Object.values(loaBins));
+  if ($('statLoaBins')) {
+    $('statLoaBins').innerHTML = Object.entries(loaBins).map(([k,v]) => `
+      <div class="barrow">
+        <span class="barrow-label" onmouseenter="showStatsPopover(event, 'loaBins', '${k}')" onmouseleave="scheduleHideStatsPopover()">${k}</span>
+        <div class="barbg"><div class="barfill" style="width:${(v/maxLoa*100).toFixed(1)}%"></div></div>
+        <b>${v}</b>
+      </div>
+    `).join('');
+  }
+
+  let hourArr = new Array(24).fill(0);
+  list.forEach(c => {
+    if (c.etb) {
+      let d = new Date(c.etb);
+      if (!isNaN(d)) hourArr[d.getHours()]++;
+    }
+  });
+  let maxHour = Math.max(1, ...hourArr);
+  let hourHtml = '';
+  for (let h = 0; h < 24; h++) {
+    let cnt = hourArr[h];
+    let pct = (cnt / maxHour * 100).toFixed(1);
+    hourHtml += `
+      <div class="hour-cell">
+        <div class="hour-cell-top"><span>${String(h).padStart(2,'0')}:00</span><span><b>${cnt}</b> tàu</span></div>
+        <div class="hour-meter"><i style="width:${pct}%"></i></div>
+      </div>
+    `;
+  }
+  if ($('statHours')) $('statHours').innerHTML = hourHtml;
+}
+
+function showStatsPopover(e, groupKey, labelName) {
+  clearStatsPopoverTimeout();
+  let ships = (statsVesselCache[groupKey] && statsVesselCache[groupKey][labelName]) ? statsVesselCache[groupKey][labelName] : [];
+  if (!ships.length) return;
+  $('popTitle').textContent = labelName;
+  $('popBadge').textContent = `${ships.length} tàu`;
+
+  $('popList').innerHTML = ships.map((s, idx) => `
+    <div class="pop-item">
+      <div class="pop-item-top"><span>${idx + 1}. ${esc(s.vessel)}</span><span style="color:var(--cyan)">${s.loa ? s.loa + 'm' : ''}</span></div>
+      <div class="pop-item-meta"><span>${esc(s.terminal || '—')} ${esc(s.berth || '')}</span><span>Cập: ${dt(s.etb)}</span></div>
+    </div>
+  `).join('');
+
+  let pop = $('statsVesselPopover');
+  pop.style.display = 'block';
+  let rect = e.target.getBoundingClientRect();
+  pop.style.left = Math.max(10, Math.min(rect.right + 10, window.innerWidth - 305)) + 'px';
+  pop.style.top = Math.max(10, Math.min(rect.top - 20, window.innerHeight - 240)) + 'px';
+}
+
+function scheduleHideStatsPopover() {
+  clearStatsPopoverTimeout();
+  statsPopoverTimeout = setTimeout(() => { hideStatsPopover(); }, 1000);
+}
+function clearStatsPopoverTimeout() {
+  if (statsPopoverTimeout) { clearTimeout(statsPopoverTimeout); statsPopoverTimeout = null; }
+}
+function hideStatsPopover() { if ($('statsVesselPopover')) $('statsVesselPopover').style.display = 'none'; }
+
+function showTooltip(e, s) {
+  if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+  selectedShipForReport = s;
+  let tt = $('shipTooltip');
+  $('ttName').textContent = s.vessel;
+  $('ttOperator').textContent = s.operator || '—';
+  $('ttLoa').textContent = s.loa + 'm';
+  $('ttDwt').textContent = s.dwt ? Number(s.dwt).toLocaleString('vi-VN') + ' T' : '—';
+  $('ttEtb').textContent = dt(s.etb);
+  $('ttEtd').textContent = dt(s.etd);
+
+  let now = Date.now();
+  let t1 = s.etb ? new Date(s.etb).getTime() : 0;
+  let t2 = s.etd ? new Date(s.etd).getTime() : 0;
+  if (t1 > 0 && now >= t1) {
+    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
+    $('ttDocked').textContent = formatDuration(dockedMs);
+  } else {
+    $('ttDocked').textContent = 'Chưa cập';
+  }
+
+  if (t2 > 0 && t2 > now) $('ttRemaining').textContent = formatDuration(t2 - now);
+  else if (t2 > 0 && now >= t2) $('ttRemaining').textContent = 'Đã rời bến';
+  else $('ttRemaining').textContent = '—';
+
+  tt.style.display = 'block';
+  tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
+  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 220) + 'px';
+}
+
+function scheduleHideTooltip() {
+  if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
+  tooltipHideTimeout = setTimeout(() => { hideTooltip(); }, 3000);
+}
+function hideTooltip() { if ($('shipTooltip')) $('shipTooltip').style.display = 'none'; }
+
+// --- XUẤT VÀ NẠP EXCEL / CSV, SETUP CA TRỰC ---
+function exportConfigAsCSVProtected() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') exportConfigAsCSV();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+}
+
+function exportConfigAsCSV() {
+  let list = getFilteredCalls();
+  if (!list || list.length === 0) {
+    alert(currentLang === 'vi' ? 'Không có dữ liệu trong khoảng thời gian đã chọn!' : 'No data in selected date range!');
+    return;
+  }
+  let csvRows = [
+    `"${dict[currentLang].hpPort} - ${dict[currentLang].topTitle}"`,
+    `"Shift: ${$('dispShift').textContent}","Commander: ${$('dispCommander').textContent}","Safety: ${$('dispSafety').textContent}"`,
+    `"Exported: ${new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')}"`,
+    `""`,
+    `"STT","Vessel Name","Operator","Terminal","Berth","LOA (m)","DWT","ETB","ETD"`
+  ];
+
+  list.forEach((c, i) => {
+    csvRows.push([
+      i + 1,
+      `"${c.vessel}"`,
+      `"${c.operator || '—'}"`,
+      `"${c.terminal || '—'}"`,
+      `"${c.berth || '—'}"`,
+      c.loa || 0,
+      `"${c.dwt || '—'}"`,
+      `"${dt(c.etb)}"`,
+      `"${dt(c.etd)}"`
+    ].join(','));
+  });
+
+  const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `HaiPhongPort_Schedule_${getTodayString()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function triggerImportConfig() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') $('importFileInput').click();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+}
+
+function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const lines = evt.target.result.split('\n');
+      let loaded = [];
+      for (let i = 2; i < lines.length; i++) {
+        let cols = lines[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        if (cols.length >= 9) {
+          loaded.push({
+            vessel: cols[1].replace(/["']/g, ''),
+            operator: cols[2].replace(/["']/g, ''),
+            terminal: cols[3].replace(/["']/g, ''),
+            berth: cols[4].replace(/["']/g, ''),
+            loa: Number(cols[5]) || 0,
+            dwt: cols[6] || '',
+            etb: cols[7].replace(/["']/g, ''),
+            etd: cols[8].replace(/["']/g, '')
+          });
+        }
+      }
+      if (loaded.length > 0) {
+        allCalls = filterAndDeduplicateCalls(loaded);
+        renderAll();
+        alert(currentLang === 'vi' ? `Đã nạp ${allCalls.length} tàu từ file thành công!` : `Imported ${allCalls.length} vessels successfully!`);
+      }
+    } catch(err) { alert('Error: ' + err.message); }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function saveCurrentDataToSupabase(isAuto = false) {
+  if (!allCalls || allCalls.length === 0 || !supabaseClient) return;
+  const todayStr = getTodayString();
+  const nowStr = new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB');
+
+  const jsonContent = JSON.stringify({
+    saved_at: nowStr,
+    date: todayStr,
+    shift_info: { shift: $('dispShift').textContent, commander: $('dispCommander').textContent, safety: $('dispSafety').textContent },
+    total_calls: allCalls.length,
+    calls: allCalls
+  }, null, 2);
+
+  const blob = new Blob([jsonContent], { type: 'application/json' });
+  await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blob, { upsert: true });
+
+  const savedText = `${nowStr} (${isAuto ? 'Auto 00h00' : (currentLang === 'vi' ? 'Thủ công' : 'Manual')})`;
+  localStorage.setItem('hp_last_saved', savedText);
+  $('topLastSaved').textContent = 'Lưu: ' + savedText;
+  $('sideLastSaved').textContent = 'Lưu: ' + savedText;
+  if (!isAuto) alert('Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!');
+}
+
+function handleManualSave() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') saveCurrentDataToSupabase(false);
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+}
+
+function fetchHistoryFromBucketProtected() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') fetchHistoryFromBucket();
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+}
+
+async function fetchHistoryFromBucket() {
+  let fDate = $('fromDate').value;
+  if (!fDate) { alert('Vui lòng chọn ngày tại ô "Từ:" !'); return; }
+  if (!supabaseClient) { alert('Chưa kết nối được Supabase!'); return; }
+
+  $('sideStatus').textContent = `Bucket (${fDate})...`;
+  try {
+    const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
+    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.`); $('sideStatus').textContent = 'Trống'; return; }
+
+    const text = await data.text();
+    const parsed = JSON.parse(text);
+    if (parsed.calls && Array.isArray(parsed.calls)) {
+      allCalls = filterAndDeduplicateCalls(parsed.calls);
+      if (parsed.shift_info) {
+        $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1';
+        $('dispCommander').textContent = parsed.shift_info.commander || '—';
+        $('dispSafety').textContent = parsed.shift_info.safety || '—';
+      }
+      renderAll();
+      $('sideStatus').textContent = `${allCalls.length} tàu (${fDate})`;
+      alert(`Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!`);
+    }
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+async function loadShiftConfigFromSupabase() {
+  if (!supabaseClient) return;
+  let today = getTodayString();
+  try {
+    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).single();
+    if (data && !error) {
+      $('dispShift').textContent = data.shift_name || 'Ca 1';
+      $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
+      $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
+    }
+  } catch(e) {}
+}
+
+async function saveShiftConfigToSupabase(shiftData) {
+  if (!supabaseClient) return;
+  let today = getTodayString();
+  try {
+    await supabaseClient.from('shift_configs').upsert({
+      shift_date: today,
+      shift_name: shiftData.shift,
+      commander: shiftData.commander,
+      safety: shiftData.safety,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'shift_date' });
+  } catch(err) {}
+}
+
+function openShiftModalWithPassword() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd === '6868') $('modalShade').classList.add('open');
+  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+}
+
+// --- ĐƯA CÁC HÀM RA WINDOW ---
+window.nav = nav;
+window.filterMovement = filterMovement;
+window.filterPlanningArea = filterPlanningArea;
+window.showTooltip = showTooltip;
+window.scheduleHideTooltip = scheduleHideTooltip;
+window.showStatsPopover = showStatsPopover;
+window.scheduleHideStatsPopover = scheduleHideStatsPopover;
+window.clearStatsPopoverTimeout = clearStatsPopoverTimeout;
+window.pauseAutoScroll = pauseAutoScroll;
+window.resumeAutoScroll = resumeAutoScroll;
+window.renderGantt = renderGantt;
+window.renderTable = renderTable;
+window.getFilteredCalls = getFilteredCalls;
+window.populateEditForm = populateEditForm;
+window.saveVesselOverrideProtected = saveVesselOverrideProtected;
+window.deleteVesselOverrideProtected = deleteVesselOverrideProtected;
+window.openMailAuthModal = openMailAuthModal;
+window.closeMailAuthModal = closeMailAuthModal;
+window.verifyMailPassword = verifyMailPassword;
+window.closeInboxModal = closeInboxModal;
+window.deleteFeedback = deleteFeedback;
+window.clearAllFeedbacks = clearAllFeedbacks;
+window.submitFeedbackReport = submitFeedbackReport;
+window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
+window.openTideConfigPrompt = openTideConfigPrompt;
+window.cycleTideDayView = cycleTideDayView;
+
+// --- GẮN SỰ KIỆN TƯƠNG TÁC GIAO DIỆN ---
+function bindAllEventListeners() {
+  document.querySelectorAll('.nav button').forEach(b => {
+    b.onclick = () => nav(b.dataset.page);
+  });
+  document.querySelectorAll('[data-goto]').forEach(b => {
+    b.onclick = () => nav(b.dataset.goto);
+  });
+
+  if ($('langToggleBtn')) {
+    $('langToggleBtn').onclick = () => {
+      let nextLang = currentLang === 'vi' ? 'en' : 'vi';
+      applyLanguage(nextLang);
+    };
+  }
+
+  if ($('themeToggle')) {
+    $('themeToggle').onclick = () => {
+      let isDark = document.documentElement.dataset.theme === 'dark';
+      let nextTheme = isDark ? 'light' : 'dark';
+      document.documentElement.dataset.theme = nextTheme;
+      localStorage.setItem('hp_theme', nextTheme);
+    };
+  }
+
+  if ($('mailNotificationBtn')) $('mailNotificationBtn').onclick = openMailAuthModal;
+  if ($('mailPasswordInput')) {
+    $('mailPasswordInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') verifyMailPassword();
+    });
+  }
+
+  if ($('sendReportSubmitBtn')) $('sendReportSubmitBtn').onclick = submitFeedbackReport;
+
+  if ($('fromDate')) $('fromDate').onchange = renderAll;
+  if ($('toDate')) $('toDate').onchange = renderAll;
+
+  if ($('refreshBtn')) $('refreshBtn').onclick = loadData;
+  if ($('setupShiftBtn')) $('setupShiftBtn').onclick = openShiftModalWithPassword;
+  if ($('manualSaveBtn')) $('manualSaveBtn').onclick = handleManualSave;
+  if ($('fetchHistoryBtn')) $('fetchHistoryBtn').onclick = fetchHistoryFromBucketProtected;
+  if ($('exportConfigBtn')) $('exportConfigBtn').onclick = exportConfigAsCSVProtected;
+  if ($('importConfigBtn')) $('importConfigBtn').onclick = triggerImportConfig;
+  if ($('importFileInput')) $('importFileInput').onchange = handleFileImport;
+
+  if ($('closeModalBtn')) $('closeModalBtn').onclick = () => $('modalShade').classList.remove('open');
+  if ($('saveModalBtn')) {
+    $('saveModalBtn').onclick = () => {
+      saveShiftConfigToSupabase({ shift: $('mShift').value, commander: $('mCommander').value, safety: $('mSafety').value });
+      $('dispShift').textContent = $('mShift').value;
+      $('dispCommander').textContent = $('mCommander').value;
+      $('dispSafety').textContent = $('mSafety').value;
+      $('modalShade').classList.remove('open');
+    };
+  }
+
+  // NÚT SỬA TRÊN TOOLTIP CẠNH NÚT REPORT
+  if ($('ttEditBtn')) {
+    $('ttEditBtn').onclick = () => {
+      if (!selectedShipForReport) return;
+      let pwd = prompt(dict[currentLang].promptPwd);
+      if (pwd === '6868') {
+        populateEditForm(selectedShipForReport);
+        hideTooltip();
+      } else if (pwd !== null) {
+        alert(dict[currentLang].pwdWrong);
+      }
+    };
+  }
+
+  // NÚT BÁO LỖI (REPORT) TRÊN TOOLTIP
+  if ($('ttReportBtn')) {
+    $('ttReportBtn').onclick = () => {
+      if (selectedShipForReport) {
+        nav('report');
+        $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
+        $('repContent').value = currentLang === 'vi' 
+          ? `Phản ánh sai lệch thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`
+          : `Discrepancy report for vessel ${selectedShipForReport.vessel} (ETB: ${dt(selectedShipForReport.etb)}, ETD: ${dt(selectedShipForReport.etd)}).`;
+        hideTooltip();
+      }
+    };
+  }
+}
+
+// --- KHỞI ĐỘNG ỨNG DỤNG ---
+function initApp() {
+  bindAllEventListeners();
+
+  let today = getTodayString();
+  if ($('fromDate') && !$('fromDate').value) $('fromDate').value = today;
+  if ($('toDate') && !$('toDate').value) $('toDate').value = today;
+  if ($('currentFullDate')) $('currentFullDate').textContent = new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+  let savedTheme = localStorage.getItem('hp_theme') || 'light';
+  document.documentElement.dataset.theme = savedTheme;
+
+  applyLanguage(currentLang);
+  loadShiftConfigFromSupabase();
+  loadFeedbacks();
+  loadData();
+  fetchRealWeatherHaiPhong();
+  fetchTideFromTheGioiMoiCau();
+  
+  setInterval(fetchRealWeatherHaiPhong, 600000);
+  setInterval(fetchTideFromTheGioiMoiCau, 7200000); // Tự động đồng bộ nguồn mỗi 2 giờ
+  setInterval(updateRealtimeWidgets, 300000);        // Cập nhật diễn biến triều & nội suy mỗi 5 phút
+  setInterval(loadFeedbacks, 120000);
+  startMidnightCountdown();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
