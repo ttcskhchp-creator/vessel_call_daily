@@ -1846,25 +1846,55 @@ function calculateDayExtremes(hourlyList) {
 }
 
 // Bóc tách giờ và mực nước linh hoạt, hỗ trợ cả bảng HTML lẫn văn bản
-function parseDayChunkToHourly(chunkText) {
+// Hàm bóc tách chuẩn xác 24 giờ từ DOM node hoặc đoạn text của từng ngày
+function extractHourlyFromDayElement(container, chunkText) {
   let map = new Map();
-  
-  // Quét các dạng: "01h - 2.5m", "01:00 / 2.5m", "1 h ... 2,5 m"
-  const regexPatterns = [
-    /(?:^|[^\d])([0-2]?\d)(?:\s*h|\s*:\s*00)?\s*[:\-\—\s]\s*([0-4][.,]\d+)\s*(?:m|mét)?/gi,
-    /([0-2]?\d)\s*h[^\d\n\r]*([0-4][.,]\d+)\s*m/gi
-  ];
 
-  for (let regex of regexPatterns) {
-    let matches = [...chunkText.matchAll(regex)];
-    for (let m of matches) {
+  // 1. Nếu có phần tử DOM thực tế: Quét trực tiếp các cặp thẻ giờ & mực nước
+  if (container) {
+    // Tìm tất cả các ô/khối có khả năng chứa dữ liệu (thường là td, th, div.col, li, p)
+    const elements = container.querySelectorAll('td, div, span, li, p');
+    let textNodes = [];
+    elements.forEach(el => {
+      let txt = (el.innerText || el.textContent || '').trim();
+      if (txt && txt.length < 30) {
+        textNodes.push(txt);
+      }
+    });
+
+    let combinedText = textNodes.join(' | ');
+    // Bắt mẫu "01:00 | 2.5m" hoặc "1h | 2.5" hoặc "01 | 2.5"
+    let regexTable = /(?:^|[|;\s])([0-2]?\d)(?:\s*h|\s*:\s*00)?\s*[|:\-\s]+\s*([0-4][.,]\d+)\s*(?:m)?/gi;
+    let mList = [...combinedText.matchAll(regexTable)];
+    for (let m of mList) {
       let h = parseInt(m[1], 10);
       let val = parseFloat(m[2].replace(',', '.'));
-      if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23 && val >= 0 && val <= 5.5) {
+      if (h >= 0 && h <= 23 && val >= 0.1 && val <= 5.5) {
         if (!map.has(h)) map.set(h, val);
       }
     }
-    if (map.size >= 16) break;
+  }
+
+  // 2. Dự phòng: Quét bằng Regex cải tiến linh hoạt với ký tự xuống dòng (\r?\n)
+  if (map.size < 16 && chunkText) {
+    const regexList = [
+      // Mẫu: 01:00 \n 2.5m hoặc 01h \n 2.5
+      /([0-2]?\d)(?:\s*h|:00)?[\s\r\n\t:\-—]+([0-4][.,]\d+)\s*m?/gi,
+      // Mẫu chuẩn ô bảng: Giờ nằm riêng, mét nằm riêng
+      /(?:giờ|h)?\s*([0-2]?\d)\s*[\r\n\t]+\s*([0-4][.,]\d+)\s*m?/gi
+    ];
+
+    for (let rg of regexList) {
+      let matches = [...chunkText.matchAll(rg)];
+      for (let m of matches) {
+        let h = parseInt(m[1], 10);
+        let val = parseFloat(m[2].replace(',', '.'));
+        if (h >= 0 && h <= 23 && val >= 0.1 && val <= 5.5) {
+          if (!map.has(h)) map.set(h, val);
+        }
+      }
+      if (map.size >= 16) break;
+    }
   }
 
   let list = [];
@@ -1881,7 +1911,7 @@ async function fetchTideFromTheGioiMoiCau() {
 
   const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
 
-  // Danh sách Proxy mở chạy được trên Vercel (bỏ các proxy đã bị lỗi 403, 429 hoặc sập domain)
+  // Sử dụng các CORS proxy tương thích domain production Vercel
   const proxyEndpoints = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
@@ -1917,19 +1947,16 @@ async function fetchTideFromTheGioiMoiCau() {
 
       if (rawHtml && (rawHtml.toLowerCase().includes('hòn dáu') || rawHtml.toLowerCase().includes('hon dau') || rawHtml.includes('thegioimoicau'))) {
         isFetchSuccess = true;
-        break; // Lấy thành công thì thoát vòng lặp ngay
+        break;
       }
-    } catch(err) {
-      // Proxy gặp sự cố sẽ tự động chuyển sang endpoint tiếp theo
-    }
+    } catch(err) {}
   }
 
-  // Bóc tách dữ liệu 3 ngày liên tiếp
+  // Bóc tách DOM chuẩn theo từng khối ngày
   if (isFetchSuccess && rawHtml) {
     try {
       let parser = new DOMParser();
       let doc = parser.parseFromString(rawHtml, 'text/html');
-      let pageText = doc.body.innerText || doc.body.textContent || '';
 
       for (let offset = 0; offset < 3; offset++) {
         let p = getVNCurrentDateParts(offset);
@@ -1938,61 +1965,82 @@ async function fetchTideFromTheGioiMoiCau() {
         let monthPadded = p.month;
         let yearFull = p.year;
 
-        // Định dạng nhận diện linh hoạt
-        let searchFormat1 = `${dayPadded}/${monthPadded}/${yearFull}`;
-        let searchFormat2 = `${parseInt(dayPadded, 10)}/${parseInt(monthPadded, 10)}/${yearFull}`;
-        let searchFormat3 = `${dayPadded}-${monthPadded}-${yearFull}`;
+        // Các mẫu hiển thị ngày: "28/10/2026", "28/10", "28-10"
+        let dPatterns = [
+          `${dayPadded}/${monthPadded}/${yearFull}`,
+          `${parseInt(dayPadded, 10)}/${parseInt(monthPadded, 10)}/${yearFull}`,
+          `${dayPadded}/${monthPadded}`,
+          `${parseInt(dayPadded, 10)}/${parseInt(monthPadded, 10)}`
+        ];
 
-        let dateIdx = pageText.indexOf(searchFormat1);
-        if (dateIdx === -1) dateIdx = pageText.indexOf(searchFormat2);
-        if (dateIdx === -1) dateIdx = pageText.indexOf(searchFormat3);
-
-        if (dateIdx !== -1) {
-          let dayChunk = pageText.substring(dateIdx, dateIdx + 6000);
-          
-          let nextDayOffsetPart = getVNCurrentDateParts(offset + 1);
-          let nextDayStr = `${nextDayOffsetPart.day}/${nextDayOffsetPart.month}`;
-          let nextDayIdx = dayChunk.indexOf(nextDayStr, 30);
-          if (nextDayIdx !== -1) {
-            dayChunk = dayChunk.substring(0, nextDayIdx);
-          }
-
-          let hourlyList = parseDayChunkToHourly(dayChunk);
-          if (hourlyList.length >= 16) {
-            // Tự bù giờ nếu trang web bị khuyết 1-2 khung giờ
-            if (hourlyList.length < 24) {
-              let full24 = [];
-              for (let h = 0; h < 24; h++) {
-                let found = hourlyList.find(x => x.hour === h);
-                if (found) full24.push(found);
-                else {
-                  let prev = hourlyList.filter(x => x.hour < h).pop() || hourlyList[0];
-                  full24.push({ hour: h, val: prev.val });
-                }
-              }
-              hourlyList = full24;
+        // 1. Tìm thẻ HTML chứa ngày cụ thể này
+        let targetNode = null;
+        const allElements = doc.querySelectorAll('div, table, section, article, tr');
+        for (let el of allElements) {
+          let txt = el.innerText || el.textContent || '';
+          if (dPatterns.some(pat => txt.includes(pat))) {
+            // Lấy khối cha bao quanh có kích thước vừa đủ chứa 24 giờ
+            if (txt.length > 100 && txt.length < 3500) {
+              targetNode = el;
+              break;
             }
-
-            let extremes = calculateDayExtremes(hourlyList);
-            multiDayTideData[dateKey] = {
-              date: dateKey,
-              displayDate: p.labelDate,
-              dayOffset: offset,
-              station: 'Hòn Dáu',
-              sourceType: 'live',
-              ...extremes,
-              hourlyList: hourlyList
-            };
-            localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(multiDayTideData[dateKey]));
           }
+        }
+
+        let hourlyList = [];
+        if (targetNode) {
+          hourlyList = extractHourlyFromDayElement(targetNode, targetNode.innerText || targetNode.textContent || '');
+        }
+
+        // 2. Nếu không tìm thấy qua node, quét qua toàn bộ text trang
+        if (hourlyList.length < 16) {
+          let fullPageText = doc.body.innerText || doc.body.textContent || '';
+          let dateIdx = -1;
+          for (let pat of dPatterns) {
+            dateIdx = fullPageText.indexOf(pat);
+            if (dateIdx !== -1) break;
+          }
+
+          if (dateIdx !== -1) {
+            let chunk = fullPageText.substring(dateIdx, dateIdx + 5000);
+            hourlyList = extractHourlyFromDayElement(null, chunk);
+          }
+        }
+
+        // 3. Nếu đọc thành công đủ mốc (>= 16 mốc), bổ sung các giờ thiếu và lưu lại
+        if (hourlyList.length >= 16) {
+          if (hourlyList.length < 24) {
+            let full24 = [];
+            for (let h = 0; h < 24; h++) {
+              let found = hourlyList.find(x => x.hour === h);
+              if (found) full24.push(found);
+              else {
+                let prev = hourlyList.filter(x => x.hour < h).pop() || hourlyList[0];
+                full24.push({ hour: h, val: prev.val });
+              }
+            }
+            hourlyList = full24;
+          }
+
+          let extremes = calculateDayExtremes(hourlyList);
+          multiDayTideData[dateKey] = {
+            date: dateKey,
+            displayDate: p.labelDate,
+            dayOffset: offset,
+            station: 'Hòn Dáu',
+            sourceType: 'live',
+            ...extremes,
+            hourlyList: hourlyList
+          };
+          localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(multiDayTideData[dateKey]));
         }
       }
     } catch(err) {
-      console.warn("Lỗi phân tích DOM 3 ngày thủy triều:", err);
+      console.warn("Lỗi bóc tách thủy triều 3 ngày:", err);
     }
   }
 
-  // Cơ chế Fallback an toàn: Tự sinh chu kỳ nhật triều Hòn Dáu theo ngày động
+  // Fallback an toàn: nếu mạng lỗi hoặc bị chặn, tự sinh triều chuẩn theo ngày hiện tại
   for (let offset = 0; offset < 3; offset++) {
     let p = getVNCurrentDateParts(offset);
     let dateKey = p.dateKey;
@@ -2028,7 +2076,8 @@ async function fetchTideFromTheGioiMoiCau() {
   }
 
   updateRealtimeWidgets();
-}  // Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
+}
+  // Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
 function cycleTideDayView() {
   tideViewDayOffset = (tideViewDayOffset + 1) % 3;
   updateRealtimeWidgets();
