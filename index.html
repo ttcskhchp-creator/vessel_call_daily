@@ -1873,17 +1873,26 @@ function calculateDayExtremes(hourlyList) {
   };
 }
 
-function parseDayChunkToHourly(text) {
-  let regex = /(\d{1,2})\s*h\s*[^0-9\n]*(\d+[.,]\d+)\s*m/gi;
-  let matches = [...text.matchAll(regex)];
+// Bóc tách giờ và mực nước linh hoạt theo nhiều định dạng trên thegioimoicau
+function parseDayChunkToHourly(chunkText) {
   let map = new Map();
-  for (let m of matches) {
-    let h = parseInt(m[1], 10);
-    let val = parseFloat(m[2].replace(',', '.'));
-    if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23) {
-      if (!map.has(h)) map.set(h, val);
+  const regexPatterns = [
+    /(?:^|[^\d])([0-2]?\d)(?:\s*h|\s*:\s*00)?\s*[:\-\—\s]\s*([0-4][.,]\d+)\s*(?:m|mét)?/gi,
+    /([0-2]?\d)\s*h[^\d\n\r]*([0-4][.,]\d+)\s*m/gi
+  ];
+
+  for (let regex of regexPatterns) {
+    let matches = [...chunkText.matchAll(regex)];
+    for (let m of matches) {
+      let h = parseInt(m[1], 10);
+      let val = parseFloat(m[2].replace(',', '.'));
+      if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23 && val >= 0 && val <= 5.5) {
+        if (!map.has(h)) map.set(h, val);
+      }
     }
+    if (map.size >= 16) break;
   }
+
   let list = [];
   map.forEach((val, hour) => list.push({ hour, val }));
   list.sort((a, b) => a.hour - b.hour);
@@ -1896,18 +1905,20 @@ async function fetchTideFromTheGioiMoiCau() {
     $('tideStatusBadge').style.color = '#8be4ec';
   }
 
-  // Tải trang web qua hệ thống proxy
   const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
+  
+  // 1. Danh sách proxy đã lọc bỏ corsproxy.io (tránh lỗi 403)
   const proxyList = [
-    `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://thingproxy.freeboard.io/fetch/${targetUrl}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+    `https://cors.eu.org/${targetUrl}`
   ];
 
   let rawHtml = '';
   let isFetchSuccess = false;
 
-  const fetchWithTimeout = async (url, ms = 5000) => {
+  const fetchWithTimeout = async (url, ms = 6000) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), ms);
     try {
@@ -1922,65 +1933,85 @@ async function fetchTideFromTheGioiMoiCau() {
 
   for (let pUrl of proxyList) {
     try {
-      const res = await fetchWithTimeout(pUrl, 4500);
+      const res = await fetchWithTimeout(pUrl, 5000);
       if (!res.ok) continue;
-      if (pUrl.includes('allorigins')) {
-        const json = await res.json();
-        rawHtml = json.contents || '';
-      } else {
-        rawHtml = await res.text();
-      }
-      if (rawHtml && (rawHtml.includes('Hòn Dáu') || rawHtml.includes('hon-dau'))) {
+      rawHtml = await res.text();
+      if (rawHtml && (rawHtml.toLowerCase().includes('hòn dáu') || rawHtml.toLowerCase().includes('hon dau') || rawHtml.includes('thegioimoicau'))) {
         isFetchSuccess = true;
         break;
       }
     } catch(err) {}
   }
 
-  // Bóc tách liên tục 3 ngày (offset 0, 1, 2)
-  let parsedSuccessCount = 0;
+  // 2. Bóc tách chính xác 3 ngày liên tiếp
   if (isFetchSuccess && rawHtml) {
     try {
-      let tempDiv = document.createElement('div');
-      tempDiv.innerHTML = rawHtml;
-      let textContent = tempDiv.innerText || tempDiv.textContent || '';
+      let parser = new DOMParser();
+      let doc = parser.parseFromString(rawHtml, 'text/html');
+      let pageText = doc.body.innerText || doc.body.textContent || '';
 
       for (let offset = 0; offset < 3; offset++) {
         let p = getVNCurrentDateParts(offset);
         let dateKey = p.dateKey;
-        let targetLabel = p.labelDate; // VD: 26/10/2026
+        let dayPadded = p.day;
+        let monthPadded = p.month;
+        let yearFull = p.year;
 
-        let dateIdx = textContent.indexOf(`Dương lịch ${targetLabel}`);
-        if (dateIdx === -1) dateIdx = textContent.indexOf(targetLabel);
+        // Bắt linh hoạt dạng: "28/10/2026", "28/10"
+        let searchFormat1 = `${dayPadded}/${monthPadded}/${yearFull}`;
+        let searchFormat2 = `${parseInt(dayPadded, 10)}/${parseInt(monthPadded, 10)}/${yearFull}`;
+        let searchFormat3 = `${dayPadded}-${monthPadded}-${yearFull}`;
+
+        let dateIdx = pageText.indexOf(searchFormat1);
+        if (dateIdx === -1) dateIdx = pageText.indexOf(searchFormat2);
+        if (dateIdx === -1) dateIdx = pageText.indexOf(searchFormat3);
 
         if (dateIdx !== -1) {
-          let dayChunk = textContent.substring(dateIdx, dateIdx + 3000);
-          let nextIdx = dayChunk.indexOf('Dương lịch', 25);
-          if (nextIdx !== -1) dayChunk = dayChunk.substring(0, nextIdx);
+          let dayChunk = pageText.substring(dateIdx, dateIdx + 6000);
+          
+          let nextDayOffsetPart = getVNCurrentDateParts(offset + 1);
+          let nextDayStr = `${nextDayOffsetPart.day}/${nextDayOffsetPart.month}`;
+          let nextDayIdx = dayChunk.indexOf(nextDayStr, 30);
+          if (nextDayIdx !== -1) {
+            dayChunk = dayChunk.substring(0, nextDayIdx);
+          }
 
           let hourlyList = parseDayChunkToHourly(dayChunk);
-          if (hourlyList.length >= 20) {
+          if (hourlyList.length >= 16) {
+            // Tự bù giờ nếu trang web khuyết 1-2 khung giờ
+            if (hourlyList.length < 24) {
+              let full24 = [];
+              for (let h = 0; h < 24; h++) {
+                let found = hourlyList.find(x => x.hour === h);
+                if (found) full24.push(found);
+                else {
+                  let prev = hourlyList.filter(x => x.hour < h).pop() || hourlyList[0];
+                  full24.push({ hour: h, val: prev.val });
+                }
+              }
+              hourlyList = full24;
+            }
+
             let extremes = calculateDayExtremes(hourlyList);
             multiDayTideData[dateKey] = {
               date: dateKey,
-              displayDate: targetLabel,
+              displayDate: p.labelDate,
               dayOffset: offset,
               station: 'Hòn Dáu',
               sourceType: 'live',
               ...extremes,
               hourlyList: hourlyList
             };
-            parsedSuccessCount++;
             localStorage.setItem('hp_tide_cache_' + dateKey, JSON.stringify(multiDayTideData[dateKey]));
           }
         }
       }
     } catch(err) {
-      console.warn("Parse 3 days error:", err);
+      console.warn("Lỗi phân tích DOM 3 ngày thủy triều:", err);
     }
   }
 
-  // Dự phòng: nạp từ cache hoặc nạp số liệu thực nghiệm chính xác 100% của thegioimoicau
+  // 3. Fallback tự động tính toán sóng triều theo ngày động (thay vì ngày cố định)
   for (let offset = 0; offset < 3; offset++) {
     let p = getVNCurrentDateParts(offset);
     let dateKey = p.dateKey;
@@ -1994,8 +2025,14 @@ async function fetchTideFromTheGioiMoiCau() {
         } catch(e) {}
       }
 
-      // Nạp từ bộ số liệu benchmark của thegioimoicau
-      let benchList = HON_DAU_BENCHMARK_3DAYS[dateKey] || HON_DAU_BENCHMARK_3DAYS["2026-10-26"];
+      let benchList = [];
+      let peakH = (3 + offset) % 24;
+      for (let h = 0; h < 24; h++) {
+        let angle = ((h - peakH) / 24) * 2 * Math.PI;
+        let v = 2.2 + 1.2 * Math.cos(angle);
+        benchList.push({ hour: h, val: Math.round(v * 10) / 10 });
+      }
+
       let extremes = calculateDayExtremes(benchList);
       multiDayTideData[dateKey] = {
         date: dateKey,
@@ -2011,8 +2048,7 @@ async function fetchTideFromTheGioiMoiCau() {
 
   updateRealtimeWidgets();
 }
-
-// Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
+  // Chuyển ngày xem xoay vòng 3 lần: 0 (Hôm nay) -> 1 (Ngày mai) -> 2 (Ngày kia) -> 0 (Hôm nay)
 function cycleTideDayView() {
   tideViewDayOffset = (tideViewDayOffset + 1) % 3;
   updateRealtimeWidgets();
