@@ -2761,7 +2761,7 @@ async function loadShiftConfigFromSupabase() {
   if (!supabaseClient) return;
   let today = getTodayString();
   try {
-    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).single();
+    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).maybeSingle();
     if (data && !error) {
       $('dispShift').textContent = data.shift_name || 'Ca 1';
       $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
