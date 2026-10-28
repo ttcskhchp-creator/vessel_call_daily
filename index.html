@@ -22,64 +22,96 @@ button:hover{filter:brightness(.95)}
 
 .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;transition:all .2s ease}
 .side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:16px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
-.brand{display:flex;gap:10px;align-items:center;padding:0 4px}
 
 /* --- BIỂU TƯỢNG ĐỒNG BỘ CẢNG HẢI PHÒNG 150+ NĂM --- */
+.brand {
+  padding: 2px 4px 6px;
+}
+
 .brand-badge-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+  width: 100%;
 }
 
 .brand-icon-box {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  background: linear-gradient(145deg, #0d2847, #071526);
-  border: 1.5px solid #26bdc8;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  background: linear-gradient(145deg, #0e2947, #071628);
+  border: 1.5px solid var(--cyan);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 14px rgba(38, 189, 200, 0.4), inset 0 0 8px rgba(38, 189, 200, 0.25);
-  position: relative;
-  overflow: visible;
+  box-shadow: 0 0 10px rgba(38, 189, 200, 0.35), inset 0 0 6px rgba(38, 189, 200, 0.2);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
 }
 
 .brand-icon-box:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(38, 189, 200, 0.65), inset 0 0 12px rgba(38, 189, 200, 0.35);
+  transform: scale(1.04);
+  box-shadow: 0 0 16px rgba(38, 189, 200, 0.6);
 }
 
 .brand-icon-box svg {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
 }
 
-/* Huy hiệu ★ 150+ YEARS ★ lấp lánh ánh kim vàng */
+.brand-text-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.brand-sub-title {
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #8bb1cf;
+  text-transform: uppercase;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-main-title {
+  font-size: 13px;
+  font-weight: 850;
+  color: #ffffff;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+
+/* Huy hiệu ★ 150+ YEARS ★ lấp lánh vàng ánh kim siêu gọn */
 .gold-years-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 3px;
-  padding: 1px 7px;
-  border-radius: 20px;
-  font-size: 8px;
+  gap: 2.5px;
+  margin-top: 2px;
+  padding: 0.5px 6px;
+  border-radius: 12px;
+  font-size: 7.5px;
   font-weight: 900;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #fff8d6;
+  color: #fff9db;
   background: linear-gradient(90deg, #b8860b 0%, #ffd700 25%, #fff6a6 50%, #ffd700 75%, #b8860b 100%);
   background-size: 200% auto;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
-  animation: goldShimmer 2.5s linear infinite;
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+  animation: goldShimmer 2.6s linear infinite;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   width: fit-content;
+  line-height: 1.2;
 }
 
 .gold-years-badge span.star {
-  font-size: 7.5px;
+  font-size: 6.5px;
   color: #ffffff;
 }
 
@@ -166,13 +198,35 @@ button:hover{filter:brightness(.95)}
 }
 .topbar-header-left{
   display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-brand-mini{
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  background: linear-gradient(145deg, #102d4d, #081a2e);
+  border: 1.2px solid var(--cyan);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(38, 189, 200, 0.25);
+  flex-shrink: 0;
+}
+.topbar-brand-mini svg{
+  width: 24px;
+  height: 24px;
+}
+.topbar-titles-box{
+  display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .topbar-title-row{
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
 }
 .crumb{font-size:9.5px;color:var(--muted);font-weight:700}
 .topbar h1{font-size:16px;margin:0;font-weight:850;color:var(--navy2);line-height:1.2}
@@ -454,7 +508,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #statsVesselPopover .pop-head strong{
   font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-:root[data-theme="dark"] .statsVesselPopover .pop-head strong{color:var(--cyan)}
+:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
 #statsVesselPopover .pop-list{
   max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
 }
@@ -525,45 +579,32 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <aside class="side" id="sidebarNav">
     <div class="brand">
       <div class="brand-badge-container">
-        <!-- ICON TÀU CONTAINER + HẢI ÂU + NỀN VIỀN CYAN PHÁT SÁNG -->
+        <!-- ICON TÀU CONTAINER + HẢI ÂU -->
         <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874 (150+ Năm phát triển)">
           <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Đôi chim hải âu sải cánh trên bầu trời -->
             <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round" fill="none" />
             <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#8be4ec" stroke-width="1.8" stroke-linecap="round" fill="none" />
-            
-            <!-- 3 khối container hàng trên: Hồng tím, Xanh lá, Tím -->
             <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#f43f5e" />
             <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#10b981" />
             <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#a855f7" />
-            
-            <!-- 3 khối container hàng dưới: Vàng cam, Cyan đậm, Xanh dương -->
             <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#f59e0b" />
             <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#06b6d4" />
             <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#3b82f6" />
-            
-            <!-- Cabin chỉ huy hoa tiêu & đèn radar -->
             <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#e2e8f0" />
             <rect x="45" y="25" width="2.5" height="2.5" rx="0.5" fill="#0284c7" />
             <circle cx="46.2" cy="20.5" r="1.3" fill="#38bdf8" />
-            
-            <!-- Thân tàu Container hiện đại -->
             <path d="M11 36L17 48.5H47L53 36H11Z" fill="#0284c7" />
-            
-            <!-- Đáy tàu mớn nước đỏ -->
             <path d="M17 48.5L20 51H44L47 48.5H17Z" fill="#e11d48" opacity="0.9" />
-            
-            <!-- Làn sóng nước xanh ngọc -->
             <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" fill="none" />
           </svg>
         </div>
 
-        <!-- THÔNG TIN EST. 1874, TÊN CẢNG VÀ HUY HIỆU VÀNG KIM 150+ NĂM -->
-        <div>
-          <small id="t_opCenter" style="color:#82a3bd;font-size:7.5px;letter-spacing:0.8px;display:block">EST. 1874 · PORT OF HAI PHONG</small>
-          <strong id="t_hpPort" style="font-size:13px;color:#ffffff;line-height:1.2;display:block">Cảng Hải Phòng</strong>
+        <!-- KHỐI CHỮ CÂN ĐỐI NGANG BIỂU TƯỢNG -->
+        <div class="brand-text-col">
+          <small class="brand-sub-title" id="t_opCenter">Operations & Customer Service Center</small>
+          <strong class="brand-main-title" id="t_hpPort">Cảng Hải Phòng</strong>
           <div class="gold-years-badge" title="Tự hào truyền thống trên 150 năm xây dựng và phát triển">
-            <span class="star">★</span> 150+ YEARS <span class="star">★</span>
+            <span class="star">★</span> 150+ YEARS · EST. 1874 <span class="star">★</span>
           </div>
         </div>
       </div>
@@ -647,16 +688,36 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <section class="main">
     <header class="topbar">
       <div class="topbar-header-left">
-        <div class="topbar-title-row">
-          <h1 id="topTitle">TT KHAI THÁC & DVKH</h1>
-          <div class="crumb"><span id="t_crumbPrefix">CẢNG HẢI PHÒNG</span> / <span id="crumb">TOÀN CẢNH</span></div>
+        <!-- BIỂU TƯỢNG MINI TẠI HEADER TRANG CHÍNH -->
+        <div class="topbar-brand-mini" title="Cảng Hải Phòng - EST. 1874 (150+ Năm)">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#8be4ec" stroke-width="2" stroke-linecap="round" fill="none" />
+            <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#f43f5e" />
+            <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#10b981" />
+            <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#a855f7" />
+            <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#f59e0b" />
+            <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#06b6d4" />
+            <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#3b82f6" />
+            <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#e2e8f0" />
+            <path d="M11 36L17 48.5H47L53 36H11Z" fill="#0284c7" />
+            <path d="M17 48.5L20 51H44L47 48.5H17Z" fill="#e11d48" />
+            <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" fill="none" />
+          </svg>
         </div>
-        <!-- THANH LỌC NGÀY NẰM SÁT NGAY DƯỚI TIÊU ĐỀ -->
-        <div class="topbar-date-filter">
-          <span id="t_fromLabel">Từ:</span>
-          <input type="date" id="fromDate" class="date-input-inline">
-          <span id="t_toLabel" style="margin-left:4px">Đến:</span>
-          <input type="date" id="toDate" class="date-input-inline">
+
+        <div class="topbar-titles-box">
+          <div class="topbar-title-row">
+            <h1 id="topTitle">TT KHAI THÁC & DVKH</h1>
+            <div class="crumb"><span id="t_crumbPrefix">CẢNG HẢI PHÒNG</span> / <span id="crumb">TOÀN CẢNH</span></div>
+          </div>
+          <!-- THANH LỌC NGÀY NẰM SÁT NGAY DƯỚI TIÊU ĐỀ -->
+          <div class="topbar-date-filter">
+            <span id="t_fromLabel">Từ:</span>
+            <input type="date" id="fromDate" class="date-input-inline">
+            <span id="t_toLabel" style="margin-left:4px">Đến:</span>
+            <input type="date" id="toDate" class="date-input-inline">
+          </div>
         </div>
       </div>
 
@@ -1944,7 +2005,6 @@ async function fetchRealWeatherHaiPhong() {
 // HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG
 // ============================================================================
 
-// Bảng dữ liệu chuẩn 24h từng ngày khớp 100% thegioimoicau.com
 const HON_DAU_EXACT_TABLES = {
   "2026-10-28": [
     { hour: 0, val: 2.7 }, { hour: 1, val: 2.9 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.3 },
@@ -2126,7 +2186,6 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   }
 
-  // Tự động đối chiếu số liệu chuẩn từng ngày
   for (let offset = 0; offset < 3; offset++) {
     let p = getVNCurrentDateParts(offset);
     let dateKey = p.dateKey;
