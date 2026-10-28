@@ -1849,7 +1849,7 @@ const HON_DAU_EXACT_TABLES = {
 
 function calculateDayExtremes(hourlyList) {
   if (!hourlyList || !hourlyList.length) {
-    return { highVal: 3.3, highTimeStr: '04:00', highHour: 4, lowVal: 1.0, lowTimeStr: '18:00', lowHour: 18 };
+    return { highVal: 3.3, highTimeStr: '03:00', highHour: 3, lowVal: 1.0, lowTimeStr: '17:00', lowHour: 17 };
   }
 
   let maxVal = -Infinity;
@@ -1860,11 +1860,13 @@ function calculateDayExtremes(hourlyList) {
     if (item.val < minVal) minVal = item.val;
   });
 
+  // Gom các mốc giờ cùng đạt đỉnh hoặc đáy theo thứ tự từ sớm đến muộn
   let maxHours = hourlyList.filter(item => Math.abs(item.val - maxVal) < 0.01).map(item => item.hour);
   let minHours = hourlyList.filter(item => Math.abs(item.val - minVal) < 0.01).map(item => item.hour);
 
-  let maxHour = maxHours[Math.floor(maxHours.length / 2)];
-  let minHour = minHours[Math.floor(minHours.length / 2)];
+  // Lấy mốc giờ sớm nhất (đầu tiên) khi có nhiều giờ bằng nhau
+  let maxHour = maxHours[0];
+  let minHour = minHours[0];
 
   return {
     highVal: maxVal,
@@ -1875,7 +1877,6 @@ function calculateDayExtremes(hourlyList) {
     lowHour: minHour
   };
 }
-
 function parseTheGioiMoiCauColumn(columnText) {
   let map = new Map();
   let regex = /([0-2]?\d)\s*h[^\d\n\r]*([0-4][.,]\d+)\s*m/gi;
