@@ -21,7 +21,7 @@ button{cursor:pointer;border:0;border-radius:8px;padding:8px 12px;font-weight:70
 button:hover{filter:brightness(.95)}
 
 .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;transition:all .2s ease}
-.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:16px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
+.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:14px 10px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
 
 /* --- BỐ CỤC HUY HIỆU THƯƠNG HIỆU TRUNG TÂM (EMBLEM BADGE) --- */
 .brand {
@@ -29,9 +29,9 @@ button:hover{filter:brightness(.95)}
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 4px 14px;
+  padding: 6px 4px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-align: center;
   width: 100%;
 }
@@ -39,18 +39,17 @@ button:hover{filter:brightness(.95)}
 .brand-emblem-wrap {
   position: relative;
   width: 154px;
-  height: 98px;
+  height: 96px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
-/* Biểu tượng tàu container phóng to 60px, đặt giữa cung chữ */
 .brand-icon-box {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
   background: linear-gradient(145deg, #0e2b4d, #061629);
   border: 1.8px solid var(--cyan);
   border-radius: 14px;
@@ -69,11 +68,10 @@ button:hover{filter:brightness(.95)}
 }
 
 .brand-icon-box svg {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
 }
 
-/* Chữ uốn cong ôm phía trên biểu tượng */
 .brand-arc-svg {
   position: absolute;
   top: 0;
@@ -92,9 +90,8 @@ button:hover{filter:brightness(.95)}
   text-transform: uppercase;
 }
 
-/* Tên Cảng Hải Phòng đặt dưới biểu tượng */
 .brand-main-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 900;
   color: #ffffff;
   line-height: 1.25;
@@ -104,16 +101,15 @@ button:hover{filter:brightness(.95)}
   display: block;
 }
 
-/* Huy hiệu ★ 150+ YEARS · EST. 1874 ★ lấp lánh vàng ánh kim */
 .gold-years-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  margin-top: 5px;
-  padding: 2px 10px;
+  margin-top: 4px;
+  padding: 2px 9px;
   border-radius: 20px;
-  font-size: 8px;
+  font-size: 7.8px;
   font-weight: 900;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -127,7 +123,7 @@ button:hover{filter:brightness(.95)}
 }
 
 .gold-years-badge span.star {
-  font-size: 7.5px;
+  font-size: 7px;
   color: #ffffff;
 }
 
@@ -136,72 +132,97 @@ button:hover{filter:brightness(.95)}
   100% { background-position: 200% center; }
 }
 
-.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 8px;margin-bottom:4px}
+.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 8px;margin-bottom:3px}
 .nav{display:grid;gap:3px}
 
-.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
-.nav button span.icon{font-size:15px;min-width:20px;text-align:center}
+.nav button span.icon{font-size:14px;min-width:18px;text-align:center}
 
+/* THẺ BỘ PHẬN TRỰC (CÂN ĐỐI DANH SÁCH DỌC TRUYỀN THỐNG) */
 .side-shift-card{
-  background: rgba(255,255,255,0.06);border: 1px solid rgba(38,189,200,0.35);
-  border-radius: 10px;padding: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(38,189,200,0.35);
+  border-radius: 9px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
-.side-shift-title{font-size: 9px;font-weight: 800;color: var(--cyan);letter-spacing: 0.5px;margin-bottom: 6px;display:flex;align-items:center;gap:5px}
-.side-shift-item{margin-bottom: 5px}
-.side-shift-item:last-child{margin-bottom:0}
-.side-shift-item small{display: block;color: #82a3bd;font-size: 8px;font-weight: 700;margin-bottom: 1px}
-.side-shift-item strong{font-size: 10.5px;color: #ffffff;word-break: break-word}
-.side-shift-item span.phone{color: var(--cyan);font-weight: 800}
+.side-shift-title{
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.side-shift-item small{
+  display: block;
+  color: #82a3bd;
+  font-size: 8px;
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+.side-shift-item strong{
+  font-size: 10.5px;
+  color: #ffffff;
+  display: block;
+  line-height: 1.25;
+  word-break: break-word;
+}
 
-/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI */
+/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI (THIẾT KẾ GỌN GÀNG, KHÔNG XÔ LỆCH) */
 .side-system-box{
-  background: rgba(0,0,0,0.18);
+  background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 10px;
-  display: grid;
-  gap: 6px;
+  border-radius: 9px;
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 .side-quick-grid{
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
+  gap: 4px;
 }
 .side-btn{
   width: 100%;
-  padding: 7px 8px;
-  font-size: 10.5px;
+  padding: 5px 6px;
+  font-size: 9.5px;
   font-weight: 750;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  border-radius: 7px;
+  gap: 4px;
+  border-radius: 6px;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 .side-btn.countdown-btn{
   background: rgba(38, 189, 200, 0.15);
   border: 1px solid rgba(38, 189, 200, 0.4);
   color: #8be4ec;
-  font-size: 10px;
-  letter-spacing: 0.3px;
+  font-size: 9px;
+  padding: 5px;
 }
 .side-btn.countdown-btn:hover{background:rgba(38,189,200,0.25)}
 .side-btn.lang-btn{background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15)}
 .side-btn.theme-btn{background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15)}
-.side-btn.bucket-btn{background: #1f5e82; color: #fff}
-.side-btn.save{background: var(--green); color: #fff}
 .side-btn.setup{background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2)}
+.side-btn.save{background: var(--green); color: #fff}
 .side-btn.export{background: #20638b; color: #fff}
 .side-btn.import{background: #6c5ce7; color: #fff}
 
-.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:10px 4px 0;color:#91adc2;font-size:9px;line-height:1.35}
+.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:8px 4px 0;color:#91adc2;font-size:8.5px;line-height:1.3}
 .main{min-width:0}
 
 /* TOPBAR */
 .topbar{
-  padding: 8px 20px;
+  padding: 8px 18px;
   background: var(--card);
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -268,7 +289,6 @@ button:hover{filter:brightness(.95)}
 }
 .date-input-inline:focus{border-color:var(--cyan)}
 
-/* NÚT BỨC THƯ THÔNG BÁO */
 .topbar-right-actions{
   display: flex;
   align-items: center;
@@ -282,13 +302,13 @@ button:hover{filter:brightness(.95)}
   background: #f0f4f9;
   border: 1px solid var(--line);
   color: var(--navy2);
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
   padding: 0;
   position: relative;
   transition: all .2s ease;
@@ -325,7 +345,7 @@ button:hover{filter:brightness(.95)}
   100% { transform: scale(1); }
 }
 
-.content{padding:14px 20px 30px;max-width:1800px;margin:auto}
+.content{padding:14px 18px 30px;max-width:1800px;margin:auto}
 .page{display:block;width:100%;animation:pageIn .15s ease-out}
 .page.hidden{display:none!important}
 @keyframes pageIn{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
@@ -462,7 +482,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
 
-/* THANH TÀU TRÊN GANTT: CHẾ ĐỘ MỜ BÁN TRONG SUỐT VÀ NỔI BẬT KHI HOVER */
+/* THANH TÀU TRÊN GANTT */
 .shipbar {
   position: absolute;
   top: 2px;
@@ -524,7 +544,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #statsVesselPopover .pop-head strong{
   font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-:root[data-theme="dark"] .statsVesselPopover .pop-head strong{color:var(--cyan)}
+:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
 #statsVesselPopover .pop-list{
   max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
 }
@@ -592,12 +612,10 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <!-- MENU DỌC TRÁI -->
   <aside class="side" id="sidebarNav">
     <div class="brand">
-      <!-- KHUNG BỌC VÒNG CUNG CHỮ & BIỂU TƯỢNG PHÓNG TO 60px -->
       <div class="brand-emblem-wrap">
-        <!-- SVG VÒNG CUNG CHỮ ÔM PHÍA TRÊN BIỂU TƯỢNG -->
-        <svg class="brand-arc-svg" viewBox="0 0 154 98">
+        <svg class="brand-arc-svg" viewBox="0 0 154 96">
           <defs>
-            <path id="curveTop" d="M 12,77 A 65,65 0 0,1 142,77" fill="none" />
+            <path id="curveTop" d="M 12,75 A 65,65 0 0,1 142,75" fill="none" />
           </defs>
           <text class="brand-arc-text">
             <textPath href="#curveTop" startOffset="50%" text-anchor="middle">
@@ -606,7 +624,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </text>
         </svg>
 
-        <!-- BIỂU TƯỢNG TÀU CONTAINER + HẢI ÂU -->
         <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874 (150+ Năm phát triển)">
           <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round" fill="none" />
@@ -631,10 +648,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </div>
 
-      <!-- TÊN CẢNG HẢI PHÒNG NẰM DƯỚI BIỂU TƯỢNG -->
       <strong class="brand-main-title" id="t_hpPort">CẢNG HẢI PHÒNG</strong>
 
-      <!-- HUY HIỆU 150+ YEARS · EST. 1874 NẰM DƯỚI CÙNG -->
       <div class="gold-years-badge" title="Tự hào truyền thống trên 150 năm xây dựng và phát triển">
         <span class="star">★</span> 150+ YEARS · EST. 1874 <span class="star">★</span>
       </div>
@@ -653,7 +668,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </nav>
     </div>
 
-    <!-- THẺ BỘ PHẬN TRỰC -->
+    <!-- THẺ BỘ PHẬN TRỰC (KHÔI PHỤC CÂN ĐỐI DANH SÁCH DỌC) -->
     <div class="side-shift-card">
       <div class="side-shift-title" id="t_shiftDutyTitle">⚡ BỘ PHẬN TRỰC</div>
       <div class="side-shift-item">
@@ -670,40 +685,41 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </div>
     </div>
 
-    <!-- KHỐI HỆ THỐNG VÀ ĐIỀU KHIỂN DỌC BÊN TRÁI -->
+    <!-- KHỐI CHỨC NĂNG DUY NHẤT GỌN GÀNG DƯỚI BỘ PHẬN TRỰC (ĐÃ BỎ NÚT TẢI BUCKET) -->
     <div class="side-system-box">
-      <!-- Nút Đếm ngược 00h00 / Tự động đồng bộ -->
+      <!-- Nút Đếm ngược 00h00 -->
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
       </button>
 
-      <!-- Hàng nút Ngôn ngữ & Giao diện sáng tối -->
+      <!-- Hàng 1: Ngôn ngữ & Giao diện -->
       <div class="side-quick-grid">
         <button id="langToggleBtn" class="side-btn lang-btn" title="Chuyển đổi ngôn ngữ / Switch Language">
           <span id="langFlag">🇻🇳</span> <span id="langText">VI</span>
         </button>
-        <button class="side-btn theme-btn" id="themeToggle">
+        <button class="side-btn theme-btn" id="themeToggle" title="Chuyển đổi giao diện Sáng / Tối">
           ◐ <span id="t_theme">Giao diện</span>
         </button>
       </div>
 
-      <!-- Hàng nút Nạp Bucket & Setup trực -->
+      <!-- Hàng 2: Setup trực & Lưu Bucket -->
       <div class="side-quick-grid">
-        <button id="fetchHistoryBtn" class="side-btn bucket-btn" title="Tải dữ liệu từ Storage Bucket">
-          🔍 <span id="t_loadBucket">Tải Bucket</span>
-        </button>
-        <button id="setupShiftBtn" class="side-btn setup">
+        <button id="setupShiftBtn" class="side-btn setup" title="Thiết lập ca trực (Mật khẩu 6868)">
           Setup 🔒
+        </button>
+        <button id="manualSaveBtn" class="side-btn save" title="Lưu nhanh Snapshot lên Bucket">
+          Lưu 💾
         </button>
       </div>
 
-      <!-- Nút Lưu Bucket -->
-      <button id="manualSaveBtn" class="side-btn save">Lưu Bucket 💾</button>
-
-      <!-- Hàng nút Xuất & Nạp Excel -->
+      <!-- Hàng 3: Xuất & Nạp Excel -->
       <div class="side-quick-grid">
-        <button id="exportConfigBtn" class="side-btn export">Xuất Excel 📤</button>
-        <button id="importConfigBtn" class="side-btn import">Nạp Excel 📥</button>
+        <button id="exportConfigBtn" class="side-btn export" title="Xuất dữ liệu Excel/CSV">
+          Xuất 📤
+        </button>
+        <button id="importConfigBtn" class="side-btn import" title="Nạp dữ liệu từ file Excel">
+          Nạp 📥
+        </button>
       </div>
       <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
     </div>
@@ -804,7 +820,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU (HỖ TRỢ QUÉT 3 NGÀY XOAY VÒNG) -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -1228,9 +1244,8 @@ let isUserHovering = false;
 let statsPopoverTimeout = null;
 let currentLang = localStorage.getItem('hp_lang') || 'vi';
 
-// Biến lưu trữ dữ liệu thủy triều 3 ngày liên tục của Trạm Hòn Dáu
 let multiDayTideData = {};
-let tideViewDayOffset = 0; // 0: Hôm nay, 1: Ngày mai, 2: Ngày kia
+let tideViewDayOffset = 0;
 
 const dict = {
   vi: {
@@ -1250,12 +1265,11 @@ const dict = {
     commanderLabel: "TRƯỞNG ĐIỀU HÀNH",
     safetyLabel: "AN TOÀN HẢI",
     setupShiftBtn: "Setup 🔒",
-    manualSaveBtn: "Lưu Bucket 💾",
-    exportConfigBtn: "Xuất Excel 📤",
-    importConfigBtn: "Nạp Excel 📥",
+    manualSaveBtn: "Lưu 💾",
+    exportConfigBtn: "Xuất 📤",
+    importConfigBtn: "Nạp 📥",
     fromLabel: "Từ:",
     toLabel: "Đến:",
-    loadBucket: "Tải Bucket",
     theme: "Giao diện",
     weatherCity: "HẢI PHÒNG · KHÍ TƯỢNG HÀNG HẢI",
     weatherDirect: "Cập nhật trực tiếp Cảng HP",
@@ -1371,12 +1385,11 @@ const dict = {
     commanderLabel: "DUTY MANAGER",
     safetyLabel: "SAFETY OFFICER",
     setupShiftBtn: "Setup 🔒",
-    manualSaveBtn: "Save Bucket 💾",
-    exportConfigBtn: "Export Excel 📤",
-    importConfigBtn: "Import Excel 📥",
+    manualSaveBtn: "Save 💾",
+    exportConfigBtn: "Export 📤",
+    importConfigBtn: "Import 📥",
     fromLabel: "From:",
     toLabel: "To:",
-    loadBucket: "Load Bucket",
     theme: "Theme",
     weatherCity: "HAI PHONG · MARITIME METEOROLOGY",
     weatherDirect: "Live updates from Hai Phong Port",
@@ -2063,7 +2076,6 @@ const HON_DAU_EXACT_TABLES = {
   ]
 };
 
-// Luôn lấy giờ sớm nhất khi có nhiều giờ bằng nhau
 function calculateDayExtremes(hourlyList) {
   if (!hourlyList || !hourlyList.length) {
     return { highVal: 3.3, highTimeStr: '03:00', highHour: 3, lowVal: 1.0, lowTimeStr: '17:00', lowHour: 17 };
@@ -2645,7 +2657,6 @@ function renderGantt() {
     hasData = true;
     out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
     
-    // Tàu đỗ dài vẽ trước (lớp dưới), tàu ngắn vẽ sau (lớp trên)
     let sortedShips = [...ships].sort((x, y) => {
       let durX = (new Date(x.etd || 0).getTime()) - (new Date(x.etb || 0).getTime());
       let durY = (new Date(y.etd || 0).getTime()) - (new Date(y.etb || 0).getTime());
@@ -2942,38 +2953,6 @@ function handleManualSave() {
   else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
-function fetchHistoryFromBucketProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') fetchHistoryFromBucket();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
-}
-
-async function fetchHistoryFromBucket() {
-  let fDate = $('fromDate').value;
-  if (!fDate) { alert('Vui lòng chọn ngày tại ô "Từ:" !'); return; }
-  if (!supabaseClient) { alert('Chưa kết nối được Supabase!'); return; }
-
-  $('sideStatus').textContent = `Bucket (${fDate})...`;
-  try {
-    const { data, error } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${fDate}.json`);
-    if (error || !data) { alert(`Không tìm thấy dữ liệu ngày ${fDate} trên Storage Bucket.`); $('sideStatus').textContent = 'Trống'; return; }
-
-    const text = await data.text();
-    const parsed = JSON.parse(text);
-    if (parsed.calls && Array.isArray(parsed.calls)) {
-      allCalls = filterAndDeduplicateCalls(parsed.calls);
-      if (parsed.shift_info) {
-        $('dispShift').textContent = parsed.shift_info.shift || 'Ca 1';
-        $('dispCommander').textContent = parsed.shift_info.commander || '—';
-        $('dispSafety').textContent = parsed.shift_info.safety || '—';
-      }
-      renderAll();
-      $('sideStatus').textContent = `${allCalls.length} tàu (${fDate})`;
-      alert(`Nạp thành công dữ liệu ngày ${fDate} từ Storage Bucket!`);
-    }
-  } catch(err) { alert('Error: ' + err.message); }
-}
-
 async function loadShiftConfigFromSupabase() {
   if (!supabaseClient) return;
   let today = getTodayString();
@@ -3075,7 +3054,6 @@ function bindAllEventListeners() {
   if ($('refreshBtn')) $('refreshBtn').onclick = loadData;
   if ($('setupShiftBtn')) $('setupShiftBtn').onclick = openShiftModalWithPassword;
   if ($('manualSaveBtn')) $('manualSaveBtn').onclick = handleManualSave;
-  if ($('fetchHistoryBtn')) $('fetchHistoryBtn').onclick = fetchHistoryFromBucketProtected;
   if ($('exportConfigBtn')) $('exportConfigBtn').onclick = exportConfigAsCSVProtected;
   if ($('importConfigBtn')) $('importConfigBtn').onclick = triggerImportConfig;
   if ($('importFileInput')) $('importFileInput').onchange = handleFileImport;
