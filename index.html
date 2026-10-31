@@ -3005,7 +3005,7 @@ function checkWorkingVesselsLoadingAlert() {
   const nextTide = multiDayTideData[nextKey] || { highVal: 3.5, highTimeStr: "04:00" };
 
   const bDepth = Number(draftConfig.berthDepth) || 9.0;
-  const berthLowLimit = bDepth + todayTide.lowVal; // Mực nước thực tế tại bến lúc triều kiệt
+  const berthLowLimit = bDepth + todayTide.lowVal; // Độ sâu thực tế đáy bến lúc kiệt
 
   const now = Date.now();
   const list = getFilteredCalls();
@@ -3026,7 +3026,7 @@ function checkWorkingVesselsLoadingAlert() {
   workingAtTanVu.forEach(s => {
     const rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
     
-    // ĐIỀU KIỆN CHUẨN: (Mớn tàu + 0.5m) >= (Độ sâu bến 9m + triều kiệt)
+    // TIÊU CHUẨN: (Mớn tàu + 0.5m) >= (Độ sâu bến 9m + triều kiệt)
     if ((rawDraft + 0.5) >= berthLowLimit) {
       warningShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')} · Mớn ~${rawDraft.toFixed(1)}m]`);
     }
@@ -3035,14 +3035,13 @@ function checkWorkingVesselsLoadingAlert() {
     if (!s.etd) {
       const curHourVN = todayParts.hour;
       const isPastPeakToday = (todayTide.highHour !== undefined) && (curHourVN >= todayTide.highHour);
-
       if (isPastPeakToday) {
         noEtdAdviceShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')}]`);
       }
     }
   });
 
-  // 1. TRƯỜNG HỢP CÓ TÀU CHẠM NGƯỠNG CẢNH BÁO MỚN TRIỀU KIỆT
+  // 1. CÓ TÀU CHẠM NGƯỠNG NGUY HIỂM -> ĐÓNG KHUNG TỪNG TÀU
   if (warningShips.length > 0) {
     if (badgeElem) {
       badgeElem.textContent = currentLang === 'vi' ? '⚠️ CẢNH BÁO LÀM HÀNG' : '⚠️ OPS CARGO ALERT';
@@ -3056,8 +3055,8 @@ function checkWorkingVesselsLoadingAlert() {
     let msg = '';
     if (currentLang === 'vi') {
       msg = `<span class="ticker-item warning">
-        Tàu ${shipBoxStr} đang làm hàng: <b>KHÔNG CHẤT THÊM HÀNG VÀO GIỜ NƯỚC KIỆT ${todayTide.lowTimeStr}</b> 
-        (Mớn + 0.5m chạm giới hạn đáy bến ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ tải để giữ khoảng an toàn dưới sống tàu!
+        Tàu ${shipBoxStr} đang làm hàng tại bến: <b>KHÔNG CHẤT THÊM HÀNG VÀO GIỜ NƯỚC KIỆT ${todayTide.lowTimeStr}</b> 
+        (Mớn + 0.5m chạm đáy bến ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ tải để giữ khoảng an toàn dưới sống tàu!
       </span>`;
     } else {
       msg = `<span class="ticker-item warning">
@@ -3070,7 +3069,7 @@ function checkWorkingVesselsLoadingAlert() {
     return;
   }
 
-  // 2. TRƯỜNG HỢP CÓ TÀU CHƯA CÓ ETD VÀ HÔM NAY KHÔNG CÒN NƯỚC LỚN THÍCH HỢP
+  // 2. TÀU CHƯA CÓ ETD VÀ ĐÃ QUA ĐỈNH TRIỀU TRONG NGÀY
   if (noEtdAdviceShips.length > 0) {
     if (badgeElem) {
       badgeElem.textContent = currentLang === 'vi' ? '⚓ KHUYẾN NGHỊ ĐIỀU ĐỘ' : '⚓ DISPATCH ADVICE';
@@ -3084,12 +3083,12 @@ function checkWorkingVesselsLoadingAlert() {
     let msg = '';
     if (currentLang === 'vi') {
       msg = `<span class="ticker-item warning">
-        Tàu ${noEtdStr} chưa có giờ ETD (hôm nay không còn con nước đỉnh thích hợp): 
+        Tàu ${noEtdStr} chưa có giờ ETD (hôm nay đã qua khung nước lớn phù hợp): 
         <b>Khuyến nghị điều hành rời bến vào quanh đỉnh triều ngày mai (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
       </span>`;
     } else {
       msg = `<span class="ticker-item warning">
-        Vessels ${noEtdStr} without ETD (no favorable high water left today): 
+        Vessels ${noEtdStr} without ETD (past high water window today): 
         <b>Recommended departure around tomorrow's high tide (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
       </span>`;
     }
@@ -3098,7 +3097,7 @@ function checkWorkingVesselsLoadingAlert() {
     return;
   }
 
-  // 3. TRẠNG THÁI BÌNH THƯỜNG: HIỂN THỊ CÂU CHÚC THEO THỜI ĐIỂM TRONG NGÀY
+  // 3. BÌNH THƯỜNG -> HIỂN THỊ LỜI CHÚC THEO CA LÀM VIỆC
   if (badgeElem) {
     badgeElem.textContent = currentLang === 'vi' ? '⚓ BỘ PHẬN ĐIỀU HÀNH' : '⚓ OPERATIONS DESK';
     badgeElem.style.background = 'rgba(46, 204, 113, 0.15)';
@@ -3122,7 +3121,6 @@ function checkWorkingVesselsLoadingAlert() {
 
   tickerElem.innerHTML = `<span class="ticker-item safe" style="font-weight:700">${greetText}</span>`;
 }
-
 // --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
 function nav(page, saveState = true){
   document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
