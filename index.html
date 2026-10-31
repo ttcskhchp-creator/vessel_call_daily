@@ -3185,10 +3185,23 @@ function renderAll() {
     if ($('kDepartures')) $('kDepartures').textContent = list.filter(c => c.etd && new Date(c.etd).getTime() >= now && new Date(c.etd).getTime() <= in24).length;
     if ($('kLarge')) $('kLarge').textContent = list.filter(c => c.loa >= 300).length;
 
-   function renderTanVuLayout(list) {
+    renderTanVuLayout(list);
+    renderMovement(list);
+    renderTable(list);
+    renderDailySafeDraftTable();
+    checkWorkingVesselsLoadingAlert();
+
+    let p = localStorage.getItem('hp_last_page') || 'overview';
+    if(p === 'planning') renderGantt();
+    if(p === 'stats') renderStats();
+  } catch(e) {
+    console.error("Lỗi tại renderAll:", e);
+  }
+}
+
+function renderTanVuLayout(list) {
   try {
     let now = Date.now();
-    // Lấy ngày đang xem từ ô Từ ngày trên Topbar (mặc định là hôm nay)
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
 
     let tanVuShips = list.filter(c => {
