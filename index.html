@@ -1,3 +1,10 @@
+Về phía Supabase, bạn không cần làm thêm bất kỳ điều gì hay tạo thêm bảng nào mới. Hệ thống sẽ sử dụng trực tiếp các bảng và Storage Bucket (port-documents) hiện có. Toàn bộ logic cảnh báo làm hàng tại cầu bến và bảng dải mớn nước an toàn đều được xử lý tự động ngay trên máy khách (Client-side) dựa vào số liệu lịch tàu và thủy triều thực tế.
+Mã nguồn HTML hoàn chỉnh đã được cập nhật:
+Các cải tiến đã áp dụng trong code:
+ * Dòng loa thông báo chú ý làm hàng: Chạy chữ cảnh báo trực tiếp dưới Topbar, tập trung vào các tàu đang nằm tại cầu bến Tân Vũ—nhắc nhở trực ban và điều độ không dồn tải xếp hàng vào giờ triều kiệt (nước ròng), ưu tiên dỡ hàng để tàu nổi an toàn.
+ * Bảng Dải Mớn Nước & Trọng Tải (DWT) An Toàn Trong Ngày: Tự động tính toán mớn động an toàn dựa trên độ sâu bến Tân Vũ (9.0m) kết hợp với số liệu thủy triều Hòn Dáu trong ngày.
+ * Loại bỏ hoàn toàn ô tra cứu tàu thừa: Giúp ứng dụng nhẹ, mượt mà và tập trung đúng vào nghiệp vụ khai thác cầu bến.
+ * Giữ nguyên Logo Cảng Hải Phòng Vector an toàn 100%, biểu tượng tàu và cánh chim chìm mờ ở chân trang, cùng đầy đủ các tính năng Supabase và thủy triều xoay vòng.
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -23,7 +30,7 @@ button:hover{filter:brightness(.95)}
 .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;transition:all .2s ease}
 .side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:14px 10px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
 
-/* --- BỐ CỤC HUY HIỆU THƯƠNG HIỆU TRUNG TÂM (EMBLEM BADGE) --- */
+/* --- LOGO CẢNG HẢI PHÒNG (VECTOR AN TOÀN TUYỆT ĐỐI) --- */
 .brand {
   display: flex;
   flex-direction: column;
@@ -47,10 +54,10 @@ button:hover{filter:brightness(.95)}
 }
 
 .brand-icon-box {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  background: linear-gradient(145deg, #0e2b4d, #061629);
+  width: 62px;
+  height: 62px;
+  min-width: 62px;
+  background: linear-gradient(145deg, #123d6a, #0a2342);
   border: 1.8px solid var(--cyan);
   border-radius: 14px;
   display: flex;
@@ -60,6 +67,7 @@ button:hover{filter:brightness(.95)}
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   z-index: 2;
   margin-bottom: 2px;
+  padding: 4px;
 }
 
 .brand-icon-box:hover {
@@ -68,8 +76,8 @@ button:hover{filter:brightness(.95)}
 }
 
 .brand-icon-box svg {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  height: 100%;
 }
 
 .brand-arc-svg {
@@ -139,7 +147,7 @@ button:hover{filter:brightness(.95)}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 .nav button span.icon{font-size:14px;min-width:18px;text-align:center}
 
-/* THẺ BỘ PHẬN TRỰC (CÂN ĐỐI DANH SÁCH DỌC TRUYỀN THỐNG) */
+/* THẺ BỘ PHẬN TRỰC */
 .side-shift-card{
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(38,189,200,0.35);
@@ -174,7 +182,7 @@ button:hover{filter:brightness(.95)}
   word-break: break-word;
 }
 
-/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI (THIẾT KẾ GỌN GÀNG, KHÔNG XÔ LỆCH) */
+/* KHỐI NÚT CHỨC NĂNG DỌC TRÁI */
 .side-system-box{
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.08);
@@ -217,7 +225,35 @@ button:hover{filter:brightness(.95)}
 .side-btn.export{background: #20638b; color: #fff}
 .side-btn.import{background: #6c5ce7; color: #fff}
 
-.side-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:8px 4px 0;color:#91adc2;font-size:8.5px;line-height:1.3}
+/* CHÂN TRANG: BIỂU TƯỢNG TÀU CONTAINER & HẢI ÂU CHÌM MỜ */
+.side-foot{
+  margin-top:auto;
+  border-top:1px solid #ffffff20;
+  padding:8px 6px 0;
+  color:#91adc2;
+  font-size:8.5px;
+  line-height:1.3;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.side-foot-text {
+  position: relative;
+  z-index: 2;
+}
+.side-foot-watermark {
+  width: 48px;
+  height: 48px;
+  opacity: 0.18;
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px var(--cyan));
+}
+
 .main{min-width:0}
 
 /* TOPBAR */
@@ -232,17 +268,19 @@ button:hover{filter:brightness(.95)}
   position: sticky;
   top: 0;
   z-index: 10;
+  flex-wrap: wrap;
 }
 .topbar-header-left{
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 .topbar-brand-mini{
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  background: linear-gradient(145deg, #102d4d, #081a2e);
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  background: linear-gradient(145deg, #103358, #09203a);
   border: 1.2px solid var(--cyan);
   border-radius: 8px;
   display: flex;
@@ -250,42 +288,47 @@ button:hover{filter:brightness(.95)}
   justify-content: center;
   box-shadow: 0 0 8px rgba(38, 189, 200, 0.25);
   flex-shrink: 0;
+  padding: 3px;
 }
 .topbar-brand-mini svg{
-  width: 24px;
-  height: 24px;
+  width: 100%;
+  height: 100%;
 }
 .topbar-titles-box{
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .topbar-title-row{
   display: flex;
   align-items: baseline;
   gap: 8px;
+  flex-wrap: wrap;
 }
-.crumb{font-size:9.5px;color:var(--muted);font-weight:700}
-.topbar h1{font-size:16px;margin:0;font-weight:850;color:var(--navy2);line-height:1.2}
+.crumb{font-size:9.5px;color:var(--muted);font-weight:700;white-space: nowrap;}
+.topbar h1{font-size:15px;margin:0;font-weight:850;color:var(--navy2);line-height:1.2;white-space: nowrap;}
 :root[data-theme="dark"] .topbar h1{color:var(--cyan)}
 
 .topbar-date-filter{
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
+  flex-wrap: nowrap;
 }
 .date-input-inline{
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 3px 6px;
+  padding: 2px 6px;
   background: var(--bg);
   font-size: 11px;
   font-weight: 600;
   color: var(--ink);
   outline: none;
+  max-width: 120px;
 }
 .date-input-inline:focus{border-color:var(--cyan)}
 
@@ -344,6 +387,69 @@ button:hover{filter:brightness(.95)}
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
+
+/* --- DÒNG LOA CẢNH BÁO LÀM HÀNG TẠI BẾN --- */
+.alert-ticker-wrap {
+  background: linear-gradient(90deg, #12283f 0%, #173859 100%);
+  border-bottom: 1px solid rgba(38, 189, 200, 0.4);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  position: sticky;
+  top: 53px;
+  z-index: 9;
+}
+.alert-ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  color: #ff7675;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+  animation: pulseTicker 2s infinite;
+}
+@keyframes pulseTicker {
+  0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+.alert-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  font-size: 11px;
+}
+.alert-ticker-content {
+  display: inline-block;
+  white-space: nowrap;
+  animation: scrollAlert 32s linear infinite;
+}
+.alert-ticker-track:hover .alert-ticker-content {
+  animation-play-state: paused;
+}
+@keyframes scrollAlert {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 28px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.ticker-item.danger { background: rgba(231, 76, 60, 0.25); color: #ff7675; border-left: 2px solid #e74c3c; }
+.ticker-item.warning { background: rgba(241, 196, 15, 0.2); color: #f1c40f; border-left: 2px solid #f1c40f; }
+.ticker-item.safe { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border-left: 2px solid #2ecc71; }
 
 .content{padding:14px 18px 30px;max-width:1800px;margin:auto}
 .page{display:block;width:100%;animation:pageIn .15s ease-out}
@@ -482,7 +588,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
 
-/* THANH TÀU TRÊN GANTT */
+/* THANH TÀU TRÊN GANTT: CHẾ ĐỘ MỜ BÁN TRONG SUỐT VÀ NỔI BẬT KHI HOVER */
 .shipbar {
   position: absolute;
   top: 2px;
@@ -544,7 +650,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #statsVesselPopover .pop-head strong{
   font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
+:root[data-theme="dark"] .statsVesselPopover .pop-head strong{color:var(--cyan)}
 #statsVesselPopover .pop-list{
   max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
 }
@@ -624,26 +730,27 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </text>
         </svg>
 
+        <!-- LOGO CẢNG HẢI PHÒNG (VECTOR CHUẨN XÁC, AN TOÀN 100%) -->
         <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874 (150+ Năm phát triển)">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round" fill="none" />
-            <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#8be4ec" stroke-width="1.8" stroke-linecap="round" fill="none" />
-            
-            <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#f43f5e" />
-            <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#10b981" />
-            <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#a855f7" />
-            
-            <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#f59e0b" />
-            <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#06b6d4" />
-            <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#3b82f6" />
-            
-            <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#e2e8f0" />
-            <rect x="45" y="25" width="2.5" height="2.5" rx="0.5" fill="#0284c7" />
-            <circle cx="46.2" cy="20.5" r="1.3" fill="#38bdf8" />
-            
-            <path d="M11 36L17 48.5H47L53 36H11Z" fill="#0284c7" />
-            <path d="M17 48.5L20 51H44L47 48.5H17Z" fill="#e11d48" opacity="0.9" />
-            <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" fill="none" />
+          <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="100" y="24" fill="#ffffff" font-size="16" font-family="'Segoe UI',Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="1">Since 1874</text>
+            <ellipse cx="100" cy="85" rx="92" ry="54" stroke="#ffffff" stroke-width="4.5" fill="#1b5ba4"/>
+            <ellipse cx="100" cy="85" rx="84" ry="46" stroke="#ffffff" stroke-width="2" fill="none"/>
+            <path d="M60 46H84V52H60z" fill="#ffffff"/>
+            <path d="M52 56L64 52H80L92 56L88 74H56L52 56z" fill="#ffffff"/>
+            <polygon points="72,59 79,64 79,71 72,76 65,71 65,64" fill="#1b5ba4"/>
+            <polygon points="126,59 100,56 126,62" fill="#ffffff" opacity="0.9"/>
+            <polygon points="134,59 160,56 134,62" fill="#ffffff" opacity="0.9"/>
+            <rect x="127" y="54" width="6" height="5" fill="#ffffff"/>
+            <path d="M126 62L124 88H136L134 62H126z" fill="#ffffff"/>
+            <path d="M42 90C42 80 50 74 62 74H74V86H62C58 86 54 88 54 92C54 96 58 98 62 98H74V110H62C50 110 42 104 42 94V90z" fill="#ffffff"/>
+            <path d="M80 74H92V88H108V74H120V110H108V96H92V110H80V74z" fill="#ffffff"/>
+            <path d="M126 74H164L148 110H126V74z" fill="#ffffff"/>
+            <circle cx="145" cy="87" r="4.5" fill="#1b5ba4"/>
+            <rect x="50" y="114" width="100" height="3" fill="#ffffff"/>
+            <circle cx="178" cy="120" r="5" stroke="#ffffff" stroke-width="1.2" fill="none"/>
+            <text x="178" y="123" fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle">R</text>
+            <text x="100" y="152" fill="#ffffff" font-size="13" font-family="'Segoe UI',Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="0.5">PORT OF HAI PHONG</text>
           </svg>
         </div>
       </div>
@@ -668,7 +775,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </nav>
     </div>
 
-    <!-- THẺ BỘ PHẬN TRỰC (KHÔI PHỤC CÂN ĐỐI DANH SÁCH DỌC) -->
+    <!-- THẺ BỘ PHẬN TRỰC -->
     <div class="side-shift-card">
       <div class="side-shift-title" id="t_shiftDutyTitle">⚡ BỘ PHẬN TRỰC</div>
       <div class="side-shift-item">
@@ -685,14 +792,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </div>
     </div>
 
-    <!-- KHỐI CHỨC NĂNG DUY NHẤT GỌN GÀNG DƯỚI BỘ PHẬN TRỰC (ĐÃ BỎ NÚT TẢI BUCKET) -->
+    <!-- KHỐI CHỨC NĂNG DỌC TRÁI -->
     <div class="side-system-box">
-      <!-- Nút Đếm ngược 00h00 -->
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
       </button>
 
-      <!-- Hàng 1: Ngôn ngữ & Giao diện -->
       <div class="side-quick-grid">
         <button id="langToggleBtn" class="side-btn lang-btn" title="Chuyển đổi ngôn ngữ / Switch Language">
           <span id="langFlag">🇻🇳</span> <span id="langText">VI</span>
@@ -702,7 +807,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </button>
       </div>
 
-      <!-- Hàng 2: Setup trực & Lưu Bucket -->
       <div class="side-quick-grid">
         <button id="setupShiftBtn" class="side-btn setup" title="Thiết lập ca trực (Mật khẩu 6868)">
           Setup 🔒
@@ -712,7 +816,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </button>
       </div>
 
-      <!-- Hàng 3: Xuất & Nạp Excel -->
       <div class="side-quick-grid">
         <button id="exportConfigBtn" class="side-btn export" title="Xuất dữ liệu Excel/CSV">
           Xuất 📤
@@ -724,10 +827,26 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
     </div>
 
+    <!-- CHÂN TRANG: BIỂU TƯỢNG TÀU CONTAINER & HẢI ÂU CHÌM MỜ -->
     <div class="side-foot">
-      <b id="t_footBrand">Cảng Hải Phòng</b><br>
-      <span id="sideStatus">Sẵn sàng</span><br>
-      <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
+      <div class="side-foot-text">
+        <b id="t_footBrand">Cảng Hải Phòng</b><br>
+        <span id="sideStatus">Sẵn sàng</span><br>
+        <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
+      </div>
+      <svg class="side-foot-watermark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
+        <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#ffffff"/>
+        <path d="M11 36L17 48.5H47L53 36H11Z" fill="#ffffff"/>
+        <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
     </div>
   </aside>
 
@@ -735,21 +854,18 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <section class="main">
     <header class="topbar">
       <div class="topbar-header-left">
-        <!-- BIỂU TƯỢNG MINI TẠI HEADER TRANG CHÍNH -->
-        <div class="topbar-brand-mini" title="Cảng Hải Phòng - EST. 1874 (150+ Năm)">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round" fill="none" />
-            <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#8be4ec" stroke-width="2" stroke-linecap="round" fill="none" />
-            <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#f43f5e" />
-            <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#10b981" />
-            <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#a855f7" />
-            <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#f59e0b" />
-            <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#06b6d4" />
-            <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#3b82f6" />
-            <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#e2e8f0" />
-            <path d="M11 36L17 48.5H47L53 36H11Z" fill="#0284c7" />
-            <path d="M17 48.5L20 51H44L47 48.5H17Z" fill="#e11d48" />
-            <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" fill="none" />
+        <div class="topbar-brand-mini" title="Cảng Hải Phòng - Since 1874">
+          <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="80" rx="94" ry="58" stroke="#ffffff" stroke-width="5" fill="#1b5ba4"/>
+            <ellipse cx="100" cy="80" rx="86" ry="50" stroke="#ffffff" stroke-width="2" fill="none"/>
+            <path d="M52 56L64 52H80L92 56L88 74H56L52 56z" fill="#ffffff"/>
+            <polygon points="126,59 100,56 126,62" fill="#ffffff"/>
+            <polygon points="134,59 160,56 134,62" fill="#ffffff"/>
+            <path d="M126 62L124 88H136L134 62H126z" fill="#ffffff"/>
+            <path d="M42 90C42 80 50 74 62 74H74V86H62C58 86 54 88 54 92C54 96 58 98 62 98H74V110H62C50 110 42 104 42 94V90z" fill="#ffffff"/>
+            <path d="M80 74H92V88H108V74H120V110H108V96H92V110H80V74z" fill="#ffffff"/>
+            <path d="M126 74H164L148 110H126V74z" fill="#ffffff"/>
+            <circle cx="145" cy="87" r="4.5" fill="#1b5ba4"/>
           </svg>
         </div>
 
@@ -758,7 +874,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <h1 id="topTitle">TT KHAI THÁC & DVKH</h1>
             <div class="crumb"><span id="t_crumbPrefix">CẢNG HẢI PHÒNG</span> / <span id="crumb">TOÀN CẢNH</span></div>
           </div>
-          <!-- THANH LỌC NGÀY NẰM SÁT NGAY DƯỚI TIÊU ĐỀ -->
           <div class="topbar-date-filter">
             <span id="t_fromLabel">Từ:</span>
             <input type="date" id="fromDate" class="date-input-inline">
@@ -768,7 +883,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </div>
 
-      <!-- NÚT BỨC THƯ THÔNG BÁO VỚI SỐ ĐỎ NỔI LÊN -->
       <div class="topbar-right-actions">
         <div class="mail-btn-wrap">
           <button id="mailNotificationBtn" class="mail-badge-btn" title="Hộp thư phản ánh & góp ý (Bảo mật 6868)">
@@ -778,6 +892,16 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </div>
     </header>
+
+    <!-- DÒNG LOA CẢNH BÁO LÀM HÀNG TẠI CẦU BẾN TÂN VŨ -->
+    <div class="alert-ticker-wrap" id="alertTickerWrap">
+      <div class="alert-ticker-badge">📢 CẢNH BÁO LÀM HÀNG BẾN TÂN VŨ</div>
+      <div class="alert-ticker-track" id="alertTickerTrack">
+        <div class="alert-ticker-content" id="alertTickerContent">
+          Đang quét dữ liệu tàu tại bến và giờ nước ròng Hòn Dáu...
+        </div>
+      </div>
+    </div>
 
     <main class="content">
       <!-- MÀN HÌNH 1: TOÀN CẢNH -->
@@ -888,6 +1012,34 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="kpi-top" id="t_kLarge">Tàu ≥ 300m</div>
             <div class="kpi-value" id="kLarge">0</div>
             <div class="kpi-note" id="t_kLargeSub">Cỡ lớn</div>
+          </div>
+        </div>
+
+        <!-- BẢNG DẢI MỚN NƯỚC & DWT AN TOÀN TRONG NGÀY (THAY THẾ Ô TÌM KIẾM CŨ) -->
+        <div class="panel" style="margin-bottom: 14px;">
+          <div class="panel-head">
+            <h3 style="display:flex;align-items:center;gap:6px;">
+              📏 Bảng Dải Mớn Nước & Trọng Tải (DWT) An Toàn Trong Ngày
+            </h3>
+            <span class="badge" id="dailySafeSummaryBadge">Mực nước bến Tân Vũ (9m): Đang tính toán...</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Phân loại tàu</th>
+                  <th>Sức chở (TEU)</th>
+                  <th>Chiều dài (LOA)</th>
+                  <th>Dải DWT tham chiếu</th>
+                  <th>Mớn TK</th>
+                  <th>Mớn an toàn tối đa (Hôm nay)</th>
+                  <th>Khuyến nghị khai thác bến Tân Vũ</th>
+                </tr>
+              </thead>
+              <tbody id="safeDraftTableBody">
+                <!-- Tự động sinh dữ liệu -->
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -2365,6 +2517,7 @@ function updateRealtimeWidgets() {
   if (typeof renderMovement === 'function') {
     renderMovement(getFilteredCalls());
   }
+  renderDailySafeDraftTable();
 }
 
 function openTideConfigPrompt() {
@@ -2439,6 +2592,121 @@ function startMidnightCountdown() {
   }, 1000);
 }
 
+// ============================================================================
+// LOGIC CẢNH BÁO LÀM HÀNG TẠI BẾN & BẢNG THAM KHẢO DẢI MỚN NƯỚC / DWT AN TOÀN
+// ============================================================================
+
+const HP_CONTAINER_BENCHMARKS = [
+  { type: "Feeder nhỏ / Semi-Container", teu: "500 – 1.000", minLoa: 100, maxLoa: 130, refDraft: 6.5, minDwt: 5000, maxDwt: 10000, port: "Cảng sông Cấm, Chùa Vẽ" },
+  { type: "Feeder phổ thông (Nội Á)", teu: "1.000 – 1.800", minLoa: 140, maxLoa: 175, refDraft: 8.0, minDwt: 12000, maxDwt: 22000, port: "Đình Vũ, Tân Vũ, Chùa Vẽ" },
+  { type: "Feeder lớn / Sub-Panamax", teu: "2.000 – 3.000", minLoa: 180, maxLoa: 220, refDraft: 9.0, minDwt: 25000, maxDwt: 35000, port: "Tân Vũ, Đình Vũ (tận dụng thủy triều)" },
+  { type: "Panamax", teu: "3.000 – 5.000", minLoa: 250, maxLoa: 294, refDraft: 11.0, minDwt: 40000, maxDwt: 55000, port: "Lạch Huyện (Đầy tải), Cảng sông (Giảm tải mạnh)" },
+  { type: "Post-Panamax", teu: "5.000 – 10.000", minLoa: 280, maxLoa: 335, refDraft: 13.0, minDwt: 60000, maxDwt: 100000, port: "Các bến Lạch Huyện (Bến 1 đến bến 4)" },
+  { type: "New Panamax / Siêu lớn", teu: "11.000 – 15.000", minLoa: 366, maxLoa: 370, refDraft: 14.5, minDwt: 130000, maxDwt: 160000, port: "Lạch Huyện (TC-HICT, bến 3, 4, 7, 8)" },
+  { type: "Ultra Large Container (ULCV)", teu: "15.000 – 18.000+", minLoa: 399, maxLoa: 420, refDraft: 16.0, minDwt: 197000, maxDwt: 214000, port: "Bến Hateco Lạch Huyện (Bến 5, 6)" }
+];
+
+function getEstimatedDraftByLoa(loa) {
+  loa = Number(loa) || 0;
+  let match = HP_CONTAINER_BENCHMARKS.find(b => loa >= b.minLoa && loa <= b.maxLoa);
+  if (match) return match.refDraft;
+  if (loa < 130) return 6.5;
+  if (loa > 250) return 11.0;
+  return 8.5;
+}
+
+// 1. Cập nhật Bảng Dải mớn nước & DWT an toàn theo con nước ngày hôm nay
+function renderDailySafeDraftTable() {
+  const tbody = $('safeDraftTableBody');
+  if (!tbody) return;
+
+  let todayKey = getTodayString();
+  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
+  
+  // Độ sâu thực tế trước bến Tân Vũ (9m + triều ròng)
+  let berthLowDepth = 9.0 + todayTide.lowVal;
+  let berthHighDepth = 9.0 + todayTide.highVal;
+
+  if ($('dailySafeSummaryBadge')) {
+    $('dailySafeSummaryBadge').textContent = `Mực nước bến Tân Vũ (9m): Ròng ${berthLowDepth.toFixed(1)}m (${todayTide.lowTimeStr}) | Lớn ${berthHighDepth.toFixed(1)}m (${todayTide.highTimeStr})`;
+  }
+
+  tbody.innerHTML = HP_CONTAINER_BENCHMARKS.map(item => {
+    let maxSafeDraftAtLow = ((9.0 + todayTide.lowVal) / 1.1).toFixed(1);
+
+    let statusHtml = '';
+    if (item.refDraft <= maxSafeDraftAtLow) {
+      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">🟢 An toàn dỡ/xếp 24/24h</span>`;
+    } else if (item.minLoa <= 220) {
+      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">⚠️ Tránh chất hàng lúc triều kiệt (${todayTide.lowTimeStr})</span>`;
+    } else {
+      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">⛔ Giảm tải mạnh / Cập Lạch Huyện</span>`;
+    }
+
+    return `
+      <tr>
+        <td><b>${esc(item.type)}</b></td>
+        <td>${esc(item.teu)}</td>
+        <td><span class="badge">${item.minLoa}m – ${item.maxLoa}m</span></td>
+        <td><b>${item.minDwt.toLocaleString()} – ${item.maxDwt.toLocaleString()} T</b></td>
+        <td>${item.refDraft} m</td>
+        <td><strong style="color:var(--cyan)">≤ ${maxSafeDraftAtLow} m</strong> (Lúc cạn)</td>
+        <td>${statusHtml}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 2. Quét tàu ĐANG ĐỖ TẠI CẦU TÂN VŨ để phát loa cảnh báo làm hàng
+function checkWorkingVesselsLoadingAlert() {
+  const tickerElem = $('alertTickerContent');
+  if (!tickerElem) return;
+
+  let todayKey = getTodayString();
+  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
+  let berthLowLimit = 9.0 + todayTide.lowVal;
+
+  let now = Date.now();
+  let list = getFilteredCalls();
+
+  // Chỉ lấy những tàu ĐANG Ở CẦU TÂN VŨ (đang làm hàng)
+  let workingAtTanVu = list.filter(c => {
+    let term = (c.terminal || '').toUpperCase();
+    if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
+    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+    return now >= t1 && (t2 === 0 || now <= t2);
+  });
+
+  if (!workingAtTanVu.length) {
+    tickerElem.innerHTML = `<span class="ticker-item safe">⚓ Tân Vũ hiện không có tàu container đang neo bốc dỡ. Mực nước trước bến lúc cạn: ${berthLowLimit.toFixed(1)}m.</span>`;
+    return;
+  }
+
+  let alerts = [];
+  workingAtTanVu.forEach(s => {
+    let rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
+    let dynamicDraft = rawDraft * 1.1;
+
+    if (dynamicDraft >= (berthLowLimit - 0.4)) {
+      alerts.push(`
+        <span class="ticker-item warning">
+          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn ~${rawDraft.toFixed(1)}m): 
+          Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b> Tránh dồn tải xếp hàng vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
+        </span>
+      `);
+    } else {
+      alerts.push(`
+        <span class="ticker-item safe">
+          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): Mớn nước an toàn (${rawDraft.toFixed(1)}m / Mớn động ${dynamicDraft.toFixed(1)}m &lt; Đáy bến ${berthLowLimit.toFixed(1)}m). Đảm bảo xếp dỡ bình thường.
+        </span>
+      `);
+    }
+  });
+
+  tickerElem.innerHTML = alerts.join(' ');
+}
+
 // --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
 function nav(page, saveState = true){
   document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
@@ -2497,6 +2765,8 @@ function renderAll() {
     renderTanVuLayout(list);
     renderMovement(list);
     renderTable(list);
+    renderDailySafeDraftTable();
+    checkWorkingVesselsLoadingAlert();
 
     let p = localStorage.getItem('hp_last_page') || 'overview';
     if(p === 'planning') renderGantt();
@@ -3130,3 +3400,4 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+
