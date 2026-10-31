@@ -797,6 +797,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
     </div>
 
     <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
+   <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
     <div class="side-system-box">
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
@@ -811,20 +812,28 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </button>
       </div>
 
+      <!-- HÀNG NÚT: SETUP TRỰC & HÒM THƯ (CÓ SỐ ĐỎ THÔNG BÁO) -->
       <div class="side-quick-grid">
         <button id="setupShiftBtn" class="side-btn setup" title="Thiết lập ca trực (Mật khẩu 6868)">
           Setup 🔒
         </button>
-        <button id="manualSaveBtn" class="side-btn save" title="Lưu nhanh Snapshot lên Bucket">
-          Lưu 💾
+        <button id="mailNotificationBtn" class="side-btn" style="background:#e67e22; color:#fff; position:relative;" title="Hộp thư phản ánh & góp ý (Bảo mật 6868)">
+          ✉ Hòm thư
+          <span id="mailBadge" class="mail-unread-badge" style="top:-4px; right:-4px;">0</span>
         </button>
       </div>
 
       <div class="side-quick-grid">
+        <button id="manualSaveBtn" class="side-btn save" title="Lưu nhanh Snapshot lên Bucket">
+          Lưu 💾
+        </button>
         <button id="exportConfigBtn" class="side-btn export" title="Xuất dữ liệu Excel/CSV">
           Xuất 📤
         </button>
-        <button id="importConfigBtn" class="side-btn import" title="Nạp dữ liệu từ file Excel">
+      </div>
+
+      <div class="side-quick-grid">
+        <button id="importConfigBtn" class="side-btn import" style="grid-column: span 2;" title="Nạp dữ liệu từ file Excel">
           Nạp 📥
         </button>
       </div>
@@ -878,16 +887,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </div>
 
-      <div class="topbar-right-actions">
-        <div class="mail-btn-wrap">
-          <button id="mailNotificationBtn" class="mail-badge-btn" title="Hộp thư phản ánh & góp ý (Bảo mật 6868)">
-            ✉
-            <span id="mailBadge" class="mail-unread-badge">0</span>
-          </button>
-        </div>
-      </div>
     </header>
-
     <!-- DÒNG LOA CẢNH BÁO LÀM HÀNG TẠI CẦU BẾN TÂN VŨ -->
     <div class="alert-ticker-wrap" id="alertTickerWrap">
       <div class="alert-ticker-badge">📢 CẢNH BÁO LÀM HÀNG BẾN TÂN VŨ</div>
