@@ -3202,6 +3202,7 @@ function renderAll() {
 function renderTanVuLayout(list) {
   try {
     let now = Date.now();
+    // Lấy ngày đang xem từ ô Từ ngày trên Topbar (mặc định là hôm nay)
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
 
     let tanVuShips = list.filter(c => {
@@ -3256,94 +3257,6 @@ function renderTanVuLayout(list) {
           }
 
           let timeHint = isDepartingOnDate ? '🚩 Rời hôm nay' : `${s.loa}m`;
-
-          html += `
-            <div class="${chipClass}" 
-                 onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseleave="scheduleHideTooltip()">
-              <span>${esc(s.vessel)}</span>
-              <span class="chip-time">${timeHint}</span>
-            </div>`;
-        });
-      }
-      html += `</div></div>`;
-    });
-    html += `</div>`;
-
-    if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
-  } catch (err) {
-    console.error("Lỗi tại renderTanVuLayout:", err);
-  }
-}
-    // Lọc các tàu Tân Vũ còn hiện diện tại cầu hoặc sắp cập trong ngày
-    // LOẠI BỎ triệt để các tàu đã rời bến thực tế trong quá khứ (now > t2)
-    let tanVuShips = list.filter(c => {
-      let term = (c.terminal || '').toUpperCase();
-      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-
-      let etbDate = (c.etb || '').split('T')[0];
-      let etdDate = (c.etd || '').split('T')[0];
-      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-
-      // 1. Tàu đã rời bến thực tế trước thời điểm hiện tại -> Giải phóng khỏi cầu
-      if (t2 !== Infinity && t2 > 0 && now > t2) {
-        return false;
-      }
-
-      // 2. Tàu đang làm hàng tại bến
-      let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
-
-      // 3. Tàu có lịch cập trong ngày hôm nay
-      let isArrivingToday = (etbDate === todayStr);
-
-      // 4. Tàu có lịch rời trong ngày hôm nay nhưng chưa tới giờ rời
-      let isDepartingLaterToday = (etdDate === todayStr && (t2 === Infinity || now <= t2));
-
-      return isWorkingNow || isArrivingToday || isDepartingLaterToday;
-    });
-
-    let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
-
-    if ($('tanvuCount')) {
-      $('tanvuCount').textContent = `${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}`;
-    }
-
-    let berthMap = {};
-    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
-
-    tanVuShips.forEach(c => {
-      let b = (c.berth || 'B1').trim().toUpperCase();
-      if (!berthMap[b]) berthMap[b] = [];
-      berthMap[b].push(c);
-    });
-
-    let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
-
-    Object.keys(berthMap).sort().forEach(bName => {
-      let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
-      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
-      
-      if (ships.length === 0) {
-        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
-      } else {
-        ships.forEach(s => {
-          let t1 = s.etb ? new Date(s.etb).getTime() : 0;
-          let t2 = s.etd ? new Date(s.etd).getTime() : Infinity;
-          let etdDate = (s.etd || '').split('T')[0];
-
-          // Tàu ĐANG Ở CẦU và có LỊCH RỜI HÔM NAY (nhưng chưa đến giờ rời) -> Nổi màu ĐỎ cảnh báo
-          let isDepartingTodayAndDocked = (etdDate === todayStr && t1 > 0 && now >= t1 && now <= t2);
-          
-          let chipClass = 'ship-chip';
-          if (isDepartingTodayAndDocked) {
-            chipClass += ' departing-today';
-          } else if (s.loa >= 300) {
-            chipClass += ' large';
-          }
-
-          let timeHint = isDepartingTodayAndDocked ? '🚩 Rời hôm nay' : `${s.loa}m`;
 
           html += `
             <div class="${chipClass}" 
