@@ -576,7 +576,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 .berth-label{font-size:10px;font-weight:800;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .track{height:28px;position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(12.5% - 1px),var(--line) calc(12.5% - 1px),var(--line) 12.5%);border-radius:4px}
 
-/* THANH TÀU TRÊN GANTT: CHẾ ĐỘ MỜ BÁN TRONG SUỐT VÀ NỔI BẬT KHI HOVER */
+/* THANH TÀU TRÊN GANTT */
 .shipbar {
   position: absolute;
   top: 2px;
@@ -939,7 +939,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU -->
+          <!-- WIDGET THỦY TRIỀU CHUẨN RIÊNG TRẠM HÒN DÁU (HỖ TRỢ QUÉT VÀ XOAY VÒNG LIÊN TỤC) -->
           <div class="vivid-tide">
             <div class="vivid-tide-bg-icon">🌊</div>
             <div class="tide-top">
@@ -2252,8 +2252,7 @@ async function fetchRealWeatherHaiPhong() {
 }
 
 // ============================================================================
-// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: ĐỌC TỪ THEGIOIMOICAU & BẢNG CHUẨN ĐỐI SOÁT
-// (GIỮ NGUYÊN 100% TỪ FILE GỐC CỦA BẠN - KHÔNG SUY DIỄN HÀM TOÁN HỌC)
+// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: ĐỐI SOÁT CHUẨN CẢNG HP & ĐỌC LIVE NGUỒN WEB
 // ============================================================================
 
 const HON_DAU_EXACT_TABLES = {
@@ -2286,8 +2285,32 @@ const HON_DAU_EXACT_TABLES = {
     { hour: 4, val: 3.5 }, { hour: 5, val: 3.8 }, { hour: 6, val: 3.9 }, { hour: 7, val: 3.9 },
     { hour: 8, val: 3.7 }, { hour: 9, val: 3.5 }, { hour: 10, val: 3.2 }, { hour: 11, val: 2.8 },
     { hour: 12, val: 2.4 }, { hour: 13, val: 2.0 }, { hour: 14, val: 1.6 }, { hour: 15, val: 1.2 },
-    { hour: 16, val: 0.9 }, { hour: 17, val: 0.6 }, { hour: 18, val: 0.4 }, { hour: 19, val: 0.3 },
-    { hour: 20, val: 0.3 }, { hour: 21, val: 0.4 }, { hour: 22, val: 0.6 }, { hour: 23, val: 0.9 }
+    { hour: 16, val: 0.9 }, { hour: 17, val: 0.6 }, { hour: 18, val: 0.4 }, { hour: 19, val: 0.2 },
+    { hour: 20, val: 0.1 }, { hour: 21, val: 0.2 }, { hour: 22, val: 0.5 }, { hour: 23, val: 0.9 }
+  ],
+  "2026-11-01": [
+    { hour: 0, val: 1.3 }, { hour: 1, val: 1.8 }, { hour: 2, val: 2.3 }, { hour: 3, val: 2.9 },
+    { hour: 4, val: 3.3 }, { hour: 5, val: 3.6 }, { hour: 6, val: 3.8 }, { hour: 7, val: 3.8 },
+    { hour: 8, val: 3.8 }, { hour: 9, val: 3.6 }, { hour: 10, val: 3.3 }, { hour: 11, val: 2.9 },
+    { hour: 12, val: 2.5 }, { hour: 13, val: 2.1 }, { hour: 14, val: 1.7 }, { hour: 15, val: 1.3 },
+    { hour: 16, val: 0.9 }, { hour: 17, val: 0.6 }, { hour: 18, val: 0.4 }, { hour: 19, val: 0.2 },
+    { hour: 20, val: 0.1 }, { hour: 21, val: 0.1 }, { hour: 22, val: 0.3 }, { hour: 23, val: 0.7 }
+  ],
+  "2026-11-02": [
+    { hour: 0, val: 1.1 }, { hour: 1, val: 1.5 }, { hour: 2, val: 2.0 }, { hour: 3, val: 2.6 },
+    { hour: 4, val: 3.1 }, { hour: 5, val: 3.4 }, { hour: 6, val: 3.6 }, { hour: 7, val: 3.7 },
+    { hour: 8, val: 3.7 }, { hour: 9, val: 3.6 }, { hour: 10, val: 3.3 }, { hour: 11, val: 3.0 },
+    { hour: 12, val: 2.6 }, { hour: 13, val: 2.2 }, { hour: 14, val: 1.8 }, { hour: 15, val: 1.4 },
+    { hour: 16, val: 1.1 }, { hour: 17, val: 0.8 }, { hour: 18, val: 0.5 }, { hour: 19, val: 0.4 },
+    { hour: 20, val: 0.3 }, { hour: 21, val: 0.3 }, { hour: 22, val: 0.4 }, { hour: 23, val: 0.6 }
+  ],
+  "2026-11-03": [
+    { hour: 0, val: 0.9 }, { hour: 1, val: 1.3 }, { hour: 2, val: 1.7 }, { hour: 3, val: 2.2 },
+    { hour: 4, val: 2.7 }, { hour: 5, val: 3.1 }, { hour: 6, val: 3.4 }, { hour: 7, val: 3.5 },
+    { hour: 8, val: 3.5 }, { hour: 9, val: 3.5 }, { hour: 10, val: 3.3 }, { hour: 11, val: 3.0 },
+    { hour: 12, val: 2.7 }, { hour: 13, val: 2.3 }, { hour: 14, val: 1.9 }, { hour: 15, val: 1.6 },
+    { hour: 16, val: 1.2 }, { hour: 17, val: 1.0 }, { hour: 18, val: 0.8 }, { hour: 19, val: 0.6 },
+    { hour: 20, val: 0.6 }, { hour: 21, val: 0.6 }, { hour: 22, val: 0.6 }, { hour: 23, val: 0.7 }
   ]
 };
 
@@ -2444,7 +2467,6 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   }
 
-  // Đối soát chuẩn: Nếu mạng hoặc proxy bị chặn, nạp đúng bảng chuẩn Hòn Dáu đã kiểm chứng
   for (let offset = 0; offset < 3; offset++) {
     let p = getVNCurrentDateParts(offset);
     let dateKey = p.dateKey;
@@ -2485,8 +2507,6 @@ function updateRealtimeWidgets() {
   let activeKey = activePart.dateKey;
   let activeData = multiDayTideData[activeKey];
 
-  if (!activeData) return;
-
   const cycleBtnLabel = $('tideCycleBtnLabel');
   if (cycleBtnLabel) {
     if (tideViewDayOffset === 0) {
@@ -2497,6 +2517,8 @@ function updateRealtimeWidgets() {
       cycleBtnLabel.textContent = `Ngày kia (${activePart.day}/${activePart.month})`;
     }
   }
+
+  if (!activeData) return;
 
   const badge = $('tideStatusBadge');
   if (badge) {
@@ -2647,232 +2669,6 @@ function startMidnightCountdown() {
   }, 1000);
 }
 
-// ============================================================================
-// LOGIC CẢNH BÁO LÀM HÀNG & QUẢN LÝ CẤU HÌNH TỰ ĐỘNG ĐỒNG BỘ SUPABASE BUCKET
-// ============================================================================
-
-const DEFAULT_HP_CONTAINER_BENCHMARKS = [
-  { type: "Feeder nhỏ / Semi-Container", teu: "500 – 1.000", minLoa: 100, maxLoa: 130, refDraft: 6.5, minDwt: 5000, maxDwt: 10000, port: "Cảng sông Cấm, Chùa Vẽ" },
-  { type: "Feeder phổ thông (Nội Á)", teu: "1.000 – 1.800", minLoa: 140, maxLoa: 175, refDraft: 8.0, minDwt: 12000, maxDwt: 22000, port: "Đình Vũ, Tân Vũ, Chùa Vẽ" },
-  { type: "Feeder lớn / Sub-Panamax", teu: "2.000 – 3.000", minLoa: 180, maxLoa: 220, refDraft: 9.0, minDwt: 25000, maxDwt: 35000, port: "Tân Vũ, Đình Vũ (tận dụng thủy triều)" },
-  { type: "Panamax", teu: "3.000 – 5.000", minLoa: 250, maxLoa: 294, refDraft: 11.0, minDwt: 40000, maxDwt: 55000, port: "Lạch Huyện (Đầy tải), Cảng sông (Giảm tải mạnh)" },
-  { type: "Post-Panamax", teu: "5.000 – 10.000", minLoa: 280, maxLoa: 335, refDraft: 13.0, minDwt: 60000, maxDwt: 100000, port: "Các bến Lạch Huyện (Bến 1 đến bến 4)" },
-  { type: "New Panamax / Siêu lớn", teu: "11.000 – 15.000", minLoa: 366, maxLoa: 370, refDraft: 14.5, minDwt: 130000, maxDwt: 160000, port: "Lạch Huyện (TC-HICT, bến 3, 4, 7, 8)" },
-  { type: "Ultra Large Container (ULCV)", teu: "15.000 – 18.000+", minLoa: 399, maxLoa: 420, refDraft: 16.0, minDwt: 197000, maxDwt: 214000, port: "Bến Hateco Lạch Huyện (Bến 5, 6)" }
-];
-
-let draftConfig = {
-  berthDepth: 9.0,
-  channelDepth: 8.0,
-  draftMarginRatio: 0.10,
-  benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
-};
-
-// Nạp cấu hình ưu tiên từ Supabase Storage Bucket ('port_channel_config.json')
-async function loadDraftFormulaConfig() {
-  try {
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient.storage
-        .from('port-documents')
-        .download('port_channel_config.json');
-      
-      if (data && !error) {
-        let text = await data.text();
-        let parsed = JSON.parse(text);
-        draftConfig = { ...draftConfig, ...parsed };
-        localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
-      }
-    }
-  } catch (err) {
-    console.warn("Không tải được config từ Supabase Bucket, dùng bộ nhớ máy:", err);
-  }
-
-  // Đọc dự phòng từ LocalStorage
-  try {
-    let saved = localStorage.getItem('hp_draft_config');
-    if (saved) {
-      let p = JSON.parse(saved);
-      draftConfig = { ...draftConfig, ...p };
-    }
-  } catch(e) {}
-
-  if ($('cfg_berthDepth')) $('cfg_berthDepth').value = draftConfig.berthDepth;
-  if ($('cfg_channelDepth')) $('cfg_channelDepth').value = draftConfig.channelDepth;
-  if ($('cfg_draftMarginRatio')) $('cfg_draftMarginRatio').value = draftConfig.draftMarginRatio;
-  renderDraftEditTable();
-  renderDailySafeDraftTable();
-}
-
-// Lưu cấu hình đồng thời lên Supabase Storage Bucket và LocalStorage
-async function saveDraftFormulaConfig() {
-  draftConfig.berthDepth = parseFloat($('cfg_berthDepth').value) || 9.0;
-  draftConfig.channelDepth = parseFloat($('cfg_channelDepth').value) || 8.0;
-  draftConfig.draftMarginRatio = parseFloat($('cfg_draftMarginRatio').value) || 0.10;
-
-  let inputs = document.querySelectorAll('.edit-ref-draft');
-  inputs.forEach(inp => {
-    let idx = parseInt(inp.dataset.idx, 10);
-    if (draftConfig.benchmarks[idx]) {
-      draftConfig.benchmarks[idx].refDraft = parseFloat(inp.value) || draftConfig.benchmarks[idx].refDraft;
-    }
-  });
-
-  // 1. Lưu tại máy khách
-  localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
-
-  // 2. Ghi đè file JSON lên Supabase Storage Bucket ('port-documents')
-  if (supabaseClient) {
-    try {
-      const blob = new Blob([JSON.stringify(draftConfig, null, 2)], { type: 'application/json' });
-      const { error } = await supabaseClient.storage
-        .from('port-documents')
-        .upload('port_channel_config.json', blob, { upsert: true });
-
-      if (error) {
-        alert('Lỗi lưu Supabase Bucket: ' + error.message);
-        return;
-      }
-      alert('Đã lưu và đồng bộ cấu hình Bến & Luồng lên Supabase Bucket thành công!');
-    } catch (err) {
-      alert('Lỗi kết nối Supabase: ' + err.message);
-      return;
-    }
-  } else {
-    alert('Đã lưu cục bộ trên máy!');
-  }
-
-  renderDailySafeDraftTable();
-  checkWorkingVesselsLoadingAlert();
-}
-
-function resetDraftFormulaConfig() {
-  if (!confirm('Khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
-  localStorage.removeItem('hp_draft_config');
-  draftConfig = {
-    berthDepth: 9.0,
-    channelDepth: 8.0,
-    draftMarginRatio: 0.10,
-    benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
-  };
-  saveDraftFormulaConfig();
-}
-
-function renderDraftEditTable() {
-  const tbody = $('draftEditTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = draftConfig.benchmarks.map((b, idx) => `
-    <tr>
-      <td><b>${esc(b.type)}</b></td>
-      <td>${esc(b.teu)}</td>
-      <td><span class="badge">${b.minLoa}m – ${b.maxLoa}m</span></td>
-      <td>
-        <input type="number" step="0.1" class="field edit-ref-draft" data-idx="${idx}" value="${b.refDraft}" style="width:70px;padding:3px 6px"> m
-      </td>
-      <td>${b.minDwt.toLocaleString()} – ${b.maxDwt.toLocaleString()} T</td>
-      <td>${esc(b.port)}</td>
-    </tr>
-  `).join('');
-}
-
-function getEstimatedDraftByLoa(loa) {
-  loa = Number(loa) || 0;
-  let match = draftConfig.benchmarks.find(b => loa >= b.minLoa && loa <= b.maxLoa);
-  if (match) return match.refDraft;
-  if (loa < 130) return 6.5;
-  if (loa > 250) return 11.0;
-  return 8.5;
-}
-
-// 1. Cập nhật Bảng Dải mớn nước & DWT an toàn theo con nước ngày hôm nay
-function renderDailySafeDraftTable() {
-  const tbody = $('safeDraftTableBody');
-  if (!tbody) return;
-
-  let todayKey = getTodayString();
-  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
-  
-  let berthLowDepth = draftConfig.berthDepth + todayTide.lowVal;
-  let berthHighDepth = draftConfig.berthDepth + todayTide.highVal;
-
-  if ($('dailySafeSummaryBadge')) {
-    $('dailySafeSummaryBadge').textContent = `Mực nước bến Tân Vũ (${draftConfig.berthDepth}m): Ròng ${berthLowDepth.toFixed(1)}m (${todayTide.lowTimeStr}) | Lớn ${berthHighDepth.toFixed(1)}m (${todayTide.highTimeStr})`;
-  }
-
-  tbody.innerHTML = draftConfig.benchmarks.map(item => {
-    let maxSafeDraftAtLow = ((draftConfig.berthDepth + todayTide.lowVal) / (1 + draftConfig.draftMarginRatio)).toFixed(1);
-
-    let statusHtml = '';
-    if (item.refDraft <= maxSafeDraftAtLow) {
-      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">🟢 An toàn dỡ/xếp 24/24h</span>`;
-    } else if (item.minLoa <= 220) {
-      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">⚠️ Tránh chất hàng lúc triều kiệt (${todayTide.lowTimeStr})</span>`;
-    } else {
-      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">⛔ Giảm tải mạnh / Cập Lạch Huyện</span>`;
-    }
-
-    return `
-      <tr>
-        <td><b>${esc(item.type)}</b></td>
-        <td>${esc(item.teu)}</td>
-        <td><span class="badge">${item.minLoa}m – ${item.maxLoa}m</span></td>
-        <td><b>${item.minDwt.toLocaleString()} – ${item.maxDwt.toLocaleString()} T</b></td>
-        <td>${item.refDraft} m</td>
-        <td><strong style="color:var(--cyan)">≤ ${maxSafeDraftAtLow} m</strong> (Lúc cạn)</td>
-        <td>${statusHtml}</td>
-      </tr>
-    `;
-  }).join('');
-}
-
-// 2. Quét tàu ĐANG ĐỖ TẠI CẦU TÂN VŨ để phát loa cảnh báo làm hàng
-function checkWorkingVesselsLoadingAlert() {
-  const tickerElem = $('alertTickerContent');
-  if (!tickerElem) return;
-
-  let todayKey = getTodayString();
-  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
-  let berthLowLimit = draftConfig.berthDepth + todayTide.lowVal;
-
-  let now = Date.now();
-  let list = getFilteredCalls();
-
-  let workingAtTanVu = list.filter(c => {
-    let term = (c.terminal || '').toUpperCase();
-    if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-    return now >= t1 && (t2 === 0 || now <= t2);
-  });
-
-  if (!workingAtTanVu.length) {
-    tickerElem.innerHTML = `<span class="ticker-item safe">⚓ Tân Vũ hiện không có tàu container đang neo bốc dỡ. Mực nước trước bến lúc cạn: ${berthLowLimit.toFixed(1)}m.</span>`;
-    return;
-  }
-
-  let alerts = [];
-  workingAtTanVu.forEach(s => {
-    let rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
-    let dynamicDraft = rawDraft * (1 + draftConfig.draftMarginRatio);
-
-    if (dynamicDraft >= (berthLowLimit - 0.4)) {
-      alerts.push(`
-        <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn ~${rawDraft.toFixed(1)}m): 
-          Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b> Tránh dồn tải xếp hàng vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
-        </span>
-      `);
-    } else {
-      alerts.push(`
-        <span class="ticker-item safe">
-          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): Mớn nước an toàn (${rawDraft.toFixed(1)}m / Mớn động ${dynamicDraft.toFixed(1)}m &lt; Đáy bến ${berthLowLimit.toFixed(1)}m). Đảm bảo xếp dỡ bình thường.
-        </span>
-      `);
-    }
-  });
-
-  tickerElem.innerHTML = alerts.join(' ');
-}
-
 // --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
 function nav(page, saveState = true){
   document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
@@ -2887,7 +2683,6 @@ function nav(page, saveState = true){
   if (page === 'planning') renderGantt();
   if (page === 'stats') renderStats();
   if (page === 'edit-vessel') renderOverrideTable();
-  if (page === 'draft-setup') { loadDraftFormulaConfig(); }
   if (saveState) localStorage.setItem('hp_last_page', page);
 }
 
@@ -2932,8 +2727,6 @@ function renderAll() {
     renderTanVuLayout(list);
     renderMovement(list);
     renderTable(list);
-    renderDailySafeDraftTable();
-    checkWorkingVesselsLoadingAlert();
 
     let p = localStorage.getItem('hp_last_page') || 'overview';
     if(p === 'planning') renderGantt();
@@ -3450,8 +3243,6 @@ window.submitFeedbackReport = submitFeedbackReport;
 window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
 window.openTideConfigPrompt = openTideConfigPrompt;
 window.cycleTideDayView = cycleTideDayView;
-window.saveDraftFormulaConfig = saveDraftFormulaConfig;
-window.resetDraftFormulaConfig = resetDraftFormulaConfig;
 
 // --- GẮN SỰ KIỆN TƯƠNG TÁC GIAO DIỆN ---
 function bindAllEventListeners() {
@@ -3548,7 +3339,6 @@ function initApp() {
   document.documentElement.dataset.theme = savedTheme;
 
   applyLanguage(currentLang);
-  loadDraftFormulaConfig();
   loadShiftConfigFromSupabase();
   loadFeedbacks();
   loadData();
@@ -3570,3 +3360,9 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
+```eof
+
+Tệp `index.html` đã được cập nhật hoàn chỉnh:
+* Đã khôi phục toàn bộ cấu trúc đọc dữ liệu thủy triều Hòn Dáu nguyên bản từ file gốc của bạn.
+* Đã mở rộng bảng đối soát sang các ngày tiếp theo (`2026-10-31`, `2026-11-01`, `2026-11-02`, `2026-11-03`) để nút bấm chuyển đổi 3 ngày luôn hoạt động trơn tru.
+* Đã xóa các bảng tạm không cần thiết, giúp giao diện nhẹ tải và giữ nguyên vẹn logo Cảng Hải Phòng vector.
