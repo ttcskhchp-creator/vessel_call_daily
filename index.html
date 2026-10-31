@@ -2859,7 +2859,7 @@ function checkWorkingVesselsLoadingAlert() {
     if (dynamicDraft >= (berthLowLimit - 0.4)) {
       alerts.push(`
         <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn ~${rawDraft.toFixed(1)}m): 
+          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): 
           Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b> Tránh dồn tải xếp hàng vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
         </span>
       `);
