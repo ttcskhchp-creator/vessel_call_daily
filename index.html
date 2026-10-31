@@ -3190,10 +3190,12 @@ function renderAll() {
 }
 
 function renderTanVuLayout(list) {
+  function renderTanVuLayout(list) {
   let now = Date.now();
   let todayStr = getTodayString(); // YYYY-MM-DD
 
-  // Lọc tất cả tàu thuộc Tân Vũ: có ETB hôm nay, hoặc ĐANG Ở CẦU, hoặc có ETD rời trong hôm nay
+  // Lọc các tàu Tân Vũ còn hiện diện tại cầu hoặc sắp cập trong ngày
+  // LOẠI BỎ các tàu đã thực sự rời bến (now > t2)
   let tanVuShips = list.filter(c => {
     let term = (c.terminal || '').toUpperCase();
     if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
@@ -3203,11 +3205,21 @@ function renderTanVuLayout(list) {
     let t1 = c.etb ? new Date(c.etb).getTime() : 0;
     let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
 
-    let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
-    let isArrivingToday = (etbDate === todayStr);
-    let isDepartingToday = (etdDate === todayStr);
+    // 1. Nếu tàu ĐÃ RỜI BẾN TRƯỚC THỜI ĐIỂM HIỆN TẠI -> Không hiển thị chiếm cầu
+    if (t2 !== Infinity && t2 > 0 && now > t2) {
+      return false;
+    }
 
-    return isWorkingNow || isArrivingToday || isDepartingToday;
+    // 2. Tàu đang neo tại cầu làm hàng
+    let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
+
+    // 3. Tàu có lịch cập trong ngày hôm nay (và chưa đến giờ rời)
+    let isArrivingToday = (etbDate === todayStr);
+
+    // 4. Tàu có lịch rời trong ngày hôm nay nhưng CHƯA RỜI (now <= t2)
+    let isDepartingLaterToday = (etdDate === todayStr && (t2 === Infinity || now <= t2));
+
+    return isWorkingNow || isArrivingToday || isDepartingLaterToday;
   });
 
   if ($('tanvuCount')) {
@@ -3239,7 +3251,7 @@ function renderTanVuLayout(list) {
         let t2 = s.etd ? new Date(s.etd).getTime() : Infinity;
         let etdDate = (s.etd || '').split('T')[0];
 
-        // Tàu ĐANG Ở CẦU và có NGÀY RỜI LÀ HÔM NAY -> Nổi màu ĐỎ
+        // Tàu ĐANG Ở CẦU và có LỊCH RỜI HÔM NAY (nhưng chưa đến giờ rời) -> Nổi màu ĐỎ
         let isDepartingTodayAndDocked = (etdDate === todayStr && t1 > 0 && now >= t1 && now <= t2);
         
         let chipClass = 'ship-chip';
@@ -3267,7 +3279,6 @@ function renderTanVuLayout(list) {
 
   if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
 }
-
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
