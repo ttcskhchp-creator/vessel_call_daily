@@ -796,7 +796,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </div>
     </div>
 
-    <!-- KHỐI CHỨC NĂNG DỌC TRÁI -->
+    <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
     <div class="side-system-box">
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
@@ -1236,11 +1236,11 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div class="page-head">
           <div>
             <h2>Cài đặt Luồng, Bến Tân Vũ & Bảng Dải Mớn Nước</h2>
-            <div class="muted">Tùy chỉnh thông số mực nước bến, độ sâu luồng và dải mớn thiết kế chuẩn của tàu container</div>
+            <div class="muted">Tùy chỉnh thông số mực nước bến, độ sâu luồng và dải mớn thiết kế (Đồng bộ qua Supabase Bucket)</div>
           </div>
           <div style="display:flex;gap:6px">
             <button class="darkbtn" onclick="resetDraftFormulaConfig()">↺ Khôi phục mặc định</button>
-            <button class="primary" onclick="saveDraftFormulaConfig()">💾 Lưu Cấu Hình</button>
+            <button class="primary" onclick="saveDraftFormulaConfig()">💾 Lưu Cấu Hình Bucket</button>
           </div>
         </div>
 
@@ -2591,7 +2591,7 @@ function startMidnightCountdown() {
 }
 
 // ============================================================================
-// LOGIC CẢNH BÁO LÀM HÀNG TẠI BẾN & QUẢN LÝ CẤU HÌNH LUỒNG/BẾN/DẢI MỚN
+// LOGIC CẢNH BÁO LÀM HÀNG & QUẢN LÝ CẤU HÌNH TỰ ĐỘNG ĐỒNG BỘ SUPABASE BUCKET
 // ============================================================================
 
 const DEFAULT_HP_CONTAINER_BENCHMARKS = [
@@ -2611,17 +2611,31 @@ let draftConfig = {
   benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
 };
 
-function loadDraftFormulaConfig() {
+// Nạp cấu hình ưu tiên từ Supabase Storage Bucket ('port_channel_config.json')
+async function loadDraftFormulaConfig() {
+  try {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.storage
+        .from('port-documents')
+        .download('port_channel_config.json');
+      
+      if (data && !error) {
+        let text = await data.text();
+        let parsed = JSON.parse(text);
+        draftConfig = { ...draftConfig, ...parsed };
+        localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+      }
+    }
+  } catch (err) {
+    console.warn("Không tải được config từ Supabase Bucket, dùng bộ nhớ máy:", err);
+  }
+
+  // Đọc dự phòng từ LocalStorage
   try {
     let saved = localStorage.getItem('hp_draft_config');
     if (saved) {
       let p = JSON.parse(saved);
-      draftConfig.berthDepth = p.berthDepth || 9.0;
-      draftConfig.channelDepth = p.channelDepth || 8.0;
-      draftConfig.draftMarginRatio = p.draftMarginRatio || 0.10;
-      if (p.benchmarks && Array.isArray(p.benchmarks)) {
-        draftConfig.benchmarks = p.benchmarks;
-      }
+      draftConfig = { ...draftConfig, ...p };
     }
   } catch(e) {}
 
@@ -2632,7 +2646,8 @@ function loadDraftFormulaConfig() {
   renderDailySafeDraftTable();
 }
 
-function saveDraftFormulaConfig() {
+// Lưu cấu hình đồng thời lên Supabase Storage Bucket và LocalStorage
+async function saveDraftFormulaConfig() {
   draftConfig.berthDepth = parseFloat($('cfg_berthDepth').value) || 9.0;
   draftConfig.channelDepth = parseFloat($('cfg_channelDepth').value) || 8.0;
   draftConfig.draftMarginRatio = parseFloat($('cfg_draftMarginRatio').value) || 0.10;
@@ -2645,8 +2660,30 @@ function saveDraftFormulaConfig() {
     }
   });
 
+  // 1. Lưu tại máy khách
   localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
-  alert('Đã lưu cấu hình Bến (9m), Luồng (8m) và Bảng Dải mớn thành công!');
+
+  // 2. Ghi đè file JSON lên Supabase Storage Bucket ('port-documents')
+  if (supabaseClient) {
+    try {
+      const blob = new Blob([JSON.stringify(draftConfig, null, 2)], { type: 'application/json' });
+      const { error } = await supabaseClient.storage
+        .from('port-documents')
+        .upload('port_channel_config.json', blob, { upsert: true });
+
+      if (error) {
+        alert('Lỗi lưu Supabase Bucket: ' + error.message);
+        return;
+      }
+      alert('Đã lưu và đồng bộ cấu hình Bến & Luồng lên Supabase Bucket thành công!');
+    } catch (err) {
+      alert('Lỗi kết nối Supabase: ' + err.message);
+      return;
+    }
+  } else {
+    alert('Đã lưu cục bộ trên máy!');
+  }
+
   renderDailySafeDraftTable();
   checkWorkingVesselsLoadingAlert();
 }
@@ -2660,7 +2697,7 @@ function resetDraftFormulaConfig() {
     draftMarginRatio: 0.10,
     benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
   };
-  loadDraftFormulaConfig();
+  saveDraftFormulaConfig();
 }
 
 function renderDraftEditTable() {
