@@ -1,10 +1,3 @@
-Về phía Supabase, bạn không cần làm thêm bất kỳ điều gì hay tạo thêm bảng nào mới. Hệ thống sẽ sử dụng trực tiếp các bảng và Storage Bucket (port-documents) hiện có. Toàn bộ logic cảnh báo làm hàng tại cầu bến và bảng dải mớn nước an toàn đều được xử lý tự động ngay trên máy khách (Client-side) dựa vào số liệu lịch tàu và thủy triều thực tế.
-Mã nguồn HTML hoàn chỉnh đã được cập nhật:
-Các cải tiến đã áp dụng trong code:
- * Dòng loa thông báo chú ý làm hàng: Chạy chữ cảnh báo trực tiếp dưới Topbar, tập trung vào các tàu đang nằm tại cầu bến Tân Vũ—nhắc nhở trực ban và điều độ không dồn tải xếp hàng vào giờ triều kiệt (nước ròng), ưu tiên dỡ hàng để tàu nổi an toàn.
- * Bảng Dải Mớn Nước & Trọng Tải (DWT) An Toàn Trong Ngày: Tự động tính toán mớn động an toàn dựa trên độ sâu bến Tân Vũ (9.0m) kết hợp với số liệu thủy triều Hòn Dáu trong ngày.
- * Loại bỏ hoàn toàn ô tra cứu tàu thừa: Giúp ứng dụng nhẹ, mượt mà và tập trung đúng vào nghiệp vụ khai thác cầu bến.
- * Giữ nguyên Logo Cảng Hải Phòng Vector an toàn 100%, biểu tượng tàu và cánh chim chìm mờ ở chân trang, cùng đầy đủ các tính năng Supabase và thủy triều xoay vòng.
 <!DOCTYPE html>
 <html lang="vi">
 <head>
