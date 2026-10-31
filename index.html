@@ -21,7 +21,7 @@ button{cursor:pointer;border:0;border-radius:8px;padding:8px 12px;font-weight:70
 button:hover{filter:brightness(.95)}
 
 .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;transition:all .2s ease}
-.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:14px 10px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
+.side{background:linear-gradient(180deg,#10263d,#123b5c);color:white;padding:12px 10px 8px;display:flex;flex-direction:column;gap:8px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:20;scrollbar-width:thin}
 
 /* --- LOGO CẢNG HẢI PHÒNG (VECTOR AN TOÀN TUYỆT ĐỐI) --- */
 .brand {
@@ -29,9 +29,9 @@ button:hover{filter:brightness(.95)}
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 4px 12px;
+  padding: 4px 4px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   text-align: center;
   width: 100%;
 }
@@ -39,17 +39,17 @@ button:hover{filter:brightness(.95)}
 .brand-emblem-wrap {
   position: relative;
   width: 154px;
-  height: 96px;
+  height: 94px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .brand-icon-box {
-  width: 62px;
-  height: 62px;
-  min-width: 62px;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
   background: linear-gradient(145deg, #123d6a, #0a2342);
   border: 1.8px solid var(--cyan);
   border-radius: 14px;
@@ -133,10 +133,10 @@ button:hover{filter:brightness(.95)}
   100% { background-position: 200% center; }
 }
 
-.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 8px;margin-bottom:3px}
-.nav{display:grid;gap:3px}
+.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#82a3bd;padding:0 8px;margin-bottom:2px}
+.nav{display:grid;gap:2px}
 
-.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.nav button{background:transparent;color:#c3d4e2;text-align:left;display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
 .nav button.active{background:#ffffff19;color:#fff;box-shadow:inset 3px 0 var(--cyan)}
 .nav button span.icon{font-size:14px;min-width:18px;text-align:center}
 
@@ -144,18 +144,17 @@ button:hover{filter:brightness(.95)}
 .side-shift-card{
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(38,189,200,0.35);
-  border-radius: 9px;
-  padding: 8px 10px;
+  border-radius: 8px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 .side-shift-title{
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 800;
   color: var(--cyan);
   letter-spacing: 0.5px;
-  margin-bottom: 2px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -163,15 +162,14 @@ button:hover{filter:brightness(.95)}
 .side-shift-item small{
   display: block;
   color: #82a3bd;
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
-  margin-bottom: 1px;
 }
 .side-shift-item strong{
-  font-size: 10.5px;
+  font-size: 10px;
   color: #ffffff;
   display: block;
-  line-height: 1.25;
+  line-height: 1.2;
   word-break: break-word;
 }
 
@@ -179,11 +177,11 @@ button:hover{filter:brightness(.95)}
 .side-system-box{
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 9px;
-  padding: 7px;
+  border-radius: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 .side-quick-grid{
   display: grid;
@@ -208,7 +206,7 @@ button:hover{filter:brightness(.95)}
   border: 1px solid rgba(38, 189, 200, 0.4);
   color: #8be4ec;
   font-size: 9px;
-  padding: 5px;
+  padding: 4px;
 }
 .side-btn.countdown-btn:hover{background:rgba(38,189,200,0.25)}
 .side-btn.lang-btn{background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15)}
@@ -218,33 +216,30 @@ button:hover{filter:brightness(.95)}
 .side-btn.export{background: #20638b; color: #fff}
 .side-btn.import{background: #6c5ce7; color: #fff}
 
-/* CHÂN TRANG: BIỂU TƯỢNG TÀU CONTAINER & HẢI ÂU CHÌM MỜ */
-.side-foot{
-  margin-top:auto;
-  border-top:1px solid #ffffff20;
-  padding:8px 6px 0;
-  color:#91adc2;
-  font-size:8.5px;
-  line-height:1.3;
-  position: relative;
-  overflow: hidden;
+/* FOOTER TINH CHỈNH GỌN GÀNG, KHÔNG BỊ TRÀN HAY MẤT CHỮ KHI ZOOM 100% */
+.side-foot {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 4px 2px;
+  color: #8faec5;
+  font-size: 8.5px;
+  line-height: 1.25;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .side-foot-text {
-  position: relative;
-  z-index: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.side-foot-text b { color: #ffffff; font-size: 9px; }
 .side-foot-watermark {
-  width: 48px;
-  height: 48px;
-  opacity: 0.18;
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  pointer-events: none;
-  filter: drop-shadow(0 0 4px var(--cyan));
+  width: 26px;
+  height: 26px;
+  opacity: 0.25;
+  flex-shrink: 0;
 }
 
 .main{min-width:0}
@@ -381,7 +376,7 @@ button:hover{filter:brightness(.95)}
   100% { transform: scale(1); }
 }
 
-/* --- DÒNG LOA CẢNH BÁO LÀM HÀNG TẠI BẾN --- */
+/* --- DÒNG LOA CẢNH BÁO LÀM HÀNG --- */
 .alert-ticker-wrap {
   background: linear-gradient(90deg, #12283f 0%, #173859 100%);
   border-bottom: 1px solid rgba(38, 189, 200, 0.4);
@@ -658,6 +653,21 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   font-size:9px;color:var(--muted);display:flex;justify-content:space-between;gap:4px;
 }
 
+/* KHỐI SETUP LUỒNG & BẾN */
+.draft-setup-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.draft-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
 .report-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:750px;margin:auto}
 .form-group{margin-bottom:12px}
 .form-group label{display:block;font-weight:700;font-size:10px;color:var(--muted);margin-bottom:4px}
@@ -723,7 +733,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </text>
         </svg>
 
-        <!-- LOGO CẢNG HẢI PHÒNG (VECTOR CHUẨN XÁC, AN TOÀN 100%) -->
+        <!-- LOGO CẢNG HẢI PHÒNG (VECTOR AN TOÀN TUYỆT ĐỐI) -->
         <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874 (150+ Năm phát triển)">
           <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
             <text x="100" y="24" fill="#ffffff" font-size="16" font-family="'Segoe UI',Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="1">Since 1874</text>
@@ -763,6 +773,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt" id="t_menuSearch">Tra cứu tàu</span></button>
         <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
         <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span></button>
+        <button data-page="draft-setup" title="Setup Luồng & Bến"><span class="icon">⚙</span><span class="txt">Setup Luồng & Mớn</span></button>
         <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt" id="t_menuReport">Báo cáo & Góp ý</span></button>
         <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt" id="t_menuResources">Nguồn & Liên hệ</span></button>
       </nav>
@@ -820,25 +831,16 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
     </div>
 
-    <!-- CHÂN TRANG: BIỂU TƯỢNG TÀU CONTAINER & HẢI ÂU CHÌM MỜ -->
+    <!-- CHÂN TRANG: TINH CHỈNH GỌN GÀNG, KHÔNG BỊ TRÀN HAY MẤT CHỮ KHI ZOOM 100% -->
     <div class="side-foot">
       <div class="side-foot-text">
         <b id="t_footBrand">Cảng Hải Phòng</b><br>
-        <span id="sideStatus">Sẵn sàng</span><br>
-        <span id="sideLastSaved" style="color:var(--cyan);font-weight:bold">Chưa lưu</span>
+        <span id="sideStatus">Sẵn sàng</span> · <span id="sideLastSaved" style="color:var(--cyan);font-weight:700">Chưa lưu</span>
       </div>
       <svg class="side-foot-watermark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M14 16C17 12 21 13 25 17C29 13 33 12 36 16" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
         <path d="M37 13C39.5 9.5 43 10.5 46.5 13.5C50 10.5 53.5 9.5 56 13" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-        <rect x="23" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="31" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="39" y="21" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="19" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="27" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="35" y="28.5" width="7" height="6.5" rx="1" fill="#ffffff"/>
-        <rect x="43" y="23" width="6.5" height="12" rx="1" fill="#ffffff"/>
         <path d="M11 36L17 48.5H47L53 36H11Z" fill="#ffffff"/>
-        <path d="M8 53C14 51 18 55 24 53C30 51 34 55 40 53C46 51 50 55 56 53" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
     </div>
   </aside>
@@ -1008,7 +1010,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
 
-        <!-- BẢNG DẢI MỚN NƯỚC & DWT AN TOÀN TRONG NGÀY (THAY THẾ Ô TÌM KIẾM CŨ) -->
+        <!-- BẢNG DẢI MỚN NƯỚC & DWT AN TOÀN TRONG NGÀY -->
         <div class="panel" style="margin-bottom: 14px;">
           <div class="panel-head">
             <h3 style="display:flex;align-items:center;gap:6px;">
@@ -1229,7 +1231,66 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 6: BÁO CÁO & GÓP Ý -->
+      <!-- MÀN HÌNH 6: SETUP LUỒNG & BẾN & BẢNG DẢI MỚN -->
+      <section id="page-draft-setup" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Cài đặt Luồng, Bến Tân Vũ & Bảng Dải Mớn Nước</h2>
+            <div class="muted">Tùy chỉnh thông số mực nước bến, độ sâu luồng và dải mớn thiết kế chuẩn của tàu container</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="darkbtn" onclick="resetDraftFormulaConfig()">↺ Khôi phục mặc định</button>
+            <button class="primary" onclick="saveDraftFormulaConfig()">💾 Lưu Cấu Hình</button>
+          </div>
+        </div>
+
+        <div class="draft-setup-card">
+          <h3 style="margin-top:0;font-size:13px;color:var(--cyan)">Thông số độ sâu chuẩn khai thác</h3>
+          <div class="draft-setup-grid">
+            <div class="form-group">
+              <label>Mực nước trước bến Tân Vũ (mét)</label>
+              <input type="number" step="0.1" id="cfg_berthDepth" class="field" value="9.0">
+              <small class="muted">Độ sâu thiết kế vùng nước bến Tân Vũ: 9.0m</small>
+            </div>
+            <div class="form-group">
+              <label>Độ sâu chuẩn luồng vào (mét)</label>
+              <input type="number" step="0.1" id="cfg_channelDepth" class="field" value="8.0">
+              <small class="muted">Độ sâu luồng Bạch Đằng/Hải Phòng: 8.0m</small>
+            </div>
+            <div class="form-group">
+              <label>Hệ số mớn động (+10% dự phòng)</label>
+              <input type="number" step="0.01" id="cfg_draftMarginRatio" class="field" value="0.10">
+              <small class="muted">Công thức: Mớn động = Mớn x 1.1</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Bảng Tham Khảo Dải Mớn Nước & Sức Chở Tàu (Có thể chỉnh sửa trực tiếp)</h3>
+            <span class="muted tiny">Chỉnh sửa mớn nước thiết kế hoặc dải DWT cho phù hợp thực tế</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Phân loại tàu</th>
+                  <th>TEU</th>
+                  <th>Khoảng LOA</th>
+                  <th>Mớn TK (m) - Sửa</th>
+                  <th>Dải DWT (Tấn)</th>
+                  <th>Khu vực cảng</th>
+                </tr>
+              </thead>
+              <tbody id="draftEditTableBody">
+                <!-- Tự sinh bảng chỉnh sửa -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MÀN HÌNH 7: BÁO CÁO & GÓP Ý -->
       <section id="page-report" class="page hidden">
         <div class="page-head">
           <div>
@@ -1256,7 +1317,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-      <!-- MÀN HÌNH 7: NGUỒN -->
+      <!-- MÀN HÌNH 8: NGUỒN -->
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
@@ -2191,39 +2252,12 @@ async function fetchRealWeatherHaiPhong() {
 }
 
 // ============================================================================
-// HỆ THỐNG XỬ LÝ THỦY TRIỀU HÒN DÁU: QUÉT LIÊN TỤC 3 NGÀY & XOAY VÒNG
+// HỆ THỐNG ĐỌC & BÓC TÁCH THỦY TRIỀU HÒN DÁU (CHUẨN BẢN GỐC NGÀY 29 - LIVE ĐỘNG)
 // ============================================================================
-
-const HON_DAU_EXACT_TABLES = {
-  "2026-10-28": [
-    { hour: 0, val: 2.7 }, { hour: 1, val: 2.9 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.3 },
-    { hour: 4, val: 3.3 }, { hour: 5, val: 3.3 }, { hour: 6, val: 3.1 }, { hour: 7, val: 3.0 },
-    { hour: 8, val: 2.7 }, { hour: 9, val: 2.5 }, { hour: 10, val: 2.2 }, { hour: 11, val: 1.9 },
-    { hour: 12, val: 1.7 }, { hour: 13, val: 1.5 }, { hour: 14, val: 1.3 }, { hour: 15, val: 1.1 },
-    { hour: 16, val: 1.1 }, { hour: 17, val: 1.0 }, { hour: 18, val: 1.0 }, { hour: 19, val: 1.0 },
-    { hour: 20, val: 1.1 }, { hour: 21, val: 1.3 }, { hour: 22, val: 1.6 }, { hour: 23, val: 2.0 }
-  ],
-  "2026-10-29": [
-    { hour: 0, val: 2.5 }, { hour: 1, val: 2.8 }, { hour: 2, val: 3.1 }, { hour: 3, val: 3.4 },
-    { hour: 4, val: 3.5 }, { hour: 5, val: 3.6 }, { hour: 6, val: 3.6 }, { hour: 7, val: 3.4 },
-    { hour: 8, val: 3.2 }, { hour: 9, val: 3.0 }, { hour: 10, val: 2.6 }, { hour: 11, val: 2.3 },
-    { hour: 12, val: 2.0 }, { hour: 13, val: 1.6 }, { hour: 14, val: 1.3 }, { hour: 15, val: 1.0 },
-    { hour: 16, val: 0.9 }, { hour: 17, val: 0.8 }, { hour: 18, val: 0.7 }, { hour: 19, val: 0.6 },
-    { hour: 20, val: 0.7 }, { hour: 21, val: 0.9 }, { hour: 22, val: 1.1 }, { hour: 23, val: 1.5 }
-  ],
-  "2026-10-30": [
-    { hour: 0, val: 2.0 }, { hour: 1, val: 2.5 }, { hour: 2, val: 2.9 }, { hour: 3, val: 3.2 },
-    { hour: 4, val: 3.5 }, { hour: 5, val: 3.7 }, { hour: 6, val: 3.8 }, { hour: 7, val: 3.8 },
-    { hour: 8, val: 3.7 }, { hour: 9, val: 3.5 }, { hour: 10, val: 3.2 }, { hour: 11, val: 2.8 },
-    { hour: 12, val: 2.4 }, { hour: 13, val: 2.0 }, { hour: 14, val: 1.6 }, { hour: 15, val: 1.2 },
-    { hour: 16, val: 0.9 }, { hour: 17, val: 0.7 }, { hour: 18, val: 0.5 }, { hour: 19, val: 0.4 },
-    { hour: 20, val: 0.4 }, { hour: 21, val: 0.5 }, { hour: 22, val: 0.7 }, { hour: 23, val: 1.0 }
-  ]
-};
 
 function calculateDayExtremes(hourlyList) {
   if (!hourlyList || !hourlyList.length) {
-    return { highVal: 3.3, highTimeStr: '03:00', highHour: 3, lowVal: 1.0, lowTimeStr: '17:00', lowHour: 17 };
+    return { highVal: 0, highTimeStr: '--:--', highHour: 0, lowVal: 0, lowTimeStr: '--:--', lowHour: 0 };
   }
 
   let maxVal = -Infinity;
@@ -2355,7 +2389,7 @@ async function fetchTideFromTheGioiMoiCau() {
 
           let hourlyList = parseTheGioiMoiCauColumn(colChunk);
 
-          if (hourlyList.length >= 20) {
+          if (hourlyList.length >= 18) {
             let extremes = calculateDayExtremes(hourlyList);
             multiDayTideData[dateKey] = {
               date: dateKey,
@@ -2371,35 +2405,6 @@ async function fetchTideFromTheGioiMoiCau() {
       }
     } catch(err) {
       console.warn("Lỗi bóc tách:", err);
-    }
-  }
-
-  for (let offset = 0; offset < 3; offset++) {
-    let p = getVNCurrentDateParts(offset);
-    let dateKey = p.dateKey;
-
-    if (!multiDayTideData[dateKey] || multiDayTideData[dateKey].sourceType !== 'live') {
-      let table = HON_DAU_EXACT_TABLES[dateKey];
-      if (!table) {
-        table = [];
-        let peakH = (3 + offset * 1) % 24;
-        for (let h = 0; h < 24; h++) {
-          let angle = ((h - peakH) / 24) * 2 * Math.PI;
-          let v = 2.1 + 1.5 * Math.cos(angle);
-          table.push({ hour: h, val: Math.round(v * 10) / 10 });
-        }
-      }
-
-      let extremes = calculateDayExtremes(table);
-      multiDayTideData[dateKey] = {
-        date: dateKey,
-        displayDate: p.labelDate,
-        dayOffset: offset,
-        station: 'Hòn Dáu',
-        sourceType: 'benchmark',
-        ...extremes,
-        hourlyList: table
-      };
     }
   }
 
@@ -2422,8 +2427,6 @@ function updateRealtimeWidgets() {
   let activeKey = activePart.dateKey;
   let activeData = multiDayTideData[activeKey];
 
-  if (!activeData) return;
-
   const cycleBtnLabel = $('tideCycleBtnLabel');
   if (cycleBtnLabel) {
     if (tideViewDayOffset === 0) {
@@ -2435,20 +2438,22 @@ function updateRealtimeWidgets() {
     }
   }
 
-  const badge = $('tideStatusBadge');
-  if (badge) {
-    if (activeData.sourceType === 'live') {
-      badge.textContent = `Hòn Dáu · Trực tiếp`;
-      badge.style.background = 'rgba(38,189,200,0.25)';
-      badge.style.color = '#8be4ec';
-    } else {
-      badge.textContent = `Chuẩn Hòn Dáu`;
-      badge.style.background = 'rgba(38,189,200,0.2)';
-      badge.style.color = '#8be4ec';
+  if (!activeData) {
+    if ($('tideStatusBadge')) {
+      $('tideStatusBadge').textContent = 'Chưa có dữ liệu';
+      $('tideStatusBadge').style.color = '#ff7675';
     }
+    return;
   }
 
-  const formatM = num => (typeof num === 'number' ? num.toFixed(1).replace('.', ',') : '--');
+  const badge = $('tideStatusBadge');
+  if (badge) {
+    badge.textContent = `Hòn Dáu · Trực tiếp`;
+    badge.style.background = 'rgba(38,189,200,0.25)';
+    badge.style.color = '#8be4ec';
+  }
+
+  const formatM = num => (typeof num === 'number' && !isNaN(num) ? num.toFixed(1).replace('.', ',') : '--');
   if ($('tideHighVal')) $('tideHighVal').textContent = formatM(activeData.highVal) + ' m';
   if ($('tideHighTime')) $('tideHighTime').textContent = '🕒 ' + (activeData.highTimeStr || '--:--');
   if ($('tideLowVal')) $('tideLowVal').textContent = formatM(activeData.lowVal) + ' m';
@@ -2586,10 +2591,10 @@ function startMidnightCountdown() {
 }
 
 // ============================================================================
-// LOGIC CẢNH BÁO LÀM HÀNG TẠI BẾN & BẢNG THAM KHẢO DẢI MỚN NƯỚC / DWT AN TOÀN
+// LOGIC CẢNH BÁO LÀM HÀNG TẠI BẾN & QUẢN LÝ CẤU HÌNH LUỒNG/BẾN/DẢI MỚN
 // ============================================================================
 
-const HP_CONTAINER_BENCHMARKS = [
+const DEFAULT_HP_CONTAINER_BENCHMARKS = [
   { type: "Feeder nhỏ / Semi-Container", teu: "500 – 1.000", minLoa: 100, maxLoa: 130, refDraft: 6.5, minDwt: 5000, maxDwt: 10000, port: "Cảng sông Cấm, Chùa Vẽ" },
   { type: "Feeder phổ thông (Nội Á)", teu: "1.000 – 1.800", minLoa: 140, maxLoa: 175, refDraft: 8.0, minDwt: 12000, maxDwt: 22000, port: "Đình Vũ, Tân Vũ, Chùa Vẽ" },
   { type: "Feeder lớn / Sub-Panamax", teu: "2.000 – 3.000", minLoa: 180, maxLoa: 220, refDraft: 9.0, minDwt: 25000, maxDwt: 35000, port: "Tân Vũ, Đình Vũ (tận dụng thủy triều)" },
@@ -2599,9 +2604,85 @@ const HP_CONTAINER_BENCHMARKS = [
   { type: "Ultra Large Container (ULCV)", teu: "15.000 – 18.000+", minLoa: 399, maxLoa: 420, refDraft: 16.0, minDwt: 197000, maxDwt: 214000, port: "Bến Hateco Lạch Huyện (Bến 5, 6)" }
 ];
 
+let draftConfig = {
+  berthDepth: 9.0,
+  channelDepth: 8.0,
+  draftMarginRatio: 0.10,
+  benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
+};
+
+function loadDraftFormulaConfig() {
+  try {
+    let saved = localStorage.getItem('hp_draft_config');
+    if (saved) {
+      let p = JSON.parse(saved);
+      draftConfig.berthDepth = p.berthDepth || 9.0;
+      draftConfig.channelDepth = p.channelDepth || 8.0;
+      draftConfig.draftMarginRatio = p.draftMarginRatio || 0.10;
+      if (p.benchmarks && Array.isArray(p.benchmarks)) {
+        draftConfig.benchmarks = p.benchmarks;
+      }
+    }
+  } catch(e) {}
+
+  if ($('cfg_berthDepth')) $('cfg_berthDepth').value = draftConfig.berthDepth;
+  if ($('cfg_channelDepth')) $('cfg_channelDepth').value = draftConfig.channelDepth;
+  if ($('cfg_draftMarginRatio')) $('cfg_draftMarginRatio').value = draftConfig.draftMarginRatio;
+  renderDraftEditTable();
+  renderDailySafeDraftTable();
+}
+
+function saveDraftFormulaConfig() {
+  draftConfig.berthDepth = parseFloat($('cfg_berthDepth').value) || 9.0;
+  draftConfig.channelDepth = parseFloat($('cfg_channelDepth').value) || 8.0;
+  draftConfig.draftMarginRatio = parseFloat($('cfg_draftMarginRatio').value) || 0.10;
+
+  let inputs = document.querySelectorAll('.edit-ref-draft');
+  inputs.forEach(inp => {
+    let idx = parseInt(inp.dataset.idx, 10);
+    if (draftConfig.benchmarks[idx]) {
+      draftConfig.benchmarks[idx].refDraft = parseFloat(inp.value) || draftConfig.benchmarks[idx].refDraft;
+    }
+  });
+
+  localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+  alert('Đã lưu cấu hình Bến (9m), Luồng (8m) và Bảng Dải mớn thành công!');
+  renderDailySafeDraftTable();
+  checkWorkingVesselsLoadingAlert();
+}
+
+function resetDraftFormulaConfig() {
+  if (!confirm('Khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
+  localStorage.removeItem('hp_draft_config');
+  draftConfig = {
+    berthDepth: 9.0,
+    channelDepth: 8.0,
+    draftMarginRatio: 0.10,
+    benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
+  };
+  loadDraftFormulaConfig();
+}
+
+function renderDraftEditTable() {
+  const tbody = $('draftEditTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = draftConfig.benchmarks.map((b, idx) => `
+    <tr>
+      <td><b>${esc(b.type)}</b></td>
+      <td>${esc(b.teu)}</td>
+      <td><span class="badge">${b.minLoa}m – ${b.maxLoa}m</span></td>
+      <td>
+        <input type="number" step="0.1" class="field edit-ref-draft" data-idx="${idx}" value="${b.refDraft}" style="width:70px;padding:3px 6px"> m
+      </td>
+      <td>${b.minDwt.toLocaleString()} – ${b.maxDwt.toLocaleString()} T</td>
+      <td>${esc(b.port)}</td>
+    </tr>
+  `).join('');
+}
+
 function getEstimatedDraftByLoa(loa) {
   loa = Number(loa) || 0;
-  let match = HP_CONTAINER_BENCHMARKS.find(b => loa >= b.minLoa && loa <= b.maxLoa);
+  let match = draftConfig.benchmarks.find(b => loa >= b.minLoa && loa <= b.maxLoa);
   if (match) return match.refDraft;
   if (loa < 130) return 6.5;
   if (loa > 250) return 11.0;
@@ -2616,16 +2697,15 @@ function renderDailySafeDraftTable() {
   let todayKey = getTodayString();
   let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
   
-  // Độ sâu thực tế trước bến Tân Vũ (9m + triều ròng)
-  let berthLowDepth = 9.0 + todayTide.lowVal;
-  let berthHighDepth = 9.0 + todayTide.highVal;
+  let berthLowDepth = draftConfig.berthDepth + todayTide.lowVal;
+  let berthHighDepth = draftConfig.berthDepth + todayTide.highVal;
 
   if ($('dailySafeSummaryBadge')) {
-    $('dailySafeSummaryBadge').textContent = `Mực nước bến Tân Vũ (9m): Ròng ${berthLowDepth.toFixed(1)}m (${todayTide.lowTimeStr}) | Lớn ${berthHighDepth.toFixed(1)}m (${todayTide.highTimeStr})`;
+    $('dailySafeSummaryBadge').textContent = `Mực nước bến Tân Vũ (${draftConfig.berthDepth}m): Ròng ${berthLowDepth.toFixed(1)}m (${todayTide.lowTimeStr}) | Lớn ${berthHighDepth.toFixed(1)}m (${todayTide.highTimeStr})`;
   }
 
-  tbody.innerHTML = HP_CONTAINER_BENCHMARKS.map(item => {
-    let maxSafeDraftAtLow = ((9.0 + todayTide.lowVal) / 1.1).toFixed(1);
+  tbody.innerHTML = draftConfig.benchmarks.map(item => {
+    let maxSafeDraftAtLow = ((draftConfig.berthDepth + todayTide.lowVal) / (1 + draftConfig.draftMarginRatio)).toFixed(1);
 
     let statusHtml = '';
     if (item.refDraft <= maxSafeDraftAtLow) {
@@ -2657,12 +2737,11 @@ function checkWorkingVesselsLoadingAlert() {
 
   let todayKey = getTodayString();
   let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
-  let berthLowLimit = 9.0 + todayTide.lowVal;
+  let berthLowLimit = draftConfig.berthDepth + todayTide.lowVal;
 
   let now = Date.now();
   let list = getFilteredCalls();
 
-  // Chỉ lấy những tàu ĐANG Ở CẦU TÂN VŨ (đang làm hàng)
   let workingAtTanVu = list.filter(c => {
     let term = (c.terminal || '').toUpperCase();
     if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
@@ -2679,7 +2758,7 @@ function checkWorkingVesselsLoadingAlert() {
   let alerts = [];
   workingAtTanVu.forEach(s => {
     let rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
-    let dynamicDraft = rawDraft * 1.1;
+    let dynamicDraft = rawDraft * (1 + draftConfig.draftMarginRatio);
 
     if (dynamicDraft >= (berthLowLimit - 0.4)) {
       alerts.push(`
@@ -2714,6 +2793,7 @@ function nav(page, saveState = true){
   if (page === 'planning') renderGantt();
   if (page === 'stats') renderStats();
   if (page === 'edit-vessel') renderOverrideTable();
+  if (page === 'draft-setup') { loadDraftFormulaConfig(); }
   if (saveState) localStorage.setItem('hp_last_page', page);
 }
 
@@ -3276,6 +3356,8 @@ window.submitFeedbackReport = submitFeedbackReport;
 window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
 window.openTideConfigPrompt = openTideConfigPrompt;
 window.cycleTideDayView = cycleTideDayView;
+window.saveDraftFormulaConfig = saveDraftFormulaConfig;
+window.resetDraftFormulaConfig = resetDraftFormulaConfig;
 
 // --- GẮN SỰ KIỆN TƯƠNG TÁC GIAO DIỆN ---
 function bindAllEventListeners() {
@@ -3372,6 +3454,7 @@ function initApp() {
   document.documentElement.dataset.theme = savedTheme;
 
   applyLanguage(currentLang);
+  loadDraftFormulaConfig();
   loadShiftConfigFromSupabase();
   loadFeedbacks();
   loadData();
@@ -3393,4 +3476,3 @@ if (document.readyState === 'loading') {
 </script>
 </body>
 </html>
-
