@@ -1772,20 +1772,59 @@ function applyLanguage(lang) {
     if ($('langFlag')) $('langFlag').textContent = lang === 'vi' ? '🇻🇳' : '🇬🇧';
     if ($('langText')) $('langText').textContent = lang === 'vi' ? 'VI' : 'EN';
 
+    // Dịch các thẻ có ID trực tiếp hoặc tiền tố
     for (let key in d) {
       let elem = $(key) || $('t_' + key) || $('lbl_' + key) || $('th_' + key);
       if (elem) {
-        if (elem.tagName === 'INPUT' && elem.type === 'button') elem.value = d[key];
-        else elem.textContent = d[key];
+        if (elem.tagName === 'INPUT' && (elem.type === 'button' || elem.type === 'submit')) {
+          elem.value = d[key];
+        } else {
+          elem.textContent = d[key];
+        }
       }
     }
 
+    // Dịch các nút bấm trong Sidebar
+    let btnSetup = $('setupShiftBtn');
+    if (btnSetup) btnSetup.textContent = d.setupShiftBtn;
+
+    let btnSave = $('manualSaveBtn');
+    if (btnSave) btnSave.textContent = d.manualSaveBtn;
+
+    let btnExp = $('exportConfigBtn');
+    if (btnExp) btnExp.textContent = d.exportConfigBtn;
+
+    let btnImp = $('importConfigBtn');
+    if (btnImp) btnImp.textContent = d.importConfigBtn;
+
+    let btnMail = $('mailNotificationBtn');
+    if (btnMail) {
+      let badge = $('mailBadge');
+      let bCount = badge ? badge.textContent : '0';
+      btnMail.innerHTML = `${d.mailBtnText} <span id="mailBadge" class="mail-unread-badge" style="top:-4px; right:-4px;">${bCount}</span>`;
+      updateMailBadge();
+    }
+
+    // Dịch các nút trong Menu điều hướng
+    let navDraft = document.querySelector('.nav button[data-page="draft-setup"] span.txt');
+    if (navDraft) navDraft.textContent = d.menuDraftSetup;
+
+    // Dịch Placeholder các ô tìm kiếm
     if ($('search')) $('search').placeholder = lang === 'vi' ? 'Tìm tên tàu, hãng...' : 'Search vessel, operator...';
     if ($('planningSearch')) $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
-    renderAll();
-  } catch(e) {}
-}
 
+    // Dịch Breadcrumb trên Topbar
+    let activePage = localStorage.getItem('hp_last_page') || 'overview';
+    let pName = d['menu' + activePage.charAt(0).toUpperCase() + activePage.slice(1).replace('-','')] || activePage.toUpperCase();
+    if ($('crumb')) $('crumb').textContent = pName.toUpperCase();
+
+    // Gọi lại các hàm render để cập nhật toàn bộ bảng và loa thông báo
+    renderAll();
+    updateRealtimeWidgets();
+  } catch(e) {
+    console.warn("Lỗi chuyển đổi ngôn ngữ:", e);
+  }
+}
 function getVNCurrentDateParts(dayOffset = 0) {
   let targetTime = Date.now() + dayOffset * 86400000;
   const formatter = new Intl.DateTimeFormat('en-GB', {
