@@ -3074,32 +3074,84 @@ function renderAll() {
 }
 
 function renderTanVuLayout(list) {
-  let tanVuShips = list.filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
-  if ($('tanvuCount')) $('tanvuCount').textContent = tanVuShips.length + ' lượt tàu';
+  try {
+    let now = Date.now();
+    let todayStr = getTodayString(); // Ngày hôm nay (YYYY-MM-DD)
 
-  let berthMap = {};
-  tanVuShips.forEach(c => {
-    let b = c.berth || 'B1';
-    if (!berthMap[b]) berthMap[b] = [];
-    berthMap[b].push(c);
-  });
-  ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { if (!berthMap[b]) berthMap[b] = []; });
+    // Lọc tàu Tân Vũ: Có lịch cập hôm nay HOẶC có lịch rời hôm nay HOẶC đang làm hàng
+    let tanVuShips = list.filter(c => {
+      let term = (c.terminal || '').toUpperCase();
+      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
 
-  let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">CẢNG TÂN VŨ</span></div>`;
-  Object.keys(berthMap).sort().forEach(bName => {
-    let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
-    html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
-    if (ships.length === 0) {
-      html += `<span class="empty-berth">Trống</span>`;
-    } else {
-      ships.forEach(s => {
-        html += `<div class="ship-chip ${s.loa >= 300 ? 'large' : ''}" onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()"><span>${esc(s.vessel)}</span><span class="chip-time">${s.loa}m</span></div>`;
-      });
+      let etbDate = (c.etb || '').split('T')[0];
+      let etdDate = (c.etd || '').split('T')[0];
+      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+
+      let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
+      let isArrivingToday = (etbDate === todayStr);
+      let isDepartingToday = (etdDate === todayStr);
+
+      return isWorkingNow || isArrivingToday || isDepartingToday;
+    });
+
+    let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
+
+    if ($('tanvuCount')) {
+      $('tanvuCount').textContent = `${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}`;
     }
-    html += `</div></div>`;
-  });
-  html += `</div>`;
-  if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
+
+    let berthMap = {};
+    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
+
+    tanVuShips.forEach(c => {
+      let b = (c.berth || 'B1').trim().toUpperCase();
+      if (!berthMap[b]) berthMap[b] = [];
+      berthMap[b].push(c);
+    });
+
+    let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
+
+    Object.keys(berthMap).sort().forEach(bName => {
+      let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
+      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
+      
+      if (ships.length === 0) {
+        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
+      } else {
+        ships.forEach(s => {
+          let etdDate = (s.etd || '').split('T')[0];
+
+          // Nổi màu ĐỎ khi tàu có lịch rời bến trong ngày hôm nay
+          let isDepartingToday = (etdDate === todayStr);
+          
+          let chipClass = 'ship-chip';
+          if (isDepartingToday) {
+            chipClass += ' departing-today';
+          } else if (s.loa >= 300) {
+            chipClass += ' large';
+          }
+
+          let timeHint = isDepartingToday ? '🚩 Rời hôm nay' : `${s.loa}m`;
+
+          html += `
+            <div class="${chipClass}" 
+                 onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
+                 onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
+                 onmouseleave="scheduleHideTooltip()">
+              <span>${esc(s.vessel)}</span>
+              <span class="chip-time">${timeHint}</span>
+            </div>`;
+        });
+      }
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+
+    if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
+  } catch (err) {
+    console.error("Lỗi tại renderTanVuLayout:", err);
+  }
 }
 
 function renderMovement(list) {
@@ -3107,7 +3159,7 @@ function renderMovement(list) {
   let todayStr = getTodayString();
   let threeHoursMs = 3 * 3600 * 1000;
   let items = [];
-  let d = dict[currentLang];
+  let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
 
   list.forEach(c => {
     let t1 = c.etb ? new Date(c.etb).getTime() : 0;
@@ -3133,27 +3185,32 @@ function renderMovement(list) {
   });
 
   items.sort((a,b) => Math.abs(a.sortVal - now) - Math.abs(b.sortVal - now));
+  
+  const moveElem = $('movement');
+  if (!moveElem) return;
+
   if (!items.length) {
-    if ($('movement')) $('movement').innerHTML = `<div class="empty">Không có dữ liệu điều động phù hợp.</div>`;
+    moveElem.innerHTML = `<div class="empty">Không có dữ liệu điều động phù hợp.</div>`;
     stopAutoScroll();
     return;
   }
 
   let html = items.map(item => {
     let badgeHtml = '';
-    if (item.type === 'arriving') badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining} ${formatDuration(item.time - now)}</span>`;
-    else if (item.type === 'working') badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed} ${formatDuration(now - item.time)}</span>`;
-    else if (item.type === 'departing_soon') badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining} ${formatDuration(item.time - now)}</span>`;
-    else if (item.type === 'departed') badgeHtml = `<span class="tag-vivid departing">${d.depElapsed} ${formatDuration(now - item.time)} ${d.agoText}</span>`;
+    if (item.type === 'arriving') badgeHtml = `<span class="tag-vivid urgent">${d.arrRemaining || 'Sắp cập còn'} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'working') badgeHtml = `<span class="tag-vivid arriving">${d.dockedElapsed || 'Đã cập'} ${formatDuration(now - item.time)}</span>`;
+    else if (item.type === 'departing_soon') badgeHtml = `<span class="tag-vivid urgent">${d.depRemaining || 'Sắp rời còn'} ${formatDuration(item.time - now)}</span>`;
+    else if (item.type === 'departed') badgeHtml = `<span class="tag-vivid departing">${d.depElapsed || 'Đã rời'} ${formatDuration(now - item.time)} ${d.agoText || 'trước'}</span>`;
 
     return `<div class="trow"><div class="t-time">${dt(item.time).split(' ')[1] || '—'}</div><div class="t-card"><div><strong>${esc(item.c.vessel)}</strong><div class="muted tiny">${esc(item.c.terminal)} · ${item.c.loa}m</div></div>${badgeHtml}</div></div>`;
   }).join('');
 
-  if (items.length > 8) {
-    if ($('movement')) $('movement').innerHTML = html + html;
+  // Nhân bản danh sách khi có từ 3 tàu trở lên để cuộn mượt không bị ngắt quãng
+  if (items.length >= 3) {
+    moveElem.innerHTML = html + html;
     startAutoScroll();
   } else {
-    if ($('movement')) $('movement').innerHTML = html;
+    moveElem.innerHTML = html;
     stopAutoScroll();
   }
 }
@@ -3162,12 +3219,18 @@ function startAutoScroll() {
   stopAutoScroll();
   const container = $('movementContainer');
   if (!container) return;
+  
+  isUserHovering = false;
+
   autoScrollTimer = setInterval(() => {
     if (isUserHovering) return;
     let halfHeight = container.scrollHeight / 2;
-    if (container.scrollTop >= halfHeight) container.scrollTop = 0;
-    else container.scrollTop += 0.5;
-  }, 35);
+    if (halfHeight > 0 && container.scrollTop >= halfHeight) {
+      container.scrollTop = 0;
+    } else {
+      container.scrollTop += 0.8; // Tốc độ cuộn mượt
+    }
+  }, 40);
 }
 
 function stopAutoScroll() {
