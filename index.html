@@ -2860,7 +2860,7 @@ function checkWorkingVesselsLoadingAlert() {
       alerts.push(`
         <span class="ticker-item warning">
           ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): 
-          Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b> Tránh dồn tải xếp hàng dồn tải gần vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
+          Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b>Vui lòng Kiểm tra lại bảng thủy triều. Tránh dồn tải xếp hàng dồn tải gần vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
         </span>
       `);
     } else {
