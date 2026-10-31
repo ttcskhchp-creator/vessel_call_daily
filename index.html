@@ -2893,26 +2893,24 @@ function renderDailySafeDraftTable() {
   let activeKey = activePart.dateKey;
   let selectedTide = multiDayTideData[activeKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
   
-  // 1. Độ sâu thiết kế chuẩn từ cấu hình
-  let chDepth = Number(draftConfig.channelDepth) || 8.0;     // Độ sâu luồng vào (m)
-  let bDepth = Number(draftConfig.berthDepth) || 9.0;         // Độ sâu trước bến Tân Vũ (m)
-  let margin = Number(draftConfig.draftMarginRatio) || 0.10;  // Dự phòng mớn động (10%)
+  let chDepth = Number(draftConfig.channelDepth) || 8.0;
+  let bDepth = Number(draftConfig.berthDepth) || 9.0;
+  let margin = Number(draftConfig.draftMarginRatio) || 0.10;
 
-  // 2. Mớn tĩnh an toàn tối đa cho phép qua Luồng và Bến lúc cạn / lúc lớn
   let safeChannelLow = ((chDepth + selectedTide.lowVal) / (1 + margin)).toFixed(1);
   let safeChannelHigh = ((chDepth + selectedTide.highVal) / (1 + margin)).toFixed(1);
 
   let safeBerthLow = ((bDepth + selectedTide.lowVal) / (1 + margin)).toFixed(1);
   let safeBerthHigh = ((bDepth + selectedTide.highVal) / (1 + margin)).toFixed(1);
 
-  // Mớn an toàn toàn trình (khống chế bởi điểm cạn nhất giữa Luồng và Bến)
   let maxSafeOverallLow = Math.min(Number(safeChannelLow), Number(safeBerthLow));
   let maxSafeOverallHigh = Math.min(Number(safeChannelHigh), Number(safeBerthHigh));
 
-  // Cập nhật thẻ tóm tắt trên đầu bảng
+  let d = dict[currentLang];
+
   if ($('dailySafeSummaryBadge')) {
     $('dailySafeSummaryBadge').textContent = 
-      `Luồng (${chDepth}m) / Bến (${bDepth}m) | Đáy triều: Ròng +${selectedTide.lowVal}m (${selectedTide.lowTimeStr}) | Đỉnh triều: Lớn +${selectedTide.highVal}m (${selectedTide.highTimeStr})`;
+      `Luồng (${chDepth}m) / Bến (${bDepth}m) | Ròng: +${selectedTide.lowVal}m (${selectedTide.lowTimeStr}) | Lớn: +${selectedTide.highVal}m (${selectedTide.highTimeStr})`;
   }
 
   tbody.innerHTML = draftConfig.benchmarks.map(item => {
@@ -2920,14 +2918,14 @@ function renderDailySafeDraftTable() {
     let recommendTimeHtml = '';
 
     if (item.refDraft <= maxSafeOverallLow) {
-      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">🟢 An toàn ra/vào 24/24h</span>`;
-      recommendTimeHtml = `<span style="color:#126e55;font-weight:700">Mọi thời điểm</span>`;
+      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">${d.allDaySafe}</span>`;
+      recommendTimeHtml = `<span style="color:#126e55;font-weight:700">${d.anytime}</span>`;
     } else if (item.refDraft <= maxSafeOverallHigh && item.minLoa <= 220) {
-      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">⚠️ Phụ thuộc triều (Cạn luồng lúc ${selectedTide.lowTimeStr})</span>`;
-      recommendTimeHtml = `<span class="tag-vivid urgent" style="font-size:10px">🕒 Quanh ${selectedTide.highTimeStr} (Đón đỉnh triều)</span>`;
+      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">${d.tideDepWarning}${selectedTide.lowTimeStr})</span>`;
+      recommendTimeHtml = `<span class="tag-vivid urgent" style="font-size:10px">${d.waitHighTide.replace('{TIME}', selectedTide.highTimeStr)}</span>`;
     } else {
-      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">⛔ Vượt chuẩn tắc luồng / Chuyển Lạch Huyện</span>`;
-      recommendTimeHtml = `<span style="color:#a82e2e;font-weight:700">Không đủ nước qua luồng</span>`;
+      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">${d.overDraftDanger}</span>`;
+      recommendTimeHtml = `<span style="color:#a82e2e;font-weight:700">${d.notRecommend}</span>`;
     }
 
     return `
@@ -2957,6 +2955,10 @@ function checkWorkingVesselsLoadingAlert() {
   const tickerElem = $('alertTickerContent');
   if (!tickerElem) return;
 
+  let d = dict[currentLang];
+  let badgeElem = document.querySelector('.alert-ticker-badge');
+  if (badgeElem) badgeElem.textContent = d.tickerPrefix;
+
   let todayKey = getTodayString();
   let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
   let berthLowLimit = draftConfig.berthDepth + todayTide.lowVal;
@@ -2973,7 +2975,7 @@ function checkWorkingVesselsLoadingAlert() {
   });
 
   if (!workingAtTanVu.length) {
-    tickerElem.innerHTML = `<span class="ticker-item safe">⚓ Tân Vũ hiện không có tàu container đang neo bốc dỡ. Mực nước trước bến lúc cạn: ${berthLowLimit.toFixed(1)}m.</span>`;
+    tickerElem.innerHTML = `<span class="ticker-item safe">${d.tickerNoShips}${berthLowLimit.toFixed(1)}m.</span>`;
     return;
   }
 
@@ -2983,16 +2985,18 @@ function checkWorkingVesselsLoadingAlert() {
     let dynamicDraft = rawDraft * (1 + draftConfig.draftMarginRatio);
 
     if (dynamicDraft >= (berthLowLimit - 0.4)) {
+      let warnMsg = d.tickerWarnLoading
+        .replace('{TIME}', todayTide.lowTimeStr)
+        .replace('{DEPTH}', berthLowLimit.toFixed(1));
       alerts.push(`
         <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Cầu bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): 
-          Đang làm hàng! <b>LƯU Ý ĐIỀU ĐỘ:</b>Vui lòng Kiểm tra lại bảng thủy triều. Tránh xếp hàng dồn tải gần vào giờ triều kiệt <b>${todayTide.lowTimeStr}</b> (đáy bến chỉ đạt ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ hàng để tàu nổi an toàn!
+          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}, LOA ${s.loa}m, Mớn ~${rawDraft.toFixed(1)}m): ${warnMsg}
         </span>
       `);
     } else {
       alerts.push(`
         <span class="ticker-item safe">
-          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): Mớn nước an toàn (${rawDraft.toFixed(1)}m / Mớn động ${dynamicDraft.toFixed(1)}m &lt; Đáy bến ${berthLowLimit.toFixed(1)}m). Đảm bảo xếp dỡ bình thường.
+          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): ${d.tickerSafeLoading}
         </span>
       `);
     }
