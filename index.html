@@ -714,6 +714,18 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   .topbar{padding:10px 14px}
   .content{padding:12px 14px 24px}
 }
+  /* Đóng khung tên tàu nổi bật trên dòng loa cảnh báo */
+.ticker-vessel-box {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid #ff7675;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin: 0 2px;
+  font-weight: 850;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
 </style>
 </head>
 <body>
@@ -1605,7 +1617,13 @@ const dict = {
     tickerScanning: "Đang quét dữ liệu tàu tại bến và giờ nước ròng Hòn Dáu...",
     tickerNoShips: "⚓ Tân Vũ hiện không có tàu container đang neo bốc dỡ. Mực nước trước bến lúc cạn: ",
     tickerWarnLoading: "Đang làm hàng! LƯU Ý ĐIỀU ĐỘ: Vui lòng kiểm tra lại Bảng thủy triều. Tránh xếp hàng dồn tải vào giờ triều kiệt {TIME} (đáy bến chỉ đạt {DEPTH}m). Ưu tiên dỡ hàng để tàu nổi an toàn!",
-    tickerSafeLoading: "Mớn nước an toàn. Đảm bảo xếp dỡ bình thường."
+    tickerSafeLoading: "Mớn nước an toàn. Đảm bảo xếp dỡ bình thường.",
+    greetings: {
+      morning: "🌅 Chúc ca trực buổi sáng làm việc an toàn, năng suất cao và giải phóng tàu nhanh chóng!",
+      afternoon: "☀️ Chúc ban điều hành ca chiều vận hành cầu bến an toàn, thông suốt và hiệu quả!",
+      evening: "🌆 Chúc ca làm việc buổi tối an toàn, đảm bảo chất lượng dịch vụ khách hàng!",
+      night: "🌙 Chúc kíp trực đêm giữ vững an toàn hàng hải, bám sát con nước và hoàn thành tốt nhiệm vụ!"
+    }
   },
   en: {
     topTitle: "Operations & Customer Service Center",
@@ -1756,7 +1774,13 @@ const dict = {
     tickerScanning: "Scanning vessel berths and Hon Dau tide data...",
     tickerNoShips: "⚓ No container vessels working at Tan Vu. Low water depth: ",
     tickerWarnLoading: "Discharging/Loading! DISPATCH NOTICE: Avoid cargo loading during low water {TIME} (berth depth only {DEPTH}m). Prioritize unloading for safe flotation!",
-    tickerSafeLoading: "Safe draft maintained. Normal cargo handling."
+    tickerSafeLoading: "Safe draft maintained. Normal cargo handling.",
+    greetings: {
+      morning: "🌅 Wishing the morning shift safe operations, high productivity, and swift turnaround!",
+      afternoon: "☀️ Wishing the afternoon duty team safe and seamless berth operations!",
+      evening: "🌆 Wishing the evening shift safe operations and excellent customer service!",
+      night: "🌙 Wishing the night watch safe maritime operations and successful shift delivery!"
+    }
   }
 };
 
