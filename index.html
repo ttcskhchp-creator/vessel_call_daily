@@ -1605,7 +1605,13 @@ const dict = {
     tickerScanning: "Đang quét dữ liệu tàu tại bến và giờ nước ròng Hòn Dáu...",
     tickerNoShips: "⚓ Tân Vũ hiện không có tàu container đang neo bốc dỡ. Mực nước trước bến lúc cạn: ",
     tickerWarnLoading: "Đang làm hàng! LƯU Ý ĐIỀU ĐỘ: Vui lòng kiểm tra lại Bảng thủy triều. Tránh xếp hàng dồn tải vào giờ triều kiệt {TIME} (đáy bến chỉ đạt {DEPTH}m). Ưu tiên dỡ hàng để tàu nổi an toàn!",
-    tickerSafeLoading: "Mớn nước an toàn. Đảm bảo xếp dỡ bình thường."
+   tickerSafeLoading: "Mớn nước an toàn. Đảm bảo xếp dỡ bình thường.",
+    greetings: {
+      morning: "🌅 Chúc ca trực buổi sáng làm việc an toàn, năng suất cao và giải phóng tàu nhanh chóng!",
+      afternoon: "☀️ Chúc ban điều hành ca chiều vận hành cầu bến an toàn, thông suốt và hiệu quả!",
+      evening: "🌆 Chúc ca làm việc buổi tối an toàn, đảm bảo chất lượng dịch vụ khách hàng!",
+      night: "🌙 Chúc kíp trực đêm giữ vững an toàn hàng hải, bám sát tiến độ và hoàn thành tốt nhiệm vụ!"
+    }
   },
   en: {
     topTitle: "Operations & Customer Service Center",
@@ -1756,7 +1762,13 @@ const dict = {
     tickerScanning: "Scanning vessel berths and Hon Dau tide data...",
     tickerNoShips: "⚓ No container vessels working at Tan Vu. Low water depth: ",
     tickerWarnLoading: "Discharging/Loading! DISPATCH NOTICE: Avoid cargo loading during low water {TIME} (berth depth only {DEPTH}m). Prioritize unloading for safe flotation!",
-    tickerSafeLoading: "Safe draft maintained. Normal cargo handling."
+    tickerSafeLoading: "Safe draft maintained. Normal cargo handling.",
+    greetings: {
+      morning: "🌅 Wishing the morning shift safe operations, high productivity, and swift turnaround!",
+      afternoon: "☀️ Wishing the afternoon duty team safe and seamless berth operations!",
+      evening: "🌆 Wishing the evening shift safe operations and excellent customer service!",
+      night: "🌙 Wishing the night watch safe maritime operations and successful shift delivery!"
+    }
   }
 };
 
@@ -2955,54 +2967,135 @@ function checkWorkingVesselsLoadingAlert() {
   const tickerElem = $('alertTickerContent');
   if (!tickerElem) return;
 
-  let d = dict[currentLang];
-  let badgeElem = document.querySelector('.alert-ticker-badge');
-  if (badgeElem) badgeElem.textContent = d.tickerPrefix;
+  const d = dict[currentLang];
+  const badgeElem = document.querySelector('.alert-ticker-badge');
 
-  let todayKey = getTodayString();
-  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
-  let berthLowLimit = draftConfig.berthDepth + todayTide.lowVal;
+  // Lấy dữ liệu ngày hiện tại và ngày mai
+  const todayParts = getVNCurrentDateParts(0);
+  const nextParts = getVNCurrentDateParts(1);
+  const todayKey = todayParts.dateKey;
+  const nextKey = nextParts.dateKey;
 
-  let now = Date.now();
-  let list = getFilteredCalls();
+  const todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00", highHour: 3 };
+  const nextTide = multiDayTideData[nextKey] || { highVal: 3.5, highTimeStr: "04:00" };
 
-  let workingAtTanVu = list.filter(c => {
-    let term = (c.terminal || '').toUpperCase();
+  const bDepth = Number(draftConfig.berthDepth) || 9.0;
+  const berthLowLimit = bDepth + todayTide.lowVal; // Mực nước thực tế tại bến lúc triều kiệt
+
+  const now = Date.now();
+  const list = getFilteredCalls();
+
+  // Quét các tàu Tân Vũ ĐANG Ở CẦU LÀM HÀNG
+  const workingAtTanVu = list.filter(c => {
+    const term = (c.terminal || '').toUpperCase();
     if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-    return now >= t1 && (t2 === 0 || now <= t2);
+
+    const t1 = c.etb ? new Date(c.etb).getTime() : 0;
+    const t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+    return t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2);
   });
 
-  if (!workingAtTanVu.length) {
-    tickerElem.innerHTML = `<span class="ticker-item safe">${d.tickerNoShips}${berthLowLimit.toFixed(1)}m.</span>`;
-    return;
-  }
+  const warningShips = [];
+  const noEtdAdviceShips = [];
 
-  let alerts = [];
   workingAtTanVu.forEach(s => {
-    let rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
-    let dynamicDraft = rawDraft * (1 + draftConfig.draftMarginRatio);
+    const rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
+    
+    // ĐIỀU KIỆN CHUẨN: (Mớn tàu + 0.5m) >= (Độ sâu bến 9m + triều kiệt)
+    if ((rawDraft + 0.5) >= berthLowLimit) {
+      warningShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')} · Mớn ~${rawDraft.toFixed(1)}m]`);
+    }
 
-    if (dynamicDraft >= (berthLowLimit - 0.4)) {
-      let warnMsg = d.tickerWarnLoading
-        .replace('{TIME}', todayTide.lowTimeStr)
-        .replace('{DEPTH}', berthLowLimit.toFixed(1));
-      alerts.push(`
-        <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): ${warnMsg}
-        </span>
-      `);
-    } else {
-      alerts.push(`
-        <span class="ticker-item safe">
-          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): ${d.tickerSafeLoading}
-        </span>
-      `);
+    // TÀU CHƯA CÓ GIỜ ETD HOẶC ETD KHÔNG HỢP LỆ
+    if (!s.etd) {
+      const curHourVN = todayParts.hour;
+      const isPastPeakToday = (todayTide.highHour !== undefined) && (curHourVN >= todayTide.highHour);
+
+      if (isPastPeakToday) {
+        noEtdAdviceShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')}]`);
+      }
     }
   });
 
-  tickerElem.innerHTML = alerts.join(' ');
+  // 1. TRƯỜNG HỢP CÓ TÀU CHẠM NGƯỠNG CẢNH BÁO MỚN TRIỀU KIỆT
+  if (warningShips.length > 0) {
+    if (badgeElem) {
+      badgeElem.textContent = currentLang === 'vi' ? '⚠️ CẢNH BÁO LÀM HÀNG' : '⚠️ OPS CARGO ALERT';
+      badgeElem.style.background = 'rgba(231, 76, 60, 0.25)';
+      badgeElem.style.borderColor = '#e74c3c';
+      badgeElem.style.color = '#ff7675';
+    }
+
+    const shipBoxStr = warningShips.map(s => `<span class="ticker-vessel-box">${s}</span>`).join(' ');
+    
+    let msg = '';
+    if (currentLang === 'vi') {
+      msg = `<span class="ticker-item warning">
+        Tàu ${shipBoxStr} đang làm hàng: <b>KHÔNG CHẤT THÊM HÀNG VÀO GIỜ NƯỚC KIỆT ${todayTide.lowTimeStr}</b> 
+        (Mớn + 0.5m chạm giới hạn đáy bến ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ tải để giữ khoảng an toàn dưới sống tàu!
+      </span>`;
+    } else {
+      msg = `<span class="ticker-item warning">
+        Vessels ${shipBoxStr} handling cargo: <b>DO NOT LOAD CARGO DURING LOW WATER ${todayTide.lowTimeStr}</b> 
+        (Draft + 0.5m critical limit at ${berthLowLimit.toFixed(1)}m). Prioritize discharging for safety!
+      </span>`;
+    }
+
+    tickerElem.innerHTML = msg;
+    return;
+  }
+
+  // 2. TRƯỜNG HỢP CÓ TÀU CHƯA CÓ ETD VÀ HÔM NAY KHÔNG CÒN NƯỚC LỚN THÍCH HỢP
+  if (noEtdAdviceShips.length > 0) {
+    if (badgeElem) {
+      badgeElem.textContent = currentLang === 'vi' ? '⚓ KHUYẾN NGHỊ ĐIỀU ĐỘ' : '⚓ DISPATCH ADVICE';
+      badgeElem.style.background = 'rgba(241, 196, 15, 0.2)';
+      badgeElem.style.borderColor = '#f1c40f';
+      badgeElem.style.color = '#f1c40f';
+    }
+
+    const noEtdStr = noEtdAdviceShips.map(s => `<span class="ticker-vessel-box" style="border-color:#f1c40f">${s}</span>`).join(' ');
+    
+    let msg = '';
+    if (currentLang === 'vi') {
+      msg = `<span class="ticker-item warning">
+        Tàu ${noEtdStr} chưa có giờ ETD (hôm nay không còn con nước đỉnh thích hợp): 
+        <b>Khuyến nghị điều hành rời bến vào quanh đỉnh triều ngày mai (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
+      </span>`;
+    } else {
+      msg = `<span class="ticker-item warning">
+        Vessels ${noEtdStr} without ETD (no favorable high water left today): 
+        <b>Recommended departure around tomorrow's high tide (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
+      </span>`;
+    }
+
+    tickerElem.innerHTML = msg;
+    return;
+  }
+
+  // 3. TRẠNG THÁI BÌNH THƯỜNG: HIỂN THỊ CÂU CHÚC THEO THỜI ĐIỂM TRONG NGÀY
+  if (badgeElem) {
+    badgeElem.textContent = currentLang === 'vi' ? '⚓ BỘ PHẬN ĐIỀU HÀNH' : '⚓ OPERATIONS DESK';
+    badgeElem.style.background = 'rgba(46, 204, 113, 0.15)';
+    badgeElem.style.borderColor = '#2ecc71';
+    badgeElem.style.color = '#2ecc71';
+  }
+
+  const h = todayParts.hour;
+  let greetText = "";
+  const gr = d.greetings || {};
+
+  if (h >= 5 && h < 12) {
+    greetText = gr.morning || "🌅 Chúc ca trực buổi sáng làm việc an toàn, năng suất cao và giải phóng tàu nhanh chóng!";
+  } else if (h >= 12 && h < 18) {
+    greetText = gr.afternoon || "☀️ Chúc ban điều hành ca chiều vận hành cầu bến an toàn, thông suốt và hiệu quả!";
+  } else if (h >= 18 && h < 22) {
+    greetText = gr.evening || "🌆 Chúc ca làm việc buổi tối an toàn, đảm bảo chất lượng dịch vụ khách hàng!";
+  } else {
+    greetText = gr.night || "🌙 Chúc kíp trực đêm giữ vững an toàn hàng hải, bám sát tiến độ và hoàn thành tốt nhiệm vụ!";
+  }
+
+  tickerElem.innerHTML = `<span class="ticker-item safe" style="font-weight:700">${greetText}</span>`;
 }
 
 // --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
