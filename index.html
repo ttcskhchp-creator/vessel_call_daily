@@ -796,7 +796,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </div>
     </div>
 
-    <!-- KHỐI CHỨC NĂNG DỌC TRÁI -->
+    <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
     <div class="side-system-box">
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
         ↻ 00h00: (<span id="countdown">00:00:00</span>)
@@ -1197,8 +1197,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="form-group"><label id="lbl_berth">Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group"><label>LOA (m)</label><input id="editVesselLoa" type="number" class="field" style="width:100%" placeholder="0"></div>
-                <div class="form-group"><label>DWT</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="Trọng tải"></div>
+                <div class="form-group"><label id="lbl_loa">LOA (m)</label><input id="editVesselLoa" type="number" class="field" style="width:100%" placeholder="0"></div>
+                <div class="form-group"><label id="lbl_dwt">DWT</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="Trọng tải"></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="form-group"><label id="lbl_etb">ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
@@ -1531,6 +1531,8 @@ const dict = {
     lbl_operator: "Hãng tàu",
     lbl_terminal: "Terminal",
     lbl_berth: "Bến",
+    lbl_loa: "LOA (m)",
+    lbl_dwt: "DWT",
     lbl_etb: "ETB (Cập)",
     lbl_etd: "ETD (Rời)",
     btnSaveOverride: "💾 Lưu / Cập nhật",
@@ -1651,6 +1653,8 @@ const dict = {
     lbl_operator: "Operator",
     lbl_terminal: "Terminal",
     lbl_berth: "Berth",
+    lbl_loa: "LOA (m)",
+    lbl_dwt: "DWT",
     lbl_etb: "ETB (Berthing)",
     lbl_etd: "ETD (Departure)",
     btnSaveOverride: "💾 Lưu / Cập nhật",
