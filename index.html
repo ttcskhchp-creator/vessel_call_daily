@@ -2386,133 +2386,80 @@ function parseTheGioiMoiCauColumn(columnText) {
   return list;
 }
 
-// Bóc tách động chuẩn xác theo cấu trúc của thegioimoicau.com
 async function fetchTideFromTheGioiMoiCau() {
   if ($('tideStatusBadge')) {
     $('tideStatusBadge').textContent = 'Đang đồng bộ...';
     $('tideStatusBadge').style.color = '#8be4ec';
   }
 
-  const targetUrl = 'https://thegioimoicau.com/dia-danh/hon-dau/trang-1';
-  const proxyEndpoints = [
-    `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
-  ];
+  let isLoaded = false;
 
-  let rawHtml = '';
-  let isFetchSuccess = false;
-
-  const fetchWithTimeout = async (url, ms = 5000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ms);
+  // 1. Ưu tiên đọc trực tiếp từ Database Supabase (tide_readings)
+  if (supabaseClient) {
     try {
-      const response = await fetch(url, { signal: controller.signal, cache: 'no-cache' });
-      clearTimeout(timer);
-      return response;
-    } catch(err) {
-      clearTimeout(timer);
-      throw err;
+      const todayStr = getTodayString();
+      const { data, error } = await supabaseClient
+        .from('tide_readings')
+        .select('*')
+        .gte('date_key', todayStr)
+        .order('date_key', { ascending: true })
+        .limit(5);
+
+      if (data && !error && data.length > 0) {
+        data.forEach((row, idx) => {
+          const parts = row.date_key.split('-');
+          multiDayTideData[row.date_key] = {
+            date: row.date_key,
+            displayDate: `${parts[2]}/${parts[1]}/${parts[0]}`,
+            dayOffset: idx,
+            station: row.station || 'Hòn Dáu',
+            sourceType: 'live',
+            highVal: Number(row.high_val),
+            highTimeStr: row.high_time,
+            lowVal: Number(row.low_val),
+            lowTimeStr: row.low_time,
+            hourlyList: row.hourly_data
+          };
+        });
+        isLoaded = true;
+      }
+    } catch (e) {
+      console.warn("Lỗi đọc Database:", e);
     }
-  };
-
-  for (let pUrl of proxyEndpoints) {
-    try {
-      const res = await fetchWithTimeout(pUrl, 4500);
-      if (!res.ok) continue;
-
-      if (pUrl.includes('allorigins')) {
-        const json = await res.json();
-        rawHtml = json.contents || '';
-      } else {
-        rawHtml = await res.text();
-      }
-
-      if (rawHtml && (rawHtml.toLowerCase().includes('hòn dáu') || rawHtml.includes('hon-dau'))) {
-        isFetchSuccess = true;
-        break;
-      }
-    } catch(err) {}
   }
 
-  if (isFetchSuccess && rawHtml) {
+  // 2. Dự phòng: Đọc file snapshot JSON từ Storage Bucket ('port-documents')
+  if (!isLoaded && supabaseClient) {
     try {
-      let parser = new DOMParser();
-      let doc = parser.parseFromString(rawHtml, 'text/html');
-      let pageText = doc.body.innerText || doc.body.textContent || '';
+      const { data, error } = await supabaseClient.storage
+        .from('port-documents')
+        .download('hon_dau_tide_full.json');
 
-      // Tự động nhận diện mốc sau 03h00 của ngày kế tiếp
-      for (let offset = 0; offset < 4; offset++) {
-        let p = getVNCurrentDateParts(offset);
-        let dateKey = p.dateKey;
-        let dayPadded = p.day;
-        let monthPadded = p.month;
-        let yearFull = p.year;
-
-        // Định dạng tiêu đề cột ngày trên thegioimoicau.com
-        let targetPatterns = [
-          `Dương lịch ${dayPadded}/${monthPadded}/${yearFull}`,
-          `${dayPadded}/${monthPadded}/${yearFull}`,
-          `${dayPadded}/${monthPadded}`
-        ];
-
-        let startIdx = -1;
-        for (let pat of targetPatterns) {
-          let idx = pageText.indexOf(pat);
-          if (idx !== -1) {
-            startIdx = idx;
-            break;
-          }
-        }
-
-        if (startIdx !== -1) {
-          let nextP = getVNCurrentDateParts(offset + 1);
-          let nextTarget = `${nextP.day}/${nextP.month}`;
-          let endIdx = pageText.indexOf(nextTarget, startIdx + 20);
-
-          let colChunk = (endIdx !== -1)
-            ? pageText.substring(startIdx, endIdx)
-            : pageText.substring(startIdx, startIdx + 3000);
-
-          let hourlyList = parseTheGioiMoiCauColumn(colChunk);
-
-          if (hourlyList.length >= 18) {
-            let extremes = calculateDayExtremes(hourlyList);
-            multiDayTideData[dateKey] = {
-              date: dateKey,
+      if (data && !error) {
+        const jsonText = await data.text();
+        const parsed = JSON.parse(jsonText);
+        for (let offset = 0; offset < 4; offset++) {
+          const p = getVNCurrentDateParts(offset);
+          if (parsed[p.dateKey]) {
+            const item = parsed[p.dateKey];
+            multiDayTideData[p.dateKey] = {
+              date: p.dateKey,
               displayDate: p.labelDate,
               dayOffset: offset,
               station: 'Hòn Dáu',
               sourceType: 'live',
-              ...extremes,
-              hourlyList: hourlyList
+              highVal: Number(item.high_val),
+              highTimeStr: item.high_time,
+              lowVal: Number(item.low_val),
+              lowTimeStr: item.low_time,
+              hourlyList: item.hourly_data
             };
           }
         }
+        isLoaded = true;
       }
-    } catch(err) {
-      console.warn("Lỗi bóc tách:", err);
-    }
-  }
-
-  // Nạp từ bảng đối soát chuẩn xác tuyệt đối nếu mạng proxy bị chặn
-  for (let offset = 0; offset < 4; offset++) {
-    let p = getVNCurrentDateParts(offset);
-    let dateKey = p.dateKey;
-
-    if (!multiDayTideData[dateKey] || multiDayTideData[dateKey].sourceType !== 'live') {
-      let table = HON_DAU_EXACT_TABLES[dateKey];
-      if (table && table.length) {
-        let extremes = calculateDayExtremes(table);
-        multiDayTideData[dateKey] = {
-          date: dateKey,
-          displayDate: p.labelDate,
-          dayOffset: offset,
-          station: 'Hòn Dáu',
-          sourceType: 'benchmark',
-          ...extremes,
-          hourlyList: table
-        };
-      }
+    } catch (e) {
+      console.warn("Lỗi đọc Storage Bucket:", e);
     }
   }
 
