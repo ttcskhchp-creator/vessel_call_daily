@@ -2979,56 +2979,129 @@ function checkWorkingVesselsLoadingAlert() {
   const tickerElem = $('alertTickerContent');
   if (!tickerElem) return;
 
-  let d = dict[currentLang];
-  let badgeElem = document.querySelector('.alert-ticker-badge');
-  if (badgeElem) badgeElem.textContent = d.tickerPrefix;
+  const d = dict[currentLang] || dict['vi'];
+  const badgeElem = document.querySelector('.alert-ticker-badge');
 
-  let todayKey = getTodayString();
-  let todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
-  let berthLowLimit = draftConfig.berthDepth + todayTide.lowVal;
+  const todayParts = getVNCurrentDateParts(0);
+  const nextParts = getVNCurrentDateParts(1);
+  const todayKey = todayParts.dateKey;
+  const nextKey = nextParts.dateKey;
 
-  let now = Date.now();
-  let list = getFilteredCalls();
+  const todayTide = multiDayTideData[todayKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00", highHour: 3 };
+  const nextTide = multiDayTideData[nextKey] || { highVal: 3.5, highTimeStr: "04:00" };
 
-  let workingAtTanVu = list.filter(c => {
-    let term = (c.terminal || '').toUpperCase();
+  const bDepth = Number(draftConfig.berthDepth) || 9.0;
+  const berthLowLimit = bDepth + todayTide.lowVal;
+
+  const now = Date.now();
+  const list = getFilteredCalls();
+
+  const workingAtTanVu = list.filter(c => {
+    const term = (c.terminal || '').toUpperCase();
     if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-    let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-    let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
-    return now >= t1 && (t2 === 0 || now <= t2);
+
+    const t1 = c.etb ? new Date(c.etb).getTime() : 0;
+    const t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+    return t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2);
   });
 
-  if (!workingAtTanVu.length) {
-    tickerElem.innerHTML = `<span class="ticker-item safe">${d.tickerNoShips}${berthLowLimit.toFixed(1)}m.</span>`;
-    return;
-  }
+  const warningShips = [];
+  const noEtdAdviceShips = [];
 
-  let alerts = [];
   workingAtTanVu.forEach(s => {
-    let rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
-    let dynamicDraft = rawDraft * (1 + draftConfig.draftMarginRatio);
+    const rawDraft = parseFloat(String(s.draft || s.draft_design || '').replace(',', '.')) || getEstimatedDraftByLoa(s.loa);
+    
+    if ((rawDraft + 0.5) >= berthLowLimit) {
+      warningShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')} · Mớn ~${rawDraft.toFixed(1)}m]`);
+    }
 
-    if (dynamicDraft >= (berthLowLimit - 0.4)) {
-      let warnMsg = d.tickerWarnLoading
-        .replace('{TIME}', todayTide.lowTimeStr)
-        .replace('{DEPTH}', berthLowLimit.toFixed(1));
-      alerts.push(`
-        <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): ${warnMsg}
-        </span>
-      `);
-    } else {
-      alerts.push(`
-        <span class="ticker-item safe">
-          🟢 <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}): ${d.tickerSafeLoading}
-        </span>
-      `);
+    if (!s.etd) {
+      const curHourVN = todayParts.hour;
+      const isPastPeakToday = (todayTide.highHour !== undefined) && (curHourVN >= todayTide.highHour);
+
+      if (isPastPeakToday) {
+        noEtdAdviceShips.push(`[${esc(s.vessel)} · ${esc(s.berth || 'Bến')}]`);
+      }
     }
   });
 
-  tickerElem.innerHTML = alerts.join(' ');
-}
+  if (warningShips.length > 0) {
+    if (badgeElem) {
+      badgeElem.textContent = currentLang === 'vi' ? '⚠️ CẢNH BÁO LÀM HÀNG' : '⚠️ OPS CARGO ALERT';
+      badgeElem.style.background = 'rgba(231, 76, 60, 0.25)';
+      badgeElem.style.borderColor = '#e74c3c';
+      badgeElem.style.color = '#ff7675';
+    }
 
+    const shipBoxStr = warningShips.map(s => `<span class="ticker-vessel-box">${s}</span>`).join(' ');
+    
+    let msg = '';
+    if (currentLang === 'vi') {
+      msg = `<span class="ticker-item warning">
+        Tàu ${shipBoxStr} đang làm hàng tại bến: <b>KHÔNG CHẤT THÊM HÀNG VÀO GIỜ NƯỚC KIỆT ${todayTide.lowTimeStr}</b> 
+        (Mớn + 0.5m chạm giới hạn đáy bến ${berthLowLimit.toFixed(1)}m). Ưu tiên dỡ tải để giữ khoảng an toàn dưới sống tàu!
+      </span>`;
+    } else {
+      msg = `<span class="ticker-item warning">
+        Vessels ${shipBoxStr} handling cargo: <b>DO NOT LOAD CARGO DURING LOW WATER ${todayTide.lowTimeStr}</b> 
+        (Draft + 0.5m critical limit at ${berthLowLimit.toFixed(1)}m). Prioritize discharging for safety!
+      </span>`;
+    }
+
+    tickerElem.innerHTML = msg;
+    return;
+  }
+
+  if (noEtdAdviceShips.length > 0) {
+    if (badgeElem) {
+      badgeElem.textContent = currentLang === 'vi' ? '⚓ KHUYẾN NGHỊ ĐIỀU ĐỘ' : '⚓ DISPATCH ADVICE';
+      badgeElem.style.background = 'rgba(241, 196, 15, 0.2)';
+      badgeElem.style.borderColor = '#f1c40f';
+      badgeElem.style.color = '#f1c40f';
+    }
+
+    const noEtdStr = noEtdAdviceShips.map(s => `<span class="ticker-vessel-box" style="border-color:#f1c40f">${s}</span>`).join(' ');
+    
+    let msg = '';
+    if (currentLang === 'vi') {
+      msg = `<span class="ticker-item warning">
+        Tàu ${noEtdStr} chưa có giờ ETD (hôm nay đã qua khung nước lớn phù hợp): 
+        <b>Khuyến nghị điều hành rời bến vào quanh đỉnh triều ngày mai (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
+      </span>`;
+    } else {
+      msg = `<span class="ticker-item warning">
+        Vessels ${noEtdStr} without ETD (past high water window today): 
+        <b>Recommended departure around tomorrow's high tide (~${nextTide.highTimeStr} - ${nextTide.highVal}m)</b>.
+      </span>`;
+    }
+
+    tickerElem.innerHTML = msg;
+    return;
+  }
+
+  if (badgeElem) {
+    badgeElem.textContent = currentLang === 'vi' ? '⚓ BỘ PHẬN ĐIỀU HÀNH' : '⚓ OPERATIONS DESK';
+    badgeElem.style.background = 'rgba(46, 204, 113, 0.15)';
+    badgeElem.style.borderColor = '#2ecc71';
+    badgeElem.style.color = '#2ecc71';
+  }
+
+  const h = todayParts.hour;
+  let greetText = "";
+  const gr = d.greetings || {};
+
+  if (h >= 5 && h < 12) {
+    greetText = gr.morning || "🌅 Chúc ca trực buổi sáng làm việc an toàn, năng suất cao và giải phóng tàu nhanh chóng!";
+  } else if (h >= 12 && h < 18) {
+    greetText = gr.afternoon || "☀️ Chúc ban điều hành ca chiều vận hành cầu bến an toàn, thông suốt và hiệu quả!";
+  } else if (h >= 18 && h < 22) {
+    greetText = gr.evening || "🌆 Chúc ca làm việc buổi tối an toàn, đảm bảo chất lượng dịch vụ khách hàng!";
+  } else {
+    greetText = gr.night || "🌙 Chúc kíp trực đêm giữ vững an toàn hàng hải, bám sát con nước và hoàn thành tốt nhiệm vụ!";
+  }
+
+  tickerElem.innerHTML = `<span class="ticker-item safe" style="font-weight:700">${greetText}</span>`;
+}
 // --- ĐIỀU HƯỚNG VÀ RENDER GIAO DIỆN ---
 function nav(page, saveState = true){
   document.querySelectorAll('.page').forEach(x => x.classList.add('hidden'));
@@ -3055,13 +3128,20 @@ function isHaiPhongPort(term) {
 function getFilteredCalls() {
   let fDate = $('fromDate') ? $('fromDate').value : '';
   let tDate = $('toDate') ? $('toDate').value : '';
+  
   let filtered = allCalls.filter(c => {
-    let shipDate = (c.etb || c.etd || '').split('T')[0];
-    if (!shipDate) return true;
-    if (fDate && shipDate < fDate) return false;
-    if (tDate && shipDate > tDate) return false;
-    return true;
+    let etbDate = (c.etb || '').split('T')[0];
+    let etdDate = (c.etd || '').split('T')[0];
+    
+    if (!fDate && !tDate) return true;
+
+    let etbInRange = (!fDate || etbDate >= fDate) && (!tDate || etbDate <= tDate);
+    let etdInRange = (!fDate || etdDate >= fDate) && (!tDate || etdDate <= tDate);
+    let spanInRange = (etbDate && etdDate && etbDate <= fDate && etdDate >= tDate);
+
+    return etbInRange || etdInRange || spanInRange;
   });
+
   return filterAndDeduplicateCalls(filtered);
 }
 
@@ -3100,9 +3180,8 @@ function renderAll() {
 function renderTanVuLayout(list) {
   try {
     let now = Date.now();
-    let todayStr = getTodayString(); // Ngày hôm nay (YYYY-MM-DD)
+    let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
 
-    // Lọc tàu Tân Vũ: Có lịch cập hôm nay HOẶC có lịch rời hôm nay HOẶC đang làm hàng
     let tanVuShips = list.filter(c => {
       let term = (c.terminal || '').toUpperCase();
       if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
@@ -3113,10 +3192,13 @@ function renderTanVuLayout(list) {
       let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
 
       let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
-      let isArrivingToday = (etbDate === todayStr);
-      let isDepartingToday = (etdDate === todayStr);
+      let isArrivingOnDate = (etbDate === selectedDateStr);
+      let isDepartingOnDate = (etdDate === selectedDateStr);
+      
+      // Bổ sung điều kiện: Tàu cập trước ngày xem nhưng rời vào đúng ngày xem
+      let isBerthingBeforeAndLeavingToday = (etbDate && etbDate < selectedDateStr && etdDate === selectedDateStr);
 
-      return isWorkingNow || isArrivingToday || isDepartingToday;
+      return isWorkingNow || isArrivingOnDate || isDepartingOnDate || isBerthingBeforeAndLeavingToday;
     });
 
     let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
@@ -3141,22 +3223,21 @@ function renderTanVuLayout(list) {
       html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
       
       if (ships.length === 0) {
-        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
+        html += `<span class="empty-berth">${d.emptyBerth || d.berthEmpty || 'Trống'}</span>`;
       } else {
         ships.forEach(s => {
           let etdDate = (s.etd || '').split('T')[0];
 
-          // Nổi màu ĐỎ khi tàu có lịch rời bến trong ngày hôm nay
-          let isDepartingToday = (etdDate === todayStr);
+          let isDepartingOnDate = (etdDate === selectedDateStr);
           
           let chipClass = 'ship-chip';
-          if (isDepartingToday) {
+          if (isDepartingOnDate) {
             chipClass += ' departing-today';
           } else if (s.loa >= 300) {
             chipClass += ' large';
           }
 
-          let timeHint = isDepartingToday ? '🚩 Rời hôm nay' : `${s.loa}m`;
+          let timeHint = isDepartingOnDate ? '🚩 Rời hôm nay' : `${s.loa}m`;
 
           html += `
             <div class="${chipClass}" 
@@ -3177,7 +3258,6 @@ function renderTanVuLayout(list) {
     console.error("Lỗi tại renderTanVuLayout:", err);
   }
 }
-
 function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
