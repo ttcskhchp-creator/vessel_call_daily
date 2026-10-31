@@ -1010,13 +1010,13 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
 
-        <!-- BẢNG DẢI MỚN NƯỚC & DWT AN TOÀN TRONG NGÀY (XOAY VÒNG 3 NGÀY ĐỒNG BỘ) -->
+        <!-- BẢNG DẢI MỚN NƯỚC & DWT AN TOÀN TÍNH ĐỒNG THỜI CẢ LUỒNG & BẾN -->
         <div class="panel" style="margin-bottom: 14px;">
           <div class="panel-head">
             <h3 style="display:flex;align-items:center;gap:6px;">
               📏 Bảng Dải Mớn Nước & Trọng Tải (DWT) An Toàn (<span id="safeDraftDayLabel" style="color:var(--cyan)">Hôm nay</span>)
             </h3>
-            <span class="badge" id="dailySafeSummaryBadge">Mực nước bến Tân Vũ (9m): Đang tính toán...</span>
+            <span class="badge" id="dailySafeSummaryBadge">Đang tính toán mớn luồng & bến...</span>
           </div>
           <div class="table-wrap">
             <table>
@@ -1025,10 +1025,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                   <th>Phân loại tàu</th>
                   <th>Sức chở (TEU)</th>
                   <th>Chiều dài (LOA)</th>
-                  <th>Dải DWT tham chiếu</th>
+                  <th>Dải DWT</th>
                   <th>Mớn TK</th>
-                  <th>Mớn an toàn tối đa (Ngày chọn)</th>
-                  <th>Khuyến nghị khai thác bến Tân Vũ</th>
+                  <th>Mớn an toàn lúc cạn (Luồng / Bến)</th>
+                  <th>Mớn an toàn lúc lớn (Luồng / Bến)</th>
+                  <th>Khung giờ vào luồng</th>
+                  <th>Khuyến nghị điều động Tân Vũ</th>
                 </tr>
               </thead>
               <tbody id="safeDraftTableBody">
@@ -2785,6 +2787,7 @@ function getEstimatedDraftByLoa(loa) {
 }
 
 // 1. Cập nhật Bảng Dải mớn nước & DWT an toàn TƯƠNG ỨNG 3 NGÀY THEO NÚT XOAY VÒNG
+// Cập nhật Bảng Dải mớn nước tính đồng thời cả LUỒNG và CẦU BẾN
 function renderDailySafeDraftTable() {
   const tbody = $('safeDraftTableBody');
   if (!tbody) return;
@@ -2793,23 +2796,41 @@ function renderDailySafeDraftTable() {
   let activeKey = activePart.dateKey;
   let selectedTide = multiDayTideData[activeKey] || { lowVal: 1.0, highVal: 3.3, lowTimeStr: "17:00", highTimeStr: "03:00" };
   
-  let berthLowDepth = draftConfig.berthDepth + selectedTide.lowVal;
-  let berthHighDepth = draftConfig.berthDepth + selectedTide.highVal;
+  // 1. Độ sâu thiết kế chuẩn từ cấu hình
+  let chDepth = Number(draftConfig.channelDepth) || 8.0;     // Độ sâu luồng vào (m)
+  let bDepth = Number(draftConfig.berthDepth) || 9.0;         // Độ sâu trước bến Tân Vũ (m)
+  let margin = Number(draftConfig.draftMarginRatio) || 0.10;  // Dự phòng mớn động (10%)
 
+  // 2. Mớn tĩnh an toàn tối đa cho phép qua Luồng và Bến lúc cạn / lúc lớn
+  let safeChannelLow = ((chDepth + selectedTide.lowVal) / (1 + margin)).toFixed(1);
+  let safeChannelHigh = ((chDepth + selectedTide.highVal) / (1 + margin)).toFixed(1);
+
+  let safeBerthLow = ((bDepth + selectedTide.lowVal) / (1 + margin)).toFixed(1);
+  let safeBerthHigh = ((bDepth + selectedTide.highVal) / (1 + margin)).toFixed(1);
+
+  // Mớn an toàn toàn trình (khống chế bởi điểm cạn nhất giữa Luồng và Bến)
+  let maxSafeOverallLow = Math.min(Number(safeChannelLow), Number(safeBerthLow));
+  let maxSafeOverallHigh = Math.min(Number(safeChannelHigh), Number(safeBerthHigh));
+
+  // Cập nhật thẻ tóm tắt trên đầu bảng
   if ($('dailySafeSummaryBadge')) {
-    $('dailySafeSummaryBadge').textContent = `Mực nước bến Tân Vũ (${draftConfig.berthDepth}m): Ròng ${berthLowDepth.toFixed(1)}m (${selectedTide.lowTimeStr}) | Lớn ${berthHighDepth.toFixed(1)}m (${selectedTide.highTimeStr})`;
+    $('dailySafeSummaryBadge').textContent = 
+      `Luồng (${chDepth}m) / Bến (${bDepth}m) | Đáy triều: Ròng +${selectedTide.lowVal}m (${selectedTide.lowTimeStr}) | Đỉnh triều: Lớn +${selectedTide.highVal}m (${selectedTide.highTimeStr})`;
   }
 
   tbody.innerHTML = draftConfig.benchmarks.map(item => {
-    let maxSafeDraftAtLow = ((draftConfig.berthDepth + selectedTide.lowVal) / (1 + draftConfig.draftMarginRatio)).toFixed(1);
-
     let statusHtml = '';
-    if (item.refDraft <= maxSafeDraftAtLow) {
-      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">🟢 An toàn dỡ/xếp 24/24h</span>`;
-    } else if (item.minLoa <= 220) {
-      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">⚠️ Tránh chất hàng lúc triều kiệt (${selectedTide.lowTimeStr})</span>`;
+    let recommendTimeHtml = '';
+
+    if (item.refDraft <= maxSafeOverallLow) {
+      statusHtml = `<span class="badge" style="background:#e8f6f1;color:#126e55">🟢 An toàn ra/vào 24/24h</span>`;
+      recommendTimeHtml = `<span style="color:#126e55;font-weight:700">Mọi thời điểm</span>`;
+    } else if (item.refDraft <= maxSafeOverallHigh && item.minLoa <= 220) {
+      statusHtml = `<span class="badge" style="background:#fff3d9;color:#8f5c00">⚠️ Phụ thuộc triều (Cạn luồng lúc ${selectedTide.lowTimeStr})</span>`;
+      recommendTimeHtml = `<span class="tag-vivid urgent" style="font-size:10px">🕒 Quanh ${selectedTide.highTimeStr} (Đón đỉnh triều)</span>`;
     } else {
-      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">⛔ Giảm tải mạnh / Cập Lạch Huyện</span>`;
+      statusHtml = `<span class="badge" style="background:#fff0f0;color:#a82e2e">⛔ Vượt chuẩn tắc luồng / Chuyển Lạch Huyện</span>`;
+      recommendTimeHtml = `<span style="color:#a82e2e;font-weight:700">Không đủ nước qua luồng</span>`;
     }
 
     return `
@@ -2819,7 +2840,15 @@ function renderDailySafeDraftTable() {
         <td><span class="badge">${item.minLoa}m – ${item.maxLoa}m</span></td>
         <td><b>${item.minDwt.toLocaleString()} – ${item.maxDwt.toLocaleString()} T</b></td>
         <td>${item.refDraft} m</td>
-        <td><strong style="color:var(--cyan)">≤ ${maxSafeDraftAtLow} m</strong> (Lúc cạn)</td>
+        <td>
+          <b style="color:var(--cyan)">≤ ${safeChannelLow}m</b> <small class="muted">(Luồng)</small><br>
+          <span style="font-size:10px;color:var(--muted)">≤ ${safeBerthLow}m (Bến)</span>
+        </td>
+        <td>
+          <b style="color:#2ecc71">≤ ${safeChannelHigh}m</b> <small class="muted">(Luồng)</small><br>
+          <span style="font-size:10px;color:var(--muted)">≤ ${safeBerthHigh}m (Bến)</span>
+        </td>
+        <td>${recommendTimeHtml}</td>
         <td>${statusHtml}</td>
       </tr>
     `;
