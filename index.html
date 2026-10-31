@@ -2990,7 +2990,7 @@ function checkWorkingVesselsLoadingAlert() {
         .replace('{DEPTH}', berthLowLimit.toFixed(1));
       alerts.push(`
         <span class="ticker-item warning">
-          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}, LOA ${s.loa}m, Mớn ~${rawDraft.toFixed(1)}m): ${warnMsg}
+          ⚠️ <b>${esc(s.vessel)}</b> (${esc(s.berth || 'Bến')}, LOA ${s.loa}m, Mớn DK ~${rawDraft.toFixed(1)}m): ${warnMsg}
         </span>
       `);
     } else {
