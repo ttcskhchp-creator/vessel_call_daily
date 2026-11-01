@@ -3181,6 +3181,7 @@ function renderTanVuLayout(list) {
   try {
     let now = Date.now();
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
+    let todayStr = getTodayString(); // Ngày thực tế hôm nay
 
     let tanVuShips = list.filter(c => {
       let term = (c.terminal || '').toUpperCase();
@@ -3191,11 +3192,19 @@ function renderTanVuLayout(list) {
       let t1 = c.etb ? new Date(c.etb).getTime() : 0;
       let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
 
+      // ĐIỀU KIỆN CHÍNH XÁC: 
+      // Chỉ ẩn tàu khi: Đang ở ngày hiện tại (selectedDateStr === todayStr) VÀ tàu đã rời bến thực tế (now > t2)
+      let isTodayView = (selectedDateStr === todayStr);
+      let isAlreadyDepartedRealtime = (isTodayView && t2 !== Infinity && t2 > 0 && now > t2);
+
+      if (isAlreadyDepartedRealtime) {
+        return false; // Đã rời cầu ở ngày hiện tại -> Ẩn ngay lập tức
+      }
+
+      // Các trường hợp hiển thị bình thường:
       let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
       let isArrivingOnDate = (etbDate === selectedDateStr);
       let isDepartingOnDate = (etdDate === selectedDateStr);
-      
-      // Bổ sung điều kiện: Tàu cập trước ngày xem nhưng rời vào đúng ngày xem
       let isBerthingBeforeAndLeavingToday = (etbDate && etbDate < selectedDateStr && etdDate === selectedDateStr);
 
       return isWorkingNow || isArrivingOnDate || isDepartingOnDate || isBerthingBeforeAndLeavingToday;
@@ -3223,7 +3232,7 @@ function renderTanVuLayout(list) {
       html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
       
       if (ships.length === 0) {
-        html += `<span class="empty-berth">${d.emptyBerth || d.berthEmpty || 'Trống'}</span>`;
+        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
       } else {
         ships.forEach(s => {
           let etdDate = (s.etd || '').split('T')[0];
