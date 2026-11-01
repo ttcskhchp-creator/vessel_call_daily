@@ -3181,7 +3181,7 @@ function renderTanVuLayout(list) {
   try {
     let now = Date.now();
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
-    let todayStr = getTodayString(); // Ngày thực tế hôm nay
+    let todayStr = getTodayString();
 
     let tanVuShips = list.filter(c => {
       let term = (c.terminal || '').toUpperCase();
@@ -3192,16 +3192,14 @@ function renderTanVuLayout(list) {
       let t1 = c.etb ? new Date(c.etb).getTime() : 0;
       let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
 
-      // ĐIỀU KIỆN CHÍNH XÁC: 
-      // Chỉ ẩn tàu khi: Đang ở ngày hiện tại (selectedDateStr === todayStr) VÀ tàu đã rời bến thực tế (now > t2)
+      // 1. Tàu đã rời bến thực tế -> Ẩn khỏi cầu ở ngày hiện tại
       let isTodayView = (selectedDateStr === todayStr);
       let isAlreadyDepartedRealtime = (isTodayView && t2 !== Infinity && t2 > 0 && now > t2);
 
       if (isAlreadyDepartedRealtime) {
-        return false; // Đã rời cầu ở ngày hiện tại -> Ẩn ngay lập tức
+        return false;
       }
 
-      // Các trường hợp hiển thị bình thường:
       let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
       let isArrivingOnDate = (etbDate === selectedDateStr);
       let isDepartingOnDate = (etdDate === selectedDateStr);
@@ -3235,18 +3233,20 @@ function renderTanVuLayout(list) {
         html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
       } else {
         ships.forEach(s => {
+          let t2 = s.etd ? new Date(s.etd).getTime() : 0;
           let etdDate = (s.etd || '').split('T')[0];
 
-          let isDepartingOnDate = (etdDate === selectedDateStr);
-          
+          // ĐIỀU KIỆN CHUẨN: Nhãn "Rời hôm nay" chỉ hiện khi ETD thuộc ngày hôm nay VÀ thời điểm rời chưa tới (t2 > now)
+          let isDepartingTodayNotYet = (etdDate === todayStr && t2 > 0 && t2 > now);
+
           let chipClass = 'ship-chip';
-          if (isDepartingOnDate) {
+          if (isDepartingTodayNotYet) {
             chipClass += ' departing-today';
           } else if (s.loa >= 300) {
             chipClass += ' large';
           }
 
-          let timeHint = isDepartingOnDate ? '🚩 Rời hôm nay' : `${s.loa}m`;
+          let timeHint = isDepartingTodayNotYet ? '🚩 Rời hôm nay' : `${s.loa}m`;
 
           html += `
             <div class="${chipClass}" 
