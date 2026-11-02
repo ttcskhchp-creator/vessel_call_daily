@@ -3410,6 +3410,9 @@ function renderGantt() {
 
   let terms = {};
   list.forEach(c => {
+    // 🛑 BỎ QUA HOÀN TOÀN NẾU TÀU KHÔNG CÓ GIỜ VÀO (ETB)
+    if (!c.etb) return;
+
     if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
     if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
     let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
@@ -3417,8 +3420,7 @@ function renderGantt() {
     terms[key].push(c);
   });
 
-  // Thời gian neo đậu trung bình của tàu container tại Tân Vũ: khoảng 18 - 20 giờ
-  const DEFAULT_STAY_MS = 20 * 3600000;
+  const DEFAULT_STAY_MS = 20 * 3600000; // Mặc định thời gian làm hàng 20 tiếng nếu chưa có ETD
 
   let out = headerHtml;
   let hasData = false;
@@ -3427,32 +3429,13 @@ function renderGantt() {
     out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
 
     ships.forEach((c, idx) => {
-      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t1 = new Date(c.etb).getTime();
       let t2 = c.etd ? new Date(c.etd).getTime() : 0;
 
       let a = t1;
-      let b = t2;
+      let b = (t2 > t1 && (t2 - t1) <= 7 * 86400000) ? t2 : (t1 + DEFAULT_STAY_MS);
 
-      // XỬ LÝ CHẶN KÉO DÀI BẤT THƯỜNG:
-      if (t1 > 0 && t2 > 0) {
-        // Nếu khoảng cách ETB - ETD bất thường > 7 ngày, giới hạn lại thời gian làm hàng hợp lý
-        if (t2 > t1 && (t2 - t1) > 7 * 86400000) {
-          b = t1 + DEFAULT_STAY_MS;
-        } else if (t2 <= t1) {
-          b = t1 + DEFAULT_STAY_MS;
-        }
-      } else if (t1 > 0 && t2 === 0) {
-        // Chỉ có giờ cập (ETB), chưa có giờ rời: Cho làm hàng khoảng 20 tiếng
-        b = t1 + DEFAULT_STAY_MS;
-      } else if (t1 === 0 && t2 > 0) {
-        // Chỉ có giờ rời (ETD), chưa có giờ cập:
-        // TUYỆT ĐỐI KHÔNG LẤY start.getTime()! Tính lùi về trước 20 tiếng để tàu đỗ đúng vị trí thực tế!
-        a = t2 - DEFAULT_STAY_MS;
-      } else {
-        return; // Không có cả 2 mốc -> bỏ qua
-      }
-
-      // Kiểm tra xem khoảng thời gian làm hàng của tàu có giao thoa với cửa sổ Gantt đang xem không
+      // Chỉ vẽ khi khoảng thời gian tàu nằm bến nằm trong khung nhìn Gantt
       if (b >= start.getTime() && a <= end.getTime()) {
         let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
         let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
