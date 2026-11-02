@@ -2185,7 +2185,7 @@ async function deleteVesselOverrideProtected() {
 function filterAndDeduplicateCalls(rawList) {
   if (!Array.isArray(rawList)) return [];
 
-  // 1. Chuẩn hóa và áp dụng thông tin ghi đè (overrides) nếu có
+  // 1. Chuẩn hóa dữ liệu
   let cleanList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     let ov = vesselOverridesMap.get(vName);
@@ -2201,18 +2201,17 @@ function filterAndDeduplicateCalls(rawList) {
     };
   }).filter(c => c.vessel);
 
-  // 2. Nhóm các bản ghi theo tên tàu
+  // 2. Nhóm theo tên tàu
   let groups = new Map();
   cleanList.forEach(c => {
     if (!groups.has(c.vessel)) groups.set(c.vessel, []);
     groups.get(c.vessel).push(c);
   });
 
-  // Ngưỡng thời gian nằm bến tối đa hợp lý của tàu hàng: 7 ngày (168 giờ)
-  const MAX_PORT_STAY_MS = 7 * 86400000; 
+  const MAX_PORT_STAY_MS = 5 * 86400000; // Giới hạn chuyến độc lập: 5 ngày
   let finalCalls = [];
 
-  // 3. Xử lý từng tàu: Tách các chuyến độc lập và ghép cặp ETB - ETD gần nhau nhất
+  // 3. Tách và ghép cặp ETB - ETD gần nhau nhất cho từng chuyến
   groups.forEach((recs, vName) => {
     let defaultMeta = { operator: '', terminal: '', berth: '', loa: 0, dwt: '' };
     recs.forEach(r => {
@@ -2231,8 +2230,7 @@ function filterAndDeduplicateCalls(rawList) {
       let t1 = r.etb ? new Date(r.etb).getTime() : 0;
       let t2 = r.etd ? new Date(r.etd).getTime() : 0;
 
-      // Nếu bản ghi đã có cả ETB và ETD, VÀ cách nhau trong khoảng hợp lý (0 <= t2 - t1 <= 7 ngày)
-      // -> Đây là 1 chuyến độc lập hoàn chỉnh, giữ nguyên vẹn
+      // Nếu đã có cả ETB và ETD trong cùng 1 bản ghi và cách nhau <= 5 ngày -> Giữ nguyên là 1 chuyến
       if (t1 > 0 && t2 > 0 && t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
         standaloneCalls.push({
           ...r,
@@ -2243,39 +2241,31 @@ function filterAndDeduplicateCalls(rawList) {
           dwt: r.dwt || defaultMeta.dwt
         });
       } else {
-        // Trường hợp chỉ có 1 đầu (chỉ đến / chỉ đi) hoặc bị gộp sai (> 7 ngày như 19/10 và 01/11)
-        // -> Tách thành sự kiện Đến (ETB) và Đi (ETD) riêng biệt để ghép cặp chuẩn xác
+        // Bị gộp sai thời gian (> 5 ngày) hoặc khuyết 1 đầu -> Tách ra để ghép cặp chuẩn
         if (t1 > 0) rawEtbs.push({ time: t1, str: r.etb, rec: r });
         if (t2 > 0) rawEtds.push({ time: t2, str: r.etd, rec: r });
       }
     });
 
-    // Khử trùng lặp các mốc thời gian ETB và ETD trùng nhau tuyệt đối
+    // Khử trùng lặp các mốc giờ trùng nhau
     let uniqueEtbs = [];
     let seenEtb = new Set();
     rawEtbs.forEach(item => {
-      if (!seenEtb.has(item.str)) {
-        seenEtb.add(item.str);
-        uniqueEtbs.push(item);
-      }
+      if (!seenEtb.has(item.str)) { seenEtb.add(item.str); uniqueEtbs.push(item); }
     });
 
     let uniqueEtds = [];
     let seenEtd = new Set();
     rawEtds.forEach(item => {
-      if (!seenEtd.has(item.str)) {
-        seenEtd.add(item.str);
-        uniqueEtds.push(item);
-      }
+      if (!seenEtd.has(item.str)) { seenEtd.add(item.str); uniqueEtds.push(item); }
     });
 
-    // Sắp xếp tăng dần theo thời gian
     uniqueEtbs.sort((a, b) => a.time - b.time);
     uniqueEtds.sort((a, b) => a.time - b.time);
 
     let usedEtdIndices = new Set();
 
-    // Thuật toán: Với mỗi mốc ETB, tìm mốc ETD GẦN NÓ NHẤT thỏa mãn ETD >= ETB (trong vòng 7 ngày)
+    // Ghép cặp ETB với ETD gần nhất thỏa mãn: ETD >= ETB và cách nhau không quá 5 ngày
     uniqueEtbs.forEach(eItem => {
       let t1 = eItem.time;
       let bestEtd = null;
@@ -2296,7 +2286,7 @@ function filterAndDeduplicateCalls(rawList) {
       });
 
       let srcRec = eItem.rec;
-      let matchedCall = {
+      finalCalls.push({
         vessel: vName,
         operator: srcRec.operator || (bestEtd && bestEtd.rec.operator) || defaultMeta.operator,
         terminal: srcRec.terminal || (bestEtd && bestEtd.rec.terminal) || defaultMeta.terminal,
@@ -2305,13 +2295,12 @@ function filterAndDeduplicateCalls(rawList) {
         dwt: srcRec.dwt || (bestEtd && bestEtd.rec.dwt) || defaultMeta.dwt,
         etb: eItem.str,
         etd: bestEtd ? bestEtd.str : ''
-      };
+      });
 
       if (bestIdx !== -1) usedEtdIndices.add(bestIdx);
-      finalCalls.push(matchedCall);
     });
 
-    // Các mốc ETD độc lập còn dư (ví dụ tàu cập từ trước chu kỳ nay mới rời)
+    // Các mốc ETD độc lập còn lại (tàu cập từ trước đó nay mới rời)
     uniqueEtds.forEach((dItem, idx) => {
       if (!usedEtdIndices.has(idx)) {
         let srcRec = dItem.rec;
@@ -2328,17 +2317,14 @@ function filterAndDeduplicateCalls(rawList) {
       }
     });
 
-    // Bổ sung các chuyến đã hoàn chỉnh từ đầu
     standaloneCalls.forEach(sc => finalCalls.push(sc));
   });
 
-  // 4. Khử trùng lặp lần cuối theo (Tên tàu + ETB + ETD + Bến) để mỗi chuyến tàu là duy nhất
+  // 4. Khử trùng lặp theo Chuyến (Tên tàu + Cập + Rời + Bến)
   let distinctMap = new Map();
   finalCalls.forEach(c => {
     let key = `${c.vessel}_${c.etb}_${c.etd}_${c.berth}`;
-    if (!distinctMap.has(key)) {
-      distinctMap.set(key, c);
-    }
+    if (!distinctMap.has(key)) distinctMap.set(key, c);
   });
 
   return Array.from(distinctMap.values());
@@ -3442,26 +3428,52 @@ function renderGantt() {
     terms[key].push(c);
   });
 
+  // Thời gian neo đậu trung bình của tàu container tại Tân Vũ: khoảng 18 - 20 giờ
+  const DEFAULT_STAY_MS = 20 * 3600000;
+
   let out = headerHtml;
   let hasData = false;
   for (let [name, ships] of Object.entries(terms)) {
     hasData = true;
     out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
-    
-    let sortedShips = [...ships].sort((x, y) => {
-      let durX = (new Date(x.etd || 0).getTime()) - (new Date(x.etb || 0).getTime());
-      let durY = (new Date(y.etd || 0).getTime()) - (new Date(y.etb || 0).getTime());
-      return durY - durX;
-    });
 
-    sortedShips.forEach((c, idx) => {
-      let a = c.etb ? new Date(c.etb).getTime() : start.getTime();
-      let b = c.etd ? new Date(c.etd).getTime() : a + 3600000;
-      let left = Math.max(0, Math.min(100, (a - start) / (end - start) * 100));
-      let right = Math.max(left + 2, Math.min(100, (b - start) / (end - start) * 100));
-      if (a < end.getTime() && b >= start.getTime()) {
+    ships.forEach((c, idx) => {
+      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+
+      let a = t1;
+      let b = t2;
+
+      // XỬ LÝ CHẶN KÉO DÀI BẤT THƯỜNG:
+      if (t1 > 0 && t2 > 0) {
+        // Nếu khoảng cách ETB - ETD bất thường > 7 ngày, giới hạn lại thời gian làm hàng hợp lý
+        if (t2 > t1 && (t2 - t1) > 7 * 86400000) {
+          b = t1 + DEFAULT_STAY_MS;
+        } else if (t2 <= t1) {
+          b = t1 + DEFAULT_STAY_MS;
+        }
+      } else if (t1 > 0 && t2 === 0) {
+        // Chỉ có giờ cập (ETB), chưa có giờ rời: Cho làm hàng khoảng 20 tiếng
+        b = t1 + DEFAULT_STAY_MS;
+      } else if (t1 === 0 && t2 > 0) {
+        // Chỉ có giờ rời (ETD), chưa có giờ cập:
+        // TUYỆT ĐỐI KHÔNG LẤY start.getTime()! Tính lùi về trước 20 tiếng để tàu đỗ đúng vị trí thực tế!
+        a = t2 - DEFAULT_STAY_MS;
+      } else {
+        return; // Không có cả 2 mốc -> bỏ qua
+      }
+
+      // Kiểm tra xem khoảng thời gian làm hàng của tàu có giao thoa với cửa sổ Gantt đang xem không
+      if (b >= start.getTime() && a <= end.getTime()) {
+        let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+        let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
         let zIdx = 2 + idx;
-        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" style="left:${left}%;width:${right-left}%;z-index:${zIdx}" onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
+
+        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" 
+                     style="left:${left}%;width:${right-left}%;z-index:${zIdx}" 
+                     onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
+                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
+                     onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
       }
     });
     out += `</div></div>`;
@@ -3470,7 +3482,6 @@ function renderGantt() {
   if ($('fullGantt')) $('fullGantt').innerHTML = out;
   if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
 }
-
 function filterPlanningArea(area, btn) {
   planningAreaFilter = area;
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('primary'));
