@@ -2816,7 +2816,8 @@ async function loadDraftFormulaConfig() {
     let saved = localStorage.getItem('hp_draft_config');
     if (saved) {
       let p = JSON.parse(saved);
-      draftConfig = { ...draftConfig, ...p };
+      // Ép buộc nhận mảng benchmarks mới rút gọn, bỏ qua dữ liệu cũ trong cache trình duyệt
+      draftConfig = { ...draftConfig, ...p, benchmarks: DEFAULT_HP_CONTAINER_BENCHMARKS };
     }
   } catch(e) {}
 
