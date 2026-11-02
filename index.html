@@ -781,6 +781,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       <div class="nav-label" id="t_navWorkspace">Không gian làm việc</div>
       <nav class="nav">
         <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt" id="t_menuOverview">Toàn cảnh</span></button>
+        <!-- THẺ TAB MỚI: BÁO CÁO KHAI THÁC -->
+        <button data-page="ops-report" title="Báo cáo khai thác"><span class="icon">📊</span><span class="txt" id="t_menuOpsReport">Báo cáo khai thác</span></button>
         <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt" id="t_menuPlanning">Kế hoạch cầu</span></button>
         <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt" id="t_menuSearch">Tra cứu tàu</span></button>
         <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
@@ -791,24 +793,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
       </nav>
     </div>
 
-    <!-- THẺ BỘ PHẬN TRỰC -->
-    <div class="side-shift-card">
-      <div class="side-shift-title" id="t_shiftDutyTitle">⚡ BỘ PHẬN TRỰC</div>
-      <div class="side-shift-item">
-        <small id="t_shiftLabel">CA TRỰC</small>
-        <strong id="dispShift">Ca 1 (06:00 - 14:00)</strong>
-      </div>
-      <div class="side-shift-item">
-        <small id="t_commanderLabel">TRƯỞNG ĐIỀU HÀNH</small>
-        <strong id="dispCommander">Chưa thiết lập</strong>
-      </div>
-      <div class="side-shift-item">
-        <small id="t_safetyLabel">AN TOÀN HẢI</small>
-        <strong id="dispSafety">Chưa thiết lập</strong>
-      </div>
-    </div>
-
-    <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
    <!-- KHỐI NÚT CHỨC NĂNG DỌC TRÁI -->
     <div class="side-system-box">
       <button class="side-btn countdown-btn" id="refreshBtn" title="Thời gian còn lại đến 00:00 tự động đồng bộ (Nhấp để nạp lại)">
@@ -824,12 +808,9 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </button>
       </div>
 
-      <!-- HÀNG NÚT: SETUP TRỰC & HÒM THƯ (CÓ SỐ ĐỎ THÔNG BÁO) -->
-      <div class="side-quick-grid">
-        <button id="setupShiftBtn" class="side-btn setup" title="Thiết lập ca trực (Mật khẩu)">
-          Setup 🔒
-        </button>
-        <button id="mailNotificationBtn" class="side-btn" style="background:#e67e22; color:#fff; position:relative;" title="Hộp thư phản ánh & góp ý (Bảo mật)">
+    <!-- HÀNG NÚT: HÒM THƯ (CÓ SỐ ĐỎ THÔNG BÁO) -->
+      <div style="margin-bottom: 2px;">
+        <button id="mailNotificationBtn" class="side-btn" style="background:#e67e22; color:#fff; position:relative; width:100%;" title="Hộp thư phản ánh & góp ý (Bảo mật)">
           ✉ Hòm thư
           <span id="mailBadge" class="mail-unread-badge" style="top:-4px; right:-4px;">0</span>
         </button>
@@ -1090,6 +1071,16 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <span><span id="t_unitLabel">Vận hành bởi:</span> <b id="t_unitName">Trung tâm Khai thác & DVKH - Cảng Hải Phòng</b></span>
           <a href="https://haiphongport.com.vn" target="_blank" rel="noopener">haiphongport.com.vn ↗</a>
         </div>
+      </section>
+
+     <!-- MÀN HÌNH HIỂN THỊ TRANG BÁO CÁO KHAI THÁC NGÀY (VERCEL) -->
+      <section id="page-ops-report" class="page hidden" style="height: calc(100vh - 105px); padding: 0; margin-bottom: 0;">
+        <iframe 
+          src="https://dailyoperationsreport.vercel.app/" 
+          style="width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 10px; background: #0f172a;" 
+          frameborder="0"
+          allowfullscreen>
+        </iframe>
       </section>
 
       <!-- MÀN HÌNH 2: KẾ HOẠCH CẦU -->
@@ -1409,35 +1400,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   </div>
 </div>
 
-<!-- MODAL 3: THIẾT LẬP BỘ PHẬN TRỰC -->
-<div id="modalShade" class="modal-shade">
-  <div class="modal">
-    <h3 id="t_modalDutyHead">Thiết lập Bộ phận Trực</h3>
-    <div class="modal-form">
-      <div>
-        <label id="lbl_mShift">Ca trực</label>
-        <select id="mShift" class="field" style="width:100%">
-          <option>Ca 1 (06:00 - 14:00)</option>
-          <option>Ca 2 (14:00 - 22:00)</option>
-          <option>Ca 3 (22:00 - 06:00)</option>
-        </select>
-      </div>
-      <div>
-        <label id="lbl_mCommander">Trưởng điều hành</label>
-        <input id="mCommander" class="field" placeholder="Tên - SĐT">
-      </div>
-      <div>
-        <label id="lbl_mSafety">An toàn hải</label>
-        <input id="mSafety" class="field" placeholder="Tên - SĐT">
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button id="closeModalBtn">Hủy</button>
-      <button id="saveModalBtn" class="primary">Lưu</button>
-    </div>
-  </div>
-</div>
-
 <script>
 // --- KHỞI TẠO CLIENT VÀ BIẾN TOÀN CỤC ---
 const SUPABASE_URL = 'https://cyxjnexehyoblzwzrmsu.supabase.co';
@@ -1474,6 +1436,7 @@ const dict = {
     hpPort: "CẢNG HẢI PHÒNG",
     navWorkspace: "Không gian làm việc",
     menuOverview: "Toàn cảnh",
+    menuOpsreport: "Báo cáo khai thác",
     menuPlanning: "Kế hoạch cầu",
     menuSearch: "Tra cứu tàu",
     menuStats: "Thống kê",
@@ -1631,6 +1594,7 @@ const dict = {
     hpPort: "PORT OF HAI PHONG",
     navWorkspace: "Workspace",
     menuOverview: "Overview",
+    menuOpsreport: "Daily Ops Report",
     menuPlanning: "Berth Planning",
     menuSearch: "Vessel Schedule",
     menuStats: "Statistics",
@@ -3598,7 +3562,7 @@ function exportConfigAsCSV() {
   }
   let csvRows = [
     `"${dict[currentLang].hpPort} - ${dict[currentLang].topTitle}"`,
-    `"Shift: ${$('dispShift').textContent}","Commander: ${$('dispCommander').textContent}","Safety: ${$('dispSafety').textContent}"`,
+    `"Trung tâm Khai thác & Dịch vụ khách hàng - Cảng Hải Phòng"`,
     `"Exported: ${new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')}"`,
     `""`,
     `"STT","Vessel Name","Operator","Terminal","Berth","LOA (m)","DWT","ETB","ETD"`
@@ -3675,7 +3639,7 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   const jsonContent = JSON.stringify({
     saved_at: nowStr,
     date: todayStr,
-    shift_info: { shift: $('dispShift').textContent, commander: $('dispCommander').textContent, safety: $('dispSafety').textContent },
+    shift_info: { shift: 'N/A', commander: 'N/A', safety: 'N/A' },
     total_calls: allCalls.length,
     calls: allCalls
   }, null, 2);
@@ -3855,7 +3819,6 @@ function initApp() {
 
   applyLanguage(currentLang);
   loadDraftFormulaConfig();
-  loadShiftConfigFromSupabase();
   loadFeedbacks();
   loadData();
   fetchRealWeatherHaiPhong();
