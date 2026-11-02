@@ -2184,85 +2184,165 @@ async function deleteVesselOverrideProtected() {
 
 function filterAndDeduplicateCalls(rawList) {
   if (!Array.isArray(rawList)) return [];
-  let processedList = rawList.map(c => {
+
+  // 1. Chuẩn hóa và áp dụng thông tin ghi đè (overrides) nếu có
+  let cleanList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
-    let override = vesselOverridesMap.get(vName);
-    
-    if (override) {
-      let mergedEtb = override.etb || c.etb || '';
-      let mergedEtd = override.etd || c.etd || '';
-      let times = parseEtbEtd(mergedEtb, mergedEtd);
+    let ov = vesselOverridesMap.get(vName);
+    return {
+      vessel: vName,
+      operator: (ov && ov.operator) || c.operator || '',
+      terminal: (ov && ov.terminal) || c.terminal || '',
+      berth: (ov && ov.berth) || c.berth || '',
+      loa: (ov && ov.loa !== undefined && ov.loa !== null && ov.loa !== '') ? Number(ov.loa) : (Number(c.loa) || 0),
+      dwt: (ov && ov.dwt) || c.dwt || '',
+      etb: c.etb || '',
+      etd: c.etd || ''
+    };
+  }).filter(c => c.vessel);
 
-      return {
-        ...c,
-        operator: override.operator || c.operator || '',
-        terminal: override.terminal || c.terminal || '',
-        berth: override.berth || c.berth || '',
-        loa: override.loa !== null && override.loa !== undefined && override.loa !== '' ? Number(override.loa) : c.loa,
-        dwt: override.dwt || c.dwt || '',
-        etb: times.etb,
-        etd: times.etd
-      };
-    }
-
-    let times = parseEtbEtd(c.etb, c.etd);
-    return { ...c, etb: times.etb, etd: times.etd };
+  // 2. Nhóm các bản ghi theo tên tàu
+  let groups = new Map();
+  cleanList.forEach(c => {
+    if (!groups.has(c.vessel)) groups.set(c.vessel, []);
+    groups.get(c.vessel).push(c);
   });
 
-  processedList.forEach(c => {
-    let vName = (c.vessel || '').trim().toUpperCase();
-    if (!vName) return;
-    if (!masterGlobalVesselMap.has(vName)) {
-      masterGlobalVesselMap.set(vName, c);
-    } else {
-      let existing = masterGlobalVesselMap.get(vName);
-      if (!existing.etb && c.etb) {
-        existing.etb = c.etb;
-        let reValid = parseEtbEtd(existing.etb, existing.etd);
-        existing.etd = reValid.etd;
+  // Ngưỡng thời gian nằm bến tối đa hợp lý của tàu hàng: 7 ngày (168 giờ)
+  const MAX_PORT_STAY_MS = 7 * 86400000; 
+  let finalCalls = [];
+
+  // 3. Xử lý từng tàu: Tách các chuyến độc lập và ghép cặp ETB - ETD gần nhau nhất
+  groups.forEach((recs, vName) => {
+    let defaultMeta = { operator: '', terminal: '', berth: '', loa: 0, dwt: '' };
+    recs.forEach(r => {
+      if (!defaultMeta.operator && r.operator) defaultMeta.operator = r.operator;
+      if (!defaultMeta.terminal && r.terminal) defaultMeta.terminal = r.terminal;
+      if (!defaultMeta.berth && r.berth) defaultMeta.berth = r.berth;
+      if (!defaultMeta.loa && r.loa) defaultMeta.loa = r.loa;
+      if (!defaultMeta.dwt && r.dwt) defaultMeta.dwt = r.dwt;
+    });
+
+    let standaloneCalls = [];
+    let rawEtbs = [];
+    let rawEtds = [];
+
+    recs.forEach(r => {
+      let t1 = r.etb ? new Date(r.etb).getTime() : 0;
+      let t2 = r.etd ? new Date(r.etd).getTime() : 0;
+
+      // Nếu bản ghi đã có cả ETB và ETD, VÀ cách nhau trong khoảng hợp lý (0 <= t2 - t1 <= 7 ngày)
+      // -> Đây là 1 chuyến độc lập hoàn chỉnh, giữ nguyên vẹn
+      if (t1 > 0 && t2 > 0 && t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
+        standaloneCalls.push({
+          ...r,
+          operator: r.operator || defaultMeta.operator,
+          terminal: r.terminal || defaultMeta.terminal,
+          berth: r.berth || defaultMeta.berth,
+          loa: r.loa || defaultMeta.loa,
+          dwt: r.dwt || defaultMeta.dwt
+        });
+      } else {
+        // Trường hợp chỉ có 1 đầu (chỉ đến / chỉ đi) hoặc bị gộp sai (> 7 ngày như 19/10 và 01/11)
+        // -> Tách thành sự kiện Đến (ETB) và Đi (ETD) riêng biệt để ghép cặp chuẩn xác
+        if (t1 > 0) rawEtbs.push({ time: t1, str: r.etb, rec: r });
+        if (t2 > 0) rawEtds.push({ time: t2, str: r.etd, rec: r });
       }
-    }
-  });
+    });
 
-  let filledList = processedList.map(c => {
-    let vName = (c.vessel || '').trim().toUpperCase();
-    let master = masterGlobalVesselMap.get(vName);
-    if (master) {
-      let finalEtb = c.etb || master.etb || '';
-      let finalEtd = c.etd || master.etd || '';
-      let times = parseEtbEtd(finalEtb, finalEtd);
+    // Khử trùng lặp các mốc thời gian ETB và ETD trùng nhau tuyệt đối
+    let uniqueEtbs = [];
+    let seenEtb = new Set();
+    rawEtbs.forEach(item => {
+      if (!seenEtb.has(item.str)) {
+        seenEtb.add(item.str);
+        uniqueEtbs.push(item);
+      }
+    });
 
-      return {
-        ...c,
-        etb: times.etb,
-        etd: times.etd,
-        terminal: c.terminal || master.terminal || '',
-        berth: c.berth || master.berth || '',
-        operator: c.operator || master.operator || '',
-        loa: c.loa || master.loa || 0,
-        dwt: c.dwt || master.dwt || ''
+    let uniqueEtds = [];
+    let seenEtd = new Set();
+    rawEtds.forEach(item => {
+      if (!seenEtd.has(item.str)) {
+        seenEtd.add(item.str);
+        uniqueEtds.push(item);
+      }
+    });
+
+    // Sắp xếp tăng dần theo thời gian
+    uniqueEtbs.sort((a, b) => a.time - b.time);
+    uniqueEtds.sort((a, b) => a.time - b.time);
+
+    let usedEtdIndices = new Set();
+
+    // Thuật toán: Với mỗi mốc ETB, tìm mốc ETD GẦN NÓ NHẤT thỏa mãn ETD >= ETB (trong vòng 7 ngày)
+    uniqueEtbs.forEach(eItem => {
+      let t1 = eItem.time;
+      let bestEtd = null;
+      let bestDiff = Infinity;
+      let bestIdx = -1;
+
+      uniqueEtds.forEach((dItem, idx) => {
+        if (usedEtdIndices.has(idx)) return;
+        let t2 = dItem.time;
+        if (t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
+          let diff = t2 - t1;
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestEtd = dItem;
+            bestIdx = idx;
+          }
+        }
+      });
+
+      let srcRec = eItem.rec;
+      let matchedCall = {
+        vessel: vName,
+        operator: srcRec.operator || (bestEtd && bestEtd.rec.operator) || defaultMeta.operator,
+        terminal: srcRec.terminal || (bestEtd && bestEtd.rec.terminal) || defaultMeta.terminal,
+        berth: srcRec.berth || (bestEtd && bestEtd.rec.berth) || defaultMeta.berth,
+        loa: srcRec.loa || (bestEtd && bestEtd.rec.loa) || defaultMeta.loa,
+        dwt: srcRec.dwt || (bestEtd && bestEtd.rec.dwt) || defaultMeta.dwt,
+        etb: eItem.str,
+        etd: bestEtd ? bestEtd.str : ''
       };
-    }
-    return c;
+
+      if (bestIdx !== -1) usedEtdIndices.add(bestIdx);
+      finalCalls.push(matchedCall);
+    });
+
+    // Các mốc ETD độc lập còn dư (ví dụ tàu cập từ trước chu kỳ nay mới rời)
+    uniqueEtds.forEach((dItem, idx) => {
+      if (!usedEtdIndices.has(idx)) {
+        let srcRec = dItem.rec;
+        finalCalls.push({
+          vessel: vName,
+          operator: srcRec.operator || defaultMeta.operator,
+          terminal: srcRec.terminal || defaultMeta.terminal,
+          berth: srcRec.berth || defaultMeta.berth,
+          loa: srcRec.loa || defaultMeta.loa,
+          dwt: srcRec.dwt || defaultMeta.dwt,
+          etb: '',
+          etd: dItem.str
+        });
+      }
+    });
+
+    // Bổ sung các chuyến đã hoàn chỉnh từ đầu
+    standaloneCalls.forEach(sc => finalCalls.push(sc));
   });
 
-  let finalMap = new Map();
-  filledList.forEach(c => {
-    let vName = (c.vessel || '').trim().toUpperCase();
-    if (!vName) return;
-    if (!finalMap.has(vName)) {
-      finalMap.set(vName, c);
-    } else {
-      let existing = finalMap.get(vName);
-      let exScore = (existing.etb ? 2 : 0) + (existing.etd ? 2 : 0);
-      let curScore = (c.etb ? 2 : 0) + (c.etd ? 2 : 0);
-      if (curScore >= exScore) finalMap.set(vName, c);
+  // 4. Khử trùng lặp lần cuối theo (Tên tàu + ETB + ETD + Bến) để mỗi chuyến tàu là duy nhất
+  let distinctMap = new Map();
+  finalCalls.forEach(c => {
+    let key = `${c.vessel}_${c.etb}_${c.etd}_${c.berth}`;
+    if (!distinctMap.has(key)) {
+      distinctMap.set(key, c);
     }
   });
 
-  return Array.from(finalMap.values());
+  return Array.from(distinctMap.values());
 }
-
 async function loadData() {
   if ($('refreshBtn')) $('refreshBtn').disabled = true;
   if ($('sideStatus')) $('sideStatus').textContent = 'Đang tải dữ liệu...';
@@ -3095,18 +3175,22 @@ function getFilteredCalls() {
     let etbDate = (c.etb || '').split('T')[0];
     let etdDate = (c.etd || '').split('T')[0];
     
+    // Nếu không chọn ngày, lấy tất cả các chuyến
     if (!fDate && !tDate) return true;
 
+    // Giữ lại chuyến tàu nếu NGÀY CẬP (ETB) hoặc NGÀY RỜI (ETD) nằm trong khoảng lọc
     let etbInRange = (!fDate || etbDate >= fDate) && (!tDate || etbDate <= tDate);
     let etdInRange = (!fDate || etdDate >= fDate) && (!tDate || etdDate <= tDate);
+
+    // Hoặc chuyến tàu làm hàng vắt ngang qua khoảng ngày được chọn
     let spanInRange = (etbDate && etdDate && etbDate <= fDate && etdDate >= tDate);
 
     return etbInRange || etdInRange || spanInRange;
   });
 
-  return filterAndDeduplicateCalls(filtered);
+  return filtered;
 }
-
+  
 function renderAll() {
   try {
     const now = Date.now();
