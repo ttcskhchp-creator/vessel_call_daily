@@ -2814,6 +2814,24 @@ let draftConfig = {
 
 // Nạp cấu hình ưu tiên từ Supabase Storage Bucket ('port_channel_config.json')
 async function loadDraftFormulaConfig() {
+  // Hàm hợp nhất thông minh: Khóa cứng 4 dòng tàu chuẩn, nhưng giữ lại thông số người dùng tự sửa
+  const applySmartMerge = (savedData) => {
+    draftConfig.berthDepth = savedData.berthDepth || 9.0;
+    draftConfig.channelDepth = savedData.channelDepth || 8.0;
+    draftConfig.draftMarginRatio = savedData.draftMarginRatio || 0.10;
+
+    if (savedData.benchmarks && Array.isArray(savedData.benchmarks)) {
+      draftConfig.benchmarks = DEFAULT_HP_CONTAINER_BENCHMARKS.map(defShip => {
+        let userShip = savedData.benchmarks.find(s => s.type === defShip.type);
+        // Nếu user đã sửa Mớn TK (refDraft) cho loại tàu này, giữ lại giá trị của user
+        return { 
+          ...defShip, 
+          refDraft: userShip && userShip.refDraft ? userShip.refDraft : defShip.refDraft 
+        };
+      });
+    }
+  };
+
   try {
     if (supabaseClient) {
       const { data, error } = await supabaseClient.storage
@@ -2823,7 +2841,7 @@ async function loadDraftFormulaConfig() {
       if (data && !error) {
         let text = await data.text();
         let parsed = JSON.parse(text);
-        draftConfig = { ...draftConfig, ...parsed };
+        applySmartMerge(parsed);
         localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
       }
     }
@@ -2835,14 +2853,15 @@ async function loadDraftFormulaConfig() {
     let saved = localStorage.getItem('hp_draft_config');
     if (saved) {
       let p = JSON.parse(saved);
-      // Ép buộc nhận mảng benchmarks mới rút gọn, bỏ qua dữ liệu cũ trong cache trình duyệt
-      draftConfig = { ...draftConfig, ...p, benchmarks: DEFAULT_HP_CONTAINER_BENCHMARKS };
+      applySmartMerge(p);
     }
   } catch(e) {}
 
+  // Đổ dữ liệu đã hợp nhất ra giao diện
   if ($('cfg_berthDepth')) $('cfg_berthDepth').value = draftConfig.berthDepth;
   if ($('cfg_channelDepth')) $('cfg_channelDepth').value = draftConfig.channelDepth;
   if ($('cfg_draftMarginRatio')) $('cfg_draftMarginRatio').value = draftConfig.draftMarginRatio;
+  
   renderDraftEditTable();
   renderDailySafeDraftTable();
 }
