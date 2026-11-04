@@ -2960,8 +2960,8 @@ function renderDailySafeDraftTable() {
   let safeChannelLow = ((chDepth + selectedTide.lowVal) / (1 + margin)).toFixed(1);
   let safeChannelHigh = ((chDepth + selectedTide.highVal) / (1 + margin)).toFixed(1);
 
-  let safeBerthLow = ((bDepth + selectedTide.lowVal) / (1 )).toFixed(1);
-  let safeBerthHigh = ((bDepth + selectedTide.highVal) / (1 )).toFixed(1);
+  let safeBerthLow = ((bDepth + selectedTide.lowVal) / (1 + 0.5*margin )).toFixed(1);
+  let safeBerthHigh = ((bDepth + selectedTide.highVal) / (1 + 0.5*margin )).toFixed(1);
 
   let maxSafeOverallLow = Math.min(Number(safeChannelLow), Number(safeBerthLow));
   let maxSafeOverallHigh = Math.min(Number(safeChannelHigh), Number(safeBerthHigh));
