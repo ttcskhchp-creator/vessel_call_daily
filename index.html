@@ -3166,20 +3166,22 @@ function getFilteredCalls() {
   let tDate = $('toDate') ? $('toDate').value : '';
   
   let filtered = allCalls.filter(c => {
-    let etbDate = (c.etb || '').split('T')[0];
-    let etdDate = (c.etd || '').split('T')[0];
+    // 🛑 Lọc bỏ ngay các tàu bị lỗi mốc thời gian không có giờ cập (ETB)
+    if (!c.etb) return false;
+
+    let etbDate = c.etb.split('T')[0];
+    // Nếu tàu chưa có ETD, coi như nó đang ở lại cầu bến vô thời hạn (9999-12-31)
+    let etdDate = c.etd ? c.etd.split('T')[0] : '9999-12-31'; 
     
-    // Nếu không chọn ngày, lấy tất cả các chuyến
     if (!fDate && !tDate) return true;
 
-    // Giữ lại chuyến tàu nếu NGÀY CẬP (ETB) hoặc NGÀY RỜI (ETD) nằm trong khoảng lọc
-    let etbInRange = (!fDate || etbDate >= fDate) && (!tDate || etbDate <= tDate);
-    let etdInRange = (!fDate || etdDate >= fDate) && (!tDate || etdDate <= tDate);
+    let filterStart = fDate || '0000-00-00';
+    let filterEnd = tDate || '9999-12-31';
 
-    // Hoặc chuyến tàu làm hàng vắt ngang qua khoảng ngày được chọn
-    let spanInRange = (etbDate && etdDate && etbDate <= fDate && etdDate >= tDate);
-
-    return etbInRange || etdInRange || spanInRange;
+    // ĐIỀU KIỆN GIAO THOA CHUẨN XÁC NHẤT:
+    // Tàu đến TRƯỚC (hoặc TRONG) ngày kết thúc bộ lọc
+    // VÀ Tàu rời SAU (hoặc TRONG) ngày bắt đầu bộ lọc
+    return (etbDate <= filterEnd) && (etdDate >= filterStart);
   });
 
   return filtered;
@@ -3240,12 +3242,15 @@ function renderTanVuLayout(list) {
         return false;
       }
 
+      // 2. Kiểm tra xem tàu có đang ở trên bến trong ngày được chọn hay không
+      // Nếu không có ETD, shipEnd là vô hạn, đảm bảo tàu luôn hiện nếu etbDate <= selectedDateStr
+      let shipEnd = etdDate || '9999-12-31';
+      let isDockedOnSelectedDate = (etbDate && etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
+      
+      // Hoặc tính theo thời gian thực (đang đỗ lúc này)
       let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
-      let isArrivingOnDate = (etbDate === selectedDateStr);
-      let isDepartingOnDate = (etdDate === selectedDateStr);
-      let isBerthingBeforeAndLeavingToday = (etbDate && etbDate < selectedDateStr && etdDate === selectedDateStr);
 
-      return isWorkingNow || isArrivingOnDate || isDepartingOnDate || isBerthingBeforeAndLeavingToday;
+      return isWorkingNow || isDockedOnSelectedDate;
     });
 
     let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
@@ -3307,7 +3312,8 @@ function renderTanVuLayout(list) {
     console.error("Lỗi tại renderTanVuLayout:", err);
   }
 }
-function renderMovement(list) {
+
+  function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
   let threeHoursMs = 3 * 3600 * 1000;
