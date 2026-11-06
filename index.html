@@ -2163,20 +2163,43 @@ async function deleteVesselOverrideProtected() {
   }
 
   let vName = ($('editVesselName').value || '').trim();
+  let vEtb = $('editVesselEtb').value; // Lấy thời gian CẬP (ETB) để nhận diện đích danh chuyến tàu này
+
   if (!vName) {
-    alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần xóa quy tắc ghi đè!' : 'Please enter vessel name to delete!');
+    alert(currentLang === 'vi' ? 'Vui lòng nhập tên tàu cần xóa!' : 'Please enter vessel name!');
     return;
   }
 
+  let timeStr = vEtb ? vEtb.replace('T', ' ') : 'chưa có giờ cập';
+  if (!confirm(currentLang === 'vi' ? `Bạn có chắc chắn muốn ẨN chuyến tàu "${vName}" (Mốc cập: ${timeStr}) khỏi hệ thống?\n\nLưu ý: Các chuyến khác của tàu này ở những ngày khác vẫn sẽ hiển thị bình thường.` : `Are you sure to delete this specific voyage?`)) {
+    return;
+  }
+
+  let payload = {
+    vessel_name: vName.toUpperCase(),
+    is_hidden: true,
+    etb: vEtb ? new Date(vEtb).toISOString() : null, // Lưu lại ETB của chuyến bị xóa
+    updated_at: new Date().toISOString()
+  };
+
   try {
     if (supabaseClient) {
-      let { error } = await supabaseClient.from('vessel_overrides').delete().eq('vessel_name', vName);
+      let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
       if (error) { alert('Supabase error: ' + error.message); return; }
     }
-    vesselOverridesMap.delete(vName.toUpperCase());
+    
+    let currentOv = vesselOverridesMap.get(vName.toUpperCase()) || {};
+    vesselOverridesMap.set(vName.toUpperCase(), { ...currentOv, ...payload });
+    
     renderOverrideTable();
-    loadData();
-    alert(currentLang === 'vi' ? `Đã xóa quy tắc ghi đè của tàu "${vName}" thành công!` : `Deleted override rule for "${vName}"!`);
+    loadData(); // Tải lại bảng để loại bỏ chuyến vừa xóa
+    
+    alert(currentLang === 'vi' ? `Đã ẨN chuyến của tàu "${vName}" thành công!` : `Hidden voyage successfully!`);
+    
+    ['editVesselName', 'editVesselOperator', 'editVesselTerminal', 'editVesselBerth', 'editVesselLoa', 'editVesselDwt', 'editVesselEtb', 'editVesselEtd'].forEach(id => {
+      if ($(id)) $(id).value = '';
+    });
+    
   } catch(err) {
     alert('Connection error: ' + err.message);
   }
