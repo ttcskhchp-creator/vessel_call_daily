@@ -2185,33 +2185,47 @@ async function deleteVesselOverrideProtected() {
 function filterAndDeduplicateCalls(rawList) {
   if (!Array.isArray(rawList)) return [];
 
-  // 1. Chuẩn hóa dữ liệu và ghi đè (overrides)
+  // 1. Chuẩn hóa dữ liệu & Tích hợp XÓA CHUYẾN THEO NGÀY CẬP (Yêu cầu ẩn chuyến)
   let cleanList = rawList.map(c => {
     let vName = (c.vessel || '').trim().toUpperCase();
     let ov = vesselOverridesMap.get(vName);
+    
+    // NẾU CÓ CỜ ẨN -> Chỉ xóa đúng chuyến có ETB trùng khớp
+    if (ov && ov.is_hidden === true) {
+      let ovDate = ov.etb ? ov.etb.split('T')[0] : '';
+      let cDate = c.etb ? c.etb.split('T')[0] : '';
+      
+      if (ovDate && cDate && ovDate === cDate) {
+        return null; // Vứt bỏ chuyến bị xóa theo lệnh người dùng
+      }
+      if (!ovDate && !cDate) {
+        return null;
+      }
+    }
+
     return {
       vessel: vName,
-      operator: (ov && ov.operator) || c.operator || '',
-      terminal: (ov && ov.terminal) || c.terminal || '',
-      berth: (ov && ov.berth) || c.berth || '',
-      loa: (ov && ov.loa !== undefined && ov.loa !== null && ov.loa !== '') ? Number(ov.loa) : (Number(c.loa) || 0),
-      dwt: (ov && ov.dwt) || c.dwt || '',
+      operator: (ov && !ov.is_hidden && ov.operator) || c.operator || '',
+      terminal: (ov && !ov.is_hidden && ov.terminal) || c.terminal || '',
+      berth: (ov && !ov.is_hidden && ov.berth) || c.berth || '',
+      loa: (ov && !ov.is_hidden && ov.loa !== undefined && ov.loa !== null && ov.loa !== '') ? Number(ov.loa) : (Number(c.loa) || 0),
+      dwt: (ov && !ov.is_hidden && ov.dwt) || c.dwt || '',
       etb: c.etb || '',
       etd: c.etd || ''
     };
-  }).filter(c => c.vessel);
+  }).filter(c => c && c.vessel);
 
-  // 2. Nhóm theo tên tàu
+  // 2. Nhóm theo tên tàu để tách/ghép cặp ETB - ETD
   let groups = new Map();
   cleanList.forEach(c => {
     if (!groups.has(c.vessel)) groups.set(c.vessel, []);
     groups.get(c.vessel).push(c);
   });
 
-  const MAX_PORT_STAY_MS = 5 * 86400000; // Giới hạn chuyến tối đa: 5 ngày
-  let finalCalls = [];
+  const MAX_PORT_STAY_MS = 5 * 86400000; // Giới hạn chuyến độc lập dài tối đa: 5 ngày
+  let pairedCalls = [];
 
-  // 3. Tách và ghép cặp ETB - ETD gần nhau nhất
+  // 3. Tách và ghép cặp chuẩn xác
   groups.forEach((recs, vName) => {
     let defaultMeta = { operator: '', terminal: '', berth: '', loa: 0, dwt: '' };
     recs.forEach(r => {
@@ -2230,7 +2244,6 @@ function filterAndDeduplicateCalls(rawList) {
       let t1 = r.etb ? new Date(r.etb).getTime() : 0;
       let t2 = r.etd ? new Date(r.etd).getTime() : 0;
 
-      // Nếu đã có cả ETB và ETD hợp lệ (cách nhau <= 5 ngày) -> Giữ nguyên là 1 chuyến
       if (t1 > 0 && t2 > 0 && t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
         standaloneCalls.push({
           ...r,
@@ -2246,7 +2259,6 @@ function filterAndDeduplicateCalls(rawList) {
       }
     });
 
-    // Lọc trùng mốc thời gian
     let uniqueEtbs = [];
     let seenEtb = new Set();
     rawEtbs.forEach(item => {
@@ -2264,7 +2276,6 @@ function filterAndDeduplicateCalls(rawList) {
 
     let usedEtdIndices = new Set();
 
-    // Ghép ETB với ETD gần nhất (trong vòng 5 ngày)
     uniqueEtbs.forEach(eItem => {
       let t1 = eItem.time;
       let bestEtd = null;
@@ -2285,7 +2296,7 @@ function filterAndDeduplicateCalls(rawList) {
       });
 
       let srcRec = eItem.rec;
-      finalCalls.push({
+      pairedCalls.push({
         vessel: vName,
         operator: srcRec.operator || (bestEtd && bestEtd.rec.operator) || defaultMeta.operator,
         terminal: srcRec.terminal || (bestEtd && bestEtd.rec.terminal) || defaultMeta.terminal,
@@ -2299,26 +2310,38 @@ function filterAndDeduplicateCalls(rawList) {
       if (bestIdx !== -1) usedEtdIndices.add(bestIdx);
     });
 
-    // 🛑 ĐÃ XÓA BỎ HOÀN TOÀN ĐOẠN CODE PUSH CÁC MỐC ETD KHÔNG CÓ ETB
-    // (Những tàu chỉ có giờ ra mà không có giờ vào sẽ bị loại bỏ hoàn toàn tại đây)
-
-    standaloneCalls.forEach(sc => finalCalls.push(sc));
+    standaloneCalls.forEach(sc => pairedCalls.push(sc));
   });
 
-  // 4. Khử trùng lặp theo Chuyến
-  let distinctMap = new Map();
-  finalCalls.forEach(c => {
-    let key = `${c.vessel}_${c.etb}_${c.etd}_${c.berth}`;
-    if (!distinctMap.has(key)) distinctMap.set(key, c);
+  // 4. KHỬ TRÙNG LẶP NÂNG CAO & GỘP TÀU TRÙNG LẶP TRONG CÙNG 1 NGÀY
+  let dailyDistinctMap = new Map();
+  
+  pairedCalls.forEach(c => {
+    // 🛑 Lọc bảo vệ: Bỏ qua hoàn toàn các tàu không có giờ cập (ETB)
+    if (!c.etb) return;
+
+    let etbDateStr = c.etb.split('T')[0]; // Lấy phần ngày YYYY-MM-DD
+    let key = `${c.vessel}_${etbDateStr}`; // Khóa định danh: Tên tàu + Ngày cập
+    
+    if (!dailyDistinctMap.has(key)) {
+      dailyDistinctMap.set(key, c);
+    } else {
+      // 🛑 Phát hiện dữ liệu 1 tàu được ghi nhận nhiều lần cập trong cùng 1 ngày
+      let existingCall = dailyDistinctMap.get(key);
+      let t1_existing = new Date(existingCall.etb).getTime();
+      let t1_current = new Date(c.etb).getTime();
+      
+      // So sánh và chỉ giữ lại chuyến có giờ cập (ETB) MUỘN NHẤT
+      if (t1_current > t1_existing) {
+        dailyDistinctMap.set(key, c);
+      }
+    }
   });
 
-  // 🛑 BỘ LỌC BẢO VỆ CUỐI CÙNG: XÓA HẾT TÀU CÓ GIỜ RA NHƯNG KHÔNG CÓ GIỜ VÀO
-  return Array.from(distinctMap.values()).filter(c => {
-    if (!c.etb && c.etd) return false; // Có ETD nhưng không có ETB -> LOẠI BỎ NGAY
-    return true;
-  });
+  return Array.from(dailyDistinctMap.values());
 }
-async function loadData() {
+
+  async function loadData() {
   if ($('refreshBtn')) $('refreshBtn').disabled = true;
   if ($('sideStatus')) $('sideStatus').textContent = 'Đang tải dữ liệu...';
   try {
