@@ -3278,25 +3278,27 @@ function renderTanVuLayout(list) {
       let etbDate = (c.etb || '').split('T')[0];
       let etdDate = (c.etd || '').split('T')[0];
       let t1 = c.etb ? new Date(c.etb).getTime() : 0;
-      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity;
+      let t2 = c.etd ? new Date(c.etd).getTime() : Infinity; // Không có ETD xem như ở vô hạn
 
-      // 1. Tàu đã rời bến thực tế -> Ẩn khỏi cầu ở ngày hiện tại
       let isTodayView = (selectedDateStr === todayStr);
-      let isAlreadyDepartedRealtime = (isTodayView && t2 !== Infinity && t2 > 0 && now > t2);
 
-      if (isAlreadyDepartedRealtime) {
-        return false;
+      if (isTodayView) {
+        // 🛑 Đã rời bến thực tế -> Ẩn ngay lập tức để giải phóng cầu
+        if (t2 !== Infinity && now > t2) return false;
+        
+        // ✅ Đang đỗ tại cầu (Thời điểm hiện tại nằm giữa ETB và ETD) -> BẮT BUỘC HIỆN
+        let isWorkingNow = (t1 > 0 && t1 <= now && (t2 === Infinity || t2 >= now));
+        
+        // ✅ Sắp cập hôm nay (Chưa tới giờ cập nhưng có lịch vào hôm nay)
+        let isArrivingToday = (etbDate === todayStr && t1 > now);
+
+        return isWorkingNow || isArrivingToday;
+      } else {
+        // XEM LẠI LỊCH SỬ HOẶC TƯƠNG LAI:
+        // Tàu hiện lên nếu ngày đang xem nằm trong khoảng từ Ngày Cập đến Ngày Rời
+        let shipEnd = etdDate || '9999-12-31';
+        return (etbDate && etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
       }
-
-      // 2. Kiểm tra xem tàu có đang ở trên bến trong ngày được chọn hay không
-      // Nếu không có ETD, shipEnd là vô hạn, đảm bảo tàu luôn hiện nếu etbDate <= selectedDateStr
-      let shipEnd = etdDate || '9999-12-31';
-      let isDockedOnSelectedDate = (etbDate && etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
-      
-      // Hoặc tính theo thời gian thực (đang đỗ lúc này)
-      let isWorkingNow = (t1 > 0 && now >= t1 && (t2 === Infinity || now <= t2));
-
-      return isWorkingNow || isDockedOnSelectedDate;
     });
 
     let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
@@ -3317,6 +3319,7 @@ function renderTanVuLayout(list) {
     let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
 
     Object.keys(berthMap).sort().forEach(bName => {
+      // Sắp xếp các tàu trong cùng 1 bến theo giờ cập
       let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
       html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships">`;
       
@@ -3327,7 +3330,7 @@ function renderTanVuLayout(list) {
           let t2 = s.etd ? new Date(s.etd).getTime() : 0;
           let etdDate = (s.etd || '').split('T')[0];
 
-          // ĐIỀU KIỆN CHUẨN: Nhãn "Rời hôm nay" chỉ hiện khi ETD thuộc ngày hôm nay VÀ thời điểm rời chưa tới (t2 > now)
+          // Nhãn "Rời hôm nay" chỉ hiện khi lịch rời thuộc ngày hôm nay VÀ thời điểm rời chưa tới
           let isDepartingTodayNotYet = (etdDate === todayStr && t2 > 0 && t2 > now);
 
           let chipClass = 'ship-chip';
