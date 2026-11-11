@@ -1409,31 +1409,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 </div>
               </div>
 
-              <!-- KHỐI NHẬP THÔNG SỐ ĐỈNH & KIỆT THỦY TRIỀU -->
-              <div style="background: rgba(38,189,200,0.06); border: 1px dashed var(--cyan, #0ea5e9); border-radius: 6px; padding: 10px; margin-top: 10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                  <b style="color:var(--cyan, #0ea5e9); font-size: 13px;"><i class="fa-solid fa-water"></i> Thông số Triều Hòn Dáu (Đỉnh / Kiệt)</b>
-                  <button type="button" class="btn-sub" style="padding: 2px 8px; font-size: 11px;" onclick="autoFillTideFromSystem()"><i class="fa-solid fa-bolt"></i> Tự lấy từ Lịch triều</button>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                  <div class="form-group">
-                    <label style="font-size:11px">Giờ nước kiệt</label>
-                    <input type="datetime-local" id="sf_tideLowTime" class="field" style="padding:4px">
-                  </div>
-                  <div class="form-group">
-                    <label style="font-size:11px">Mực nước kiệt (m)</label>
-                    <input type="number" step="0.1" id="sf_tideLowVal" class="field" value="0.7" style="padding:4px">
-                  </div>
-                  <div class="form-group">
-                    <label style="font-size:11px">Giờ đỉnh triều</label>
-                    <input type="datetime-local" id="sf_tideHighTime" class="field" style="padding:4px">
-                  </div>
-                  <div class="form-group">
-                    <label style="font-size:11px">Mực nước đỉnh (m)</label>
-                    <input type="number" step="0.1" id="sf_tideHighVal" class="field" value="3.6" style="padding:4px">
-                  </div>
-                </div>
-              </div>
+             
               
               <!-- KHỐI ĐIỀU CHỈNH THỦY TRIỀU THEO NGÀY CẬP (ETB) -->
 <div style="background: rgba(38,189,200,0.08); border: 1px solid var(--cyan, #0ea5e9); border-radius: 6px; padding: 10px; margin: 12px 0;">
@@ -4605,7 +4581,14 @@ function exportWordPAMonNuoc() {
   downloadDocFile(htmlDoc, `3_Noi_Dung_Thay_The_PA_Mon_Nuoc_${v.vName}.doc`);
 }
   
+function autoFillTideFromSystem() {
+  if (typeof syncTideFromETB === 'function') {
+    syncTideFromETB();
+  }
+}
 // --- ĐƯA CÁC HÀM RA WINDOW ---
+window.syncTideFromETB = typeof syncTideFromETB !== 'undefined' ? syncTideFromETB : null;
+window.autoFillTideFromSystem = window.syncTideFromETB;
 window.syncTideFromETB = syncTideFromETB;
 window.updateDefaultRates = updateDefaultRates;
 window.calcSafetyPlan = calcSafetyPlan;
