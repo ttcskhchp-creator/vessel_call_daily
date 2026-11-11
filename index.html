@@ -4362,7 +4362,22 @@ function getCommonDocVars() {
   };
 }
 
-// 1. Xuất nội dung thay thế Nút 1 (PA Hãng Tàu)
+ // Hàm phụ trách xuất và tải file Word (.doc) trực tiếp về máy
+function downloadDocFile(htmlStr, fileName) {
+  let blob = new Blob(['\ufeff' + htmlStr], { type: 'application/msword;charset=utf-8' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 1000);
+}
+window.downloadDocFile = downloadDocFile;
+  
+  // 1. Xuất nội dung thay thế Nút 1 (PA Hãng Tàu)
 function exportWordPAHangTau() {
   let v = getCommonDocVars();
   let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
