@@ -1346,8 +1346,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
 
-        <div class="grid2">
-         <div class="grid2">
+      <div class="grid2">
           <!-- Form Nhập Liệu -->
           <div class="panel">
             <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-ship"></i> Thông số Tàu & Kế Hoạch Xếp Dỡ</h3></div>
@@ -1372,7 +1371,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
               
               <hr style="border:0;border-top:1px dashed var(--line);margin:12px 0">
               
-              <!-- THÔNG TIN HÀNG HÓA & THIẾT BỊ MỚI BỔ SUNG -->
+              <!-- THÔNG TIN HÀNG HÓA & THIẾT BỊ -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <div class="form-group">
                   <label>Tên hàng hóa</label>
@@ -1428,8 +1427,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <thead>
                   <tr>
                     <th>Thời gian</th>
-                    <th id="sf_thDischarged">Đã dỡ</th>
-                    <th id="sf_thRemaining">Còn lại</th>
+                    <th id="sf_thDischarged">Đã dỡ (Tấn)</th>
+                    <th id="sf_thRemaining">Còn lại (Tấn)</th>
                     <th>Mớn tàu (m)</th>
                     <th>Triều Hòn Dáu</th>
                     <th>Độ sâu bến (m)</th>
@@ -4501,7 +4500,6 @@ function exportWordPAMonNuoc() {
   </div>
   </div></body></html>`;
   downloadDocFile(htmlDoc, `3_Noi_Dung_Thay_The_PA_Mon_Nuoc_${v.vName}.doc`);
-}
   
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.updateDefaultRates = updateDefaultRates;
