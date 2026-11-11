@@ -4015,8 +4015,9 @@ function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide,
   
   return {
     label: timeLabel,
-    discharged: ops_fmt((totalCargo - currentCargo).toFixed(0)),
-    remaining: ops_fmt(currentCargo.toFixed(0)),
+    // Đã thay thế hàm định dạng số bằng hàm chuẩn của Javascript
+    discharged: Number((totalCargo - currentCargo).toFixed(0)).toLocaleString('vi-VN'),
+    remaining: Number(currentCargo.toFixed(0)).toLocaleString('vi-VN'),
     draft: draft.toFixed(2).replace('.', ','),
     tide: tide.toFixed(2).replace('.', ','),
     availDepth: availDepth.toFixed(2).replace('.', ','),
