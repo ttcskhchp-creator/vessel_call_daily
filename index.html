@@ -1059,7 +1059,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <button onclick="filterMovement('departing', this)" id="btnMoveDep">Rời cầu</button>
                 <button onclick="filterMovement('departed', this)" id="btnMoveDepted">Đã rời</button>
               </div>
-              <div class="movement-scroll-wrapper" id="movementContainer" onmouseenter="pauseAutoScroll()" onmouseleave="resumeAutoScroll()">
+              <div class="movement-scroll-wrapper" id="movementContainer" onmouseenter="window.pauseAutoScroll?.()" onmouseleave="window.resumeAutoScroll?.()">
                 <div class="timeline" id="movement">
                   <div class="empty">Chưa có dữ liệu.</div>
                 </div>
@@ -1346,18 +1346,18 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
         </div>
 
-      <div class="grid2">
-          <!-- Form Nhập Liệu -->
+        <div class="grid2">
+         <!-- Form Nhập Liệu -->
           <div class="panel">
-            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-ship"></i> Thông số Tàu & Kế Hoạch Xếp Dỡ</h3></div>
+            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-ship"></i> Thông số Tàu & Hàng hóa</h3></div>
             <div class="panel-body">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <div class="form-group"><label>Tên tàu</label><input type="text" id="sf_vessel" class="field" value="TAC ODESSA"></div>
-                <div class="form-group"><label>Đại lý Hàng hải</label><input type="text" id="sf_agent" class="field" value="Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)"></div>
+                <div class="form-group"><label>Đại lý Hàng hải</label><input type="text" id="sf_agent" class="field" value="AGE-LINES CO.,LTD"></div>
                 <div class="form-group"><label>IMO / Quốc tịch</label><input type="text" id="sf_imo" class="field" value="9880116 / Panama"></div>
-                <div class="form-group"><label>Cảng tiếp nhận / Cầu bến số</label><input type="text" id="sf_berth" class="field" value="cầu cảng số 5 (TV5) – Bến Cảng Tân Vũ"></div>
+                <div class="form-group"><label>Cảng tiếp nhận / Cầu bến số</label><input type="text" id="sf_berth" class="field" value="Cầu số 5 (TV5) – Bến Cảng Tân Vũ"></div>
                 <div class="form-group"><label>LOA (m) / Rộng (m)</label><input type="text" id="sf_loa" class="field" value="179.90 / 30.00"></div>
-                <div class="form-group"><label>DWT / GRT</label><input type="text" id="sf_dwt" class="field" value="40.313 / 25.163"></div>
+                <div class="form-group"><label>DWT / GRT</label><input type="text" id="sf_dwt" class="field" value="40313 / 25163"></div>
                 
                 <div class="form-group"><label>Giờ cập (ETB)</label><input type="datetime-local" id="sf_etb" class="field"></div>
                 <div class="form-group"><label>Giờ d.kiến rời (ETD)</label><input type="datetime-local" id="sf_etd" class="field"></div>
@@ -1371,79 +1371,21 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
               
               <hr style="border:0;border-top:1px dashed var(--line);margin:12px 0">
               
-              <!-- THÔNG TIN HÀNG HÓA & THIẾT BỊ -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <div class="form-group">
-                  <label>Tên hàng hóa</label>
-                  <input type="text" id="sf_cargoName" class="field" value="sắt thép">
-                </div>
-                <div class="form-group">
-                  <label>Đơn vị tính</label>
-                  <select id="sf_cargoUnit" class="field" onchange="updateDefaultRates()">
-                    <option value="Tấn">Tấn (MT)</option>
-                    <option value="Cont">Container (Cont)</option>
-                    <option value="m³">Mét khối (m³)</option>
+                  <label>Loại hàng hóa</label>
+                  <select id="sf_cargoType" class="field" onchange="updateDefaultRates()">
+                    <option value="BULK">Hàng Rời (Sắt thép, nông sản...)</option>
+                    <option value="CONT">Hàng Container</option>
                   </select>
                 </div>
+                <div class="form-group"><label>Tổng lượng (Tấn / Cont)</label><input type="number" id="sf_cargoTotal" class="field" value="15783"></div>
+                <div class="form-group"><label>Năng suất (Tấn/h hoặc Move/h)</label><input type="number" id="sf_rate" class="field" value="250"></div>
                 <div class="form-group">
-                  <label>Tổng khối lượng hàng</label>
-                  <input type="number" id="sf_cargoTotal" class="field" value="15783">
-                </div>
-                <div class="form-group">
-                  <label>Loại thiết bị khai thác</label>
-                  <select id="sf_equipment" class="field">
-                    <option value="04 cần trục bờ (TK)">Cần trục bờ (TK)</option>
-                    <option value="Cẩu giàn chuyên dụng (STS)">Cẩu giàn chuyên dụng (STS)</option>
-                    <option value="Cẩu bờ (QC)">Cẩu bờ (QC)</option>
-                    <option value="Cần cẩu tàu">Cần cẩu tàu</option>
-                    <option value="Xe nâng hàng chuyên dụng">Xe nâng hàng chuyên dụng</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label id="sf_rateLabel">Năng suất TB (Tấn/giờ)</label>
-                  <input type="number" id="sf_rate" class="field" value="250">
-                </div>
-                <div class="form-group">
-                  <label>Quy đổi mớn nước</label>
+                  <label>Quy đổi giảm mớn</label>
                   <input type="text" id="sf_rule" class="field" disabled style="background:rgba(0,0,0,0.05)" value="Giảm 10cm (0.1m) mỗi 800 Tấn">
                 </div>
               </div>
-
-              <!-- 4 Nút điều khiển -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px">
-                <button class="primary" style="grid-column: span 2; padding: 10px; font-size: 13px;" onclick="calcSafetyPlan()"><i class="fa-solid fa-calculator"></i> Tính Toán Bảng Mớn Nước (Biến thiên ±20-30%)</button>
-                <button class="ops-btn b-excel" style="justify-content:center" onclick="exportWordPAHangTau()"><i class="fa-solid fa-file-word"></i> 1. Tải PA Hãng Tàu</button>
-                <button class="ops-btn b-excel" style="justify-content:center" onclick="exportWordPACang()"><i class="fa-solid fa-file-word"></i> 2. Tải PA Cảng HP</button>
-                <button class="ops-btn b-word" style="grid-column: span 2; justify-content:center; padding: 10px; font-size: 13px;" onclick="exportWordPAMonNuoc()"><i class="fa-solid fa-file-word"></i> 3. Tải Bảng Tính Mớn Nước & UKC</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bảng Kết Quả -->
-          <div class="panel">
-            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-table"></i> Bảng Lịch Trình Làm Hàng & Mớn Nước (UKC)</h3></div>
-            <div class="panel-body table-wrap" style="max-height: 540px;">
-              <table id="sf_resultTable">
-                <thead>
-                  <tr>
-                    <th>Thời gian</th>
-                    <th id="sf_thDischarged">Đã dỡ (Tấn)</th>
-                    <th id="sf_thRemaining">Còn lại (Tấn)</th>
-                    <th>Mớn tàu (m)</th>
-                    <th>Triều Hòn Dáu</th>
-                    <th>Độ sâu bến (m)</th>
-                    <th>UKC TT (m)</th>
-                    <th>UKC YC (m)</th>
-                    <th>Kết luận</th>
-                  </tr>
-                </thead>
-                <tbody id="sf_tbody">
-                  <tr><td colspan="9" class="empty">Vui lòng bấm 'Tính Toán' để sinh dữ liệu...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
 
               <!-- 4 Nút chức năng riêng biệt -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px">
@@ -3995,22 +3937,16 @@ function updateDefaultRates() {
 }
 
 // Lấy mức nước thủy triều theo giờ từ dữ liệu Hòn Dáu
-// Cập nhật nhãn và tỷ lệ quy đổi theo đơn vị hàng
-function updateDefaultRates() {
-  const unit = $('sf_cargoUnit').value;
-  if (unit === 'Tấn') {
-    $('sf_rate').value = 250;
-    $('sf_rateLabel').textContent = 'Năng suất TB (Tấn/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 Tấn';
-  } else if (unit === 'Cont') {
-    $('sf_rate').value = 70;
-    $('sf_rateLabel').textContent = 'Năng suất TB (Cont/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 30 Cont';
-  } else if (unit === 'm³') {
-    $('sf_rate').value = 200;
-    $('sf_rateLabel').textContent = 'Năng suất TB (m³/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 m³';
+function getTideAtTime(timestamp) {
+  let d = new Date(timestamp);
+  let dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let hr = d.getHours();
+  let dayData = multiDayTideData[dateKey];
+  if (dayData && dayData.hourlyList) {
+    let exact = dayData.hourlyList.find(x => x.hour === hr);
+    if (exact) return exact.val;
   }
+  return 1.5; // Giá trị dự phòng
 }
 
 // Tìm các đỉnh nước kiệt (Low tide) trong khoảng thời gian
@@ -4052,107 +3988,89 @@ function calcSafetyPlan() {
   let etdStr = $('sf_etd').value;
   let startWorkStr = $('sf_startWork').value;
   
-  if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB) trước khi tính toán!"); return; }
+  if (!etbStr) { alert("Vui lòng nhập Giờ cập (ETB)!"); return; }
   
   let tStart = new Date(etbStr).getTime();
   let tEtd = etdStr ? new Date(etdStr).getTime() : Infinity;
+  // Nếu chưa nhập giờ bắt đầu dỡ, mặc định là lúc ETB
   let tStartWork = startWorkStr ? new Date(startWorkStr).getTime() : tStart;
   
-  let cargoUnit = $('sf_cargoUnit').value;
+  let cargoType = $('sf_cargoType').value;
   let totalCargo = Number($('sf_cargoTotal').value);
-  let baseRate = Number($('sf_rate').value);
+  let ratePerHour = Number($('sf_rate').value);
   let currentDraft = Number($('sf_draftArr').value);
   let berthDepth = Number($('sf_berthDepth').value);
   
-  // Tỷ lệ giảm mớn (800 tấn hoặc m3 giảm 0.1m, 30 cont giảm 0.1m)
-  let cargoPer10cm = (cargoUnit === 'Cont') ? 30 : 800;
-
-  // Cập nhật tiêu đề cột bảng theo đúng đơn vị
-  if ($('sf_thDischarged')) $('sf_thDischarged').textContent = `Đã dỡ (${cargoUnit})`;
-  if ($('sf_thRemaining')) $('sf_thRemaining').textContent = `Còn lại (${cargoUnit})`;
-
   let currentCargo = totalCargo;
   let currentTime = tStart;
   generatedPlanRows = [];
   
-  let tMaxLimit = tStart + 24 * 3600000; // Tối đa không quá 24h
-  let lowTides = getLowTideInWindow(tStart, tMaxLimit + 12 * 3600000);
-  let highTides = getHighTideInWindow(tStart, tMaxLimit + 12 * 3600000);
+  // Tối đa bảng xuất ra dài 24 tiếng kể từ lúc ETB
+  let tMaxLimit = tStart + 24 * 3600000; 
   
-  // Dòng 1: Cập cầu ban đầu
+  let lowTides = getLowTideInWindow(tStart, tMaxLimit + 12*3600000);
+  let highTides = getHighTideInWindow(tStart, tMaxLimit + 12*3600000);
+  
   let initTide = getTideAtTime(currentTime);
-  generatedPlanRows.push(createPlanRow(currentTime, "cập cầu", totalCargo, currentCargo, currentDraft, initTide, berthDepth));
+  generatedPlanRows.push(createPlanRow(currentTime, "Cập cầu", totalCargo, currentCargo, currentDraft, initTide, berthDepth));
 
   let hourCount = 0;
   let isFinished = false;
   let hasReachedHighTide = false;
 
+  // Lặp tối đa 24 tiếng. Dừng sớm nếu đã vượt ETD HOẶC đã xong hàng và vượt qua 1 đỉnh triều.
   while (currentTime < tMaxLimit && currentTime < tEtd && !hasReachedHighTide) {
-    currentTime += 3600000;
+    currentTime += 3600000; // Tịnh tiến 1 giờ
     hourCount++;
 
     let passedLowTide = lowTides.find(lt => lt.time > currentTime - 3600000 && lt.time <= currentTime);
     let passedHighTide = highTides.find(ht => ht.time > currentTime - 3600000 && ht.time <= currentTime);
     
-    let isWorking = (currentTime > tStartWork && currentCargo > 0);
+    // Bắt đầu dỡ hàng và hạ mớn nước
     let label = "";
-
-    if (isWorking) {
-      // 1. Random biến thiên trong khoảng -20% đến +30% (hệ số từ 0.80 đến 1.30)
-      let randomFactor = 1.0 + (Math.random() * 0.50 - 0.20);
-      let actualDischarged = Math.round(baseRate * randomFactor);
-      actualDischarged = Math.min(actualDischarged, currentCargo);
-
-      let trialDraft = currentDraft - (actualDischarged / cargoPer10cm) * 0.1;
-
-      // 2. RÀNG BUỘC AN TOÀN TUYỆT ĐỐI (Thỏa mãn UKC và mớn tàu thấp hơn độ sâu bến/nước > 0.3m)
-      let currentTideVal = getTideAtTime(currentTime);
-      let availDepth = berthDepth + currentTideVal;
-      let maxSafeDraft = availDepth - 0.35; // Luôn đảm bảo mớn tàu thấp hơn độ sâu nước ít nhất 0.35m (>0.3m)
-
-      // Nếu chuẩn bị đến hoặc đang ở nước kiệt, ép thêm điều kiện mớn tàu phải thấp hơn độ sâu đáy bến ít nhất 0.3m
-      if (passedLowTide || currentTideVal <= 1.0) {
-        maxSafeDraft = Math.min(maxSafeDraft, berthDepth - 0.30);
+    if (currentTime > tStartWork && currentCargo > 0) {
+      let discharged = Math.min(ratePerHour, currentCargo);
+      currentCargo -= discharged;
+      
+      let draftDrop = (cargoType === 'BULK') ? (discharged / 800) * 0.1 : (discharged / 30) * 0.1;
+      currentDraft -= draftDrop;
+      
+      // Nếu đây là lần dỡ hàng đầu tiên
+      if (currentCargo < totalCargo && currentCargo + discharged === totalCargo) {
+        label = "Bắt đầu dỡ";
       }
-
-      // Nếu mớn tính ra chưa đạt an toàn (> maxSafeDraft), tự động tăng lượng dỡ lên để đạt chuẩn
-      if (trialDraft > maxSafeDraft && currentCargo > 0) {
-        let neededDrop = currentDraft - maxSafeDraft;
-        let neededDischarge = Math.round((neededDrop / 0.1) * cargoPer10cm);
-        actualDischarged = Math.max(actualDischarged, neededDischarge);
-        actualDischarged = Math.min(actualDischarged, currentCargo);
-        trialDraft = currentDraft - (actualDischarged / cargoPer10cm) * 0.1;
-      }
-
-      currentCargo -= actualDischarged;
-      currentDraft = trialDraft;
-
-      if (currentCargo <= 0) isFinished = true;
-      if (currentCargo + actualDischarged === totalCargo) label = "bắt đầu dỡ";
     }
+    
+    if (currentCargo <= 0) isFinished = true;
 
-    // Chèn dòng nước kiệt nếu rơi vào giờ này
+    // Chèn mốc nước kiệt
     if (passedLowTide) {
-      // Đảm bảo tại chính xác mốc nước kiệt, mớn tàu thấp hơn độ sâu bến ít nhất 0.3m
-      let lowAvail = berthDepth + passedLowTide.val;
-      if (currentDraft > lowAvail - 0.35) {
-        currentDraft = lowAvail - 0.35;
-      }
       generatedPlanRows.push(createPlanRow(passedLowTide.time, passedLowTide.label + " nước kiệt", totalCargo, currentCargo, currentDraft, passedLowTide.val, berthDepth));
     }
-
-    // Chèn dòng đỉnh triều nếu có
+    
+    // Chèn mốc đỉnh triều
     if (passedHighTide) {
       generatedPlanRows.push(createPlanRow(passedHighTide.time, passedHighTide.label + " (Đỉnh triều)", totalCargo, currentCargo, currentDraft, passedHighTide.val, berthDepth));
-      if (isFinished) hasReachedHighTide = true;
+      
+      // Dừng vòng lặp nếu tàu đã dỡ xong hàng và vừa chạm 1 đỉnh triều
+      if (isFinished) {
+         hasReachedHighTide = true;
+      }
     } else {
       let tide = getTideAtTime(currentTime);
       let d = new Date(currentTime);
+      
       if (!label) {
         label = (d.getHours() === 0) ? `00:00 (${d.getDate()}/${d.getMonth()+1})` : `${String(d.getHours()).padStart(2,'0')}:00`;
       }
       generatedPlanRows.push(createPlanRow(currentTime, label, totalCargo, currentCargo, currentDraft, tide, berthDepth));
     }
+  }
+
+  // Dòng cuối cùng: Nếu có giờ ETD, luôn hiển thị
+  if (tEtd !== Infinity && tEtd <= tMaxLimit && tEtd > tStart) {
+      let etdTide = getTideAtTime(tEtd);
+      generatedPlanRows.push(createPlanRow(tEtd, "Dự kiến rời", totalCargo, currentCargo, currentDraft, etdTide, berthDepth));
   }
 
   renderSafetyTable();
@@ -4206,46 +4124,18 @@ function getTugRequirement(loaStr) {
 
 // Các hàm tiện ích chung để lấy dữ liệu từ Form
 function getCommonDocVars() {
-  let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
-  let agentRaw = ($('sf_agent') ? $('sf_agent').value : 'Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)').trim();
-  let agentShort = agentRaw.includes('(') ? agentRaw.split('(')[0].trim() : agentRaw;
-
-  let imoRaw = $('sf_imo') ? $('sf_imo').value : '9880116 / Panama';
-  let imo = imoRaw.includes('/') ? imoRaw.split('/')[0].trim() : imoRaw.trim();
-  let flag = imoRaw.includes('/') ? imoRaw.split('/')[1].trim() : 'Panama';
-
-  let loaRaw = $('sf_loa') ? $('sf_loa').value : '179.90 / 30.00';
-  let loa = loaRaw.includes('/') ? loaRaw.split('/')[0].trim() : loaRaw.trim();
-  let breadth = loaRaw.includes('/') ? loaRaw.split('/')[1].trim() : '30.00';
-  let loaNum = parseFloat(loa.replace(',', '.')) || 0;
-
-  let dwtRaw = $('sf_dwt') ? $('sf_dwt').value : '40.313 / 25.163';
-  let dwt = dwtRaw.includes('/') ? dwtRaw.split('/')[0].trim() : dwtRaw.trim();
-  let grt = dwtRaw.includes('/') ? dwtRaw.split('/')[1].trim() : '25.163';
-
-  let berth = ($('sf_berth') ? $('sf_berth').value : 'cầu cảng số 5 (TV5) – Bến Cảng Tân Vũ').trim();
-  let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
-  let draftArr = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
-  
-  let cargoName = ($('sf_cargoName') ? $('sf_cargoName').value : 'sắt thép').trim();
-  let cargoUnit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
-  let cargoTotalNum = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
-  let cargoTotalStr = `${cargoTotalNum.toLocaleString('vi-VN')} ${cargoUnit} ${cargoName}`;
-  
-  let equipment = $('sf_equipment') ? $('sf_equipment').value : '04 cần trục bờ (TK)';
-  let ratePerHour = Number($('sf_rate') ? $('sf_rate').value : 250);
-
-  let etbRaw = $('sf_etb') ? $('sf_etb').value : '';
-  let etdRaw = $('sf_etd') ? $('sf_etd').value : '';
-  let etbStr = etbRaw ? new Date(etbRaw).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '09h30 ngày 11/11/2026';
-  let etdStr = etdRaw ? new Date(etdRaw).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '06h30 ngày 14/11/2026';
-
-  let tugRule = getTugRequirement(loa);
+  let vName = $('sf_vessel').value;
+  let agent = $('sf_agent').value;
+  let loa = $('sf_loa').value;
+  let etbRaw = $('sf_etb').value;
+  let etdRaw = $('sf_etd').value;
+  let etbStr = etbRaw ? new Date(etbRaw).toLocaleString('vi-VN') : '....';
+  let etdStr = etdRaw ? new Date(etdRaw).toLocaleString('vi-VN') : '....';
 
   return {
-    vName, agentRaw, agentShort, imo, flag, loa, breadth, loaNum, dwt, grt,
-    berth, berthDepth, draftArr, cargoName, cargoUnit, cargoTotalNum, cargoTotalStr,
-    equipment, ratePerHour, etbStr, etdStr, tugRule
+    vName, agent, imo: $('sf_imo').value, loa, dwt: $('sf_dwt').value,
+    berth: $('sf_berth').value, cargoTotal: $('sf_cargoTotal').value,
+    tugRule: getTugRequirement(loa), etbStr, etdStr
   };
 }
 
@@ -4261,117 +4151,312 @@ const downloadDocFile = (htmlStr, fileName) => {
 };
 
 // 1. NÚT XUẤT PHƯƠNG ÁN HÃNG TÀU
-let v = getCommonDocVars();
-  let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
+function exportWordPAHangTau() {
+  // 1. Thu thập và chuẩn hóa dữ liệu từ form
+  let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
+  let agentRaw = ($('sf_agent') ? $('sf_agent').value : 'Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)').trim();
+  
+  // Tách tên rút gọn và tên đầy đủ của đại lý
+  let agentFull = agentRaw;
+  let agentShort = agentRaw.includes('(') ? agentRaw.split('(')[0].trim() : agentRaw;
+
+  // Tách IMO và Quốc tịch
+  let imoRaw = $('sf_imo') ? $('sf_imo').value : '9880116 / PANAMA';
+  let imo = imoRaw.includes('/') ? imoRaw.split('/')[0].trim() : imoRaw.trim();
+  let flag = imoRaw.includes('/') ? imoRaw.split('/')[1].trim().toUpperCase() : 'PANAMA';
+  let callSign = '3EPM4'; // Hô hiệu mặc định
+
+  // Tách LOA và Chiều rộng B
+  let loaRaw = $('sf_loa') ? $('sf_loa').value : '179.90 / 30.00';
+  let loa = loaRaw.includes('/') ? loaRaw.split('/')[0].trim() : loaRaw.trim();
+  let breadth = loaRaw.includes('/') ? loaRaw.split('/')[1].trim() : '30.00';
+
+  // Tách DWT và GT
+  let dwtRaw = $('sf_dwt') ? $('sf_dwt').value : '40.313 / 25,163';
+  let dwt = dwtRaw.includes('/') ? dwtRaw.split('/')[0].trim() : dwtRaw.trim();
+  let gt = dwtRaw.includes('/') ? dwtRaw.split('/')[1].trim() : '25,163';
+
+  // Cầu bến tiếp nhận
+  let berth = ($('sf_berth') ? $('sf_berth').value : 'cầu cảng số 5 - Bến cảng Tân Vũ').trim();
+
+  // 2. Tạo nội dung văn bản Word A4 với định dạng chuẩn
+  let htmlDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Noi dung thay the - PA Hang tau - ${vName}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
   <style>
-    @page Section1 { size: 210mm 297mm; margin: 20mm 15mm 20mm 25mm; }
+    @page Section1 {
+      size: 210mm 297mm; /* Khổ giấy A4 chuẩn */
+      margin: 20mm 15mm 20mm 25mm; /* Căn lề chuẩn: Trên 20, Dưới 20, Trái 25, Phải 15 */
+      mso-header-margin: 10mm;
+      mso-footer-margin: 10mm;
+    }
     div.Section1 { page: Section1; }
-    body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.25; text-align: justify; }
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 13pt;
+      line-height: 1.25;
+      text-align: justify;
+    }
+    p { margin-top: 2pt; margin-bottom: 2pt; }
     .center { text-align: center; }
+    .bold { font-weight: bold; }
     .indent { text-indent: 10mm; }
     table.header-box { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
     table.header-box td { border: none; vertical-align: top; }
-    .section-header { background-color: #f1f5f9; border: 1pt solid #cbd5e1; padding: 6pt; font-weight: bold; margin: 12pt 0 6pt 0; }
-    .highlight-box { border-left: 3pt solid #0284c7; padding-left: 8pt; margin: 4pt 0 10pt 0; }
-  </style></head><body><div class="Section1">
-  <p class="center"><b><span style="font-size: 14pt; color: #0284c7;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN HÃNG TÀU</span></b></p>
-  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn để sao chép đè vào bản Word 9 trang)</i></p>
+    .section-header {
+      background-color: #f1f5f9;
+      border: 1pt solid #cbd5e1;
+      padding: 6pt 10pt;
+      font-size: 12pt;
+      font-weight: bold;
+      color: #0f172a;
+      margin-top: 14pt;
+      margin-bottom: 6pt;
+    }
+    .highlight-box {
+      border-left: 3pt solid #0284c7;
+      padding-left: 8pt;
+      margin: 4pt 0 10pt 0;
+    }
+  </style>
+</head>
+<body>
+<div class="Section1">
 
-  <div class="section-header">1. KHỐI THÔNG TIN ĐẦU TRANG 1</div>
+  <p class="center"><b><span style="font-size: 14pt; color: #0284c7;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN HÃNG TÀU</span></b></p>
+  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Cỡ chữ và căn lề chuẩn A4 để sao chép đè vào bản Word 9 trang)</i></p>
+
+  <!-- ==================== VỊ TRÍ 1 ==================== -->
+  <div class="section-header">1. KHỐI THÔNG TIN ĐẦU TRANG 1 (Mục Cơ quan ban hành & Đoạn căn cứ mở đầu)</div>
   <div class="highlight-box">
+    
+    <!-- Tiêu đề cơ quan & Quốc hiệu -->
     <table class="header-box">
       <tr>
-        <td style="width: 44%; text-align: center;"><b>${v.agentShort}</b><br>Số:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/</td>
-        <td style="width: 56%; text-align: center;"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><span style="border-bottom: 1px solid black;">Độc lập - Tự do - Hạnh phúc</span></b><br><i>Hải Phòng, ngày&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tháng&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;năm 2026</i></td>
+        <td style="width: 44%; text-align: center;">
+          <b>${agentShort}</b><br>
+          Số:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/
+        </td>
+        <td style="width: 56%; text-align: center;">
+          <b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br>
+          <b><span style="border-bottom: 1px solid black; padding-bottom: 1px;">Độc lập - Tự do - Hạnh phúc</span></b><br>
+          <i>Hải Phòng, ngày&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tháng&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;năm 2026</i>
+        </td>
       </tr>
     </table>
+
+    <!-- Đoạn văn bản mở đầu căn cứ -->
     <p class="indent" style="margin-top: 8pt;">
-      ${v.agentRaw} xin gửi phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} DWT</b> chở <b>${v.cargoTotalStr}</b> vào, rời <b>${v.berth}</b> như sau:
+      ${agentFull} xin gửi phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${vName}</b> có trọng tải <b>${dwt} DWT</b> vào, rời <b>${berth}</b> như sau:
     </p>
+
   </div>
 
-  <div class="section-header">2. KHỐI THÔNG SỐ TÀU (Trang 6 - Mục 5 và 5.1)</div>
+  <!-- ==================== VỊ TRÍ 2 ==================== -->
+  <div class="section-header">2. KHỐI THÔNG SỐ KỸ THUẬT TÀU (Trang 6 - Mục 5 và Mục 5.1)</div>
   <div class="highlight-box">
-    <p><b>5. Tàu của đại diện chủ tàu - ${v.agentRaw}</b></p>
-    <p><b>5.1 Tàu ${v.vName}</b></p>
-    <p style="margin-left: 15mm;">- IMO Number: <b>${v.imo}</b></p>
-    <p style="margin-left: 15mm;">- Hô hiệu: <b>3EPM4</b></p>
-    <p style="margin-left: 15mm;">- Quốc tịch: <b>${v.flag}</b></p>
-    <p style="margin-left: 15mm;">- Chiều dài: <b>${v.loa} m</b></p>
-    <p style="margin-left: 15mm;">- Chiều rộng: <b>${v.breadth} m</b></p>
-    <p style="margin-left: 15mm;">- GT: <b>${v.grt} MT</b></p>
-    <p style="margin-left: 15mm;">- DWT: <b>${v.dwt} MT</b></p>
-    <p style="margin-left: 15mm;">- Hàng hóa khai thác: <b>${v.cargoTotalStr}</b></p>
+
+    <p><b>5. Tàu của đại diện chủ tàu - ${agentFull}</b></p>
+    <p><b>5.1 Tàu ${vName}</b></p>
+    <p style="margin-left: 15mm;">- IMO Number: <b>${imo}</b></p>
+    <p style="margin-left: 15mm;">- Hô hiệu: <b>${callSign}</b></p>
+    <p style="margin-left: 15mm;">- Quốc tịch: <b>${flag}</b></p>
+    <p style="margin-left: 15mm;">- Chiều dài: <b>${loa} m</b></p>
+    <p style="margin-left: 15mm;">- Chiều rộng: <b>${breadth} m</b></p>
+    <p style="margin-left: 15mm;">- GT: <b>${gt} MT</b></p>
+    <p style="margin-left: 15mm;">- DWT: <b>${dwt} MT</b></p>
+
   </div>
 
-  <div class="section-header">3. KHỐI KẾT LUẬN & CHỮ KÝ (Trang 9)</div>
+  <!-- ==================== VỊ TRÍ 3 ==================== -->
+  <div class="section-header">3. KHỐI KẾT LUẬN & CHỮ KÝ (Trang 9 - Cuối văn bản)</div>
   <div class="highlight-box">
-    <p class="indent">Trên đây là Phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} MT</b> chở <b>${v.cargoTotalStr}</b> vào, rời <b>${v.berth}</b>.</p>
+
+    <p class="indent">
+      Trên đây là Phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${vName}</b> có trọng tải <b>${dwt} MT</b> vào, rời <b>${berth}</b>.
+    </p>
     <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét chấp thuận.</p>
     <p class="indent">Trân trọng báo cáo./.</p>
+
+    <!-- Bảng Nơi nhận và Đại diện hãng tàu ký tên -->
     <table class="header-box" style="margin-top: 14pt;">
       <tr>
-        <td style="width: 45%; text-align: left;"><b><i>Nơi nhận:</i></b><br>- Như trên;<br>- Lưu Công ty.</td>
-        <td style="width: 55%; text-align: center;"><b>${v.agentShort}</b><br><br><br><br><br><i>(Ký, ghi rõ họ tên và đóng dấu)</i></td>
+        <td style="width: 45%; text-align: left;">
+          <b><i>Nơi nhận:</i></b><br>
+          - Như trên;<br>
+          - Lưu Công ty.
+        </td>
+        <td style="width: 55%; text-align: center;">
+          <b>${agentShort}</b><br><br><br><br><br>
+          <i>(Ký, ghi rõ họ tên và đóng dấu)</i>
+        </td>
       </tr>
     </table>
+
   </div>
-  </div></body></html>`;
-  downloadDocFile(htmlDoc, `1_Noi_Dung_Thay_The_PA_Hang_Tau_${v.vName}.doc`);
+
+</div>
+</body>
+</html>`;
+
+  // 3. Tải file Word trực tiếp về máy
+  let blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `1_Noi_Dung_Thay_The_PA_Hang_Tau_${vName}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // 2. NÚT XUẤT PHƯƠNG ÁN CẢNG HẢI PHÒNG
 function exportWordPACang() {
-  let v = getCommonDocVars();
-  let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
+  // 1. Lấy dữ liệu từ giao diện form
+  let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
+  let agentRaw = ($('sf_agent') ? $('sf_agent').value : 'Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)').trim();
+  let agentFull = agentRaw;
+
+  let imoRaw = $('sf_imo') ? $('sf_imo').value : '9880116 / PANAMA';
+  let imo = imoRaw.includes('/') ? imoRaw.split('/')[0].trim() : imoRaw.trim();
+  let flag = imoRaw.includes('/') ? imoRaw.split('/')[1].trim().toUpperCase() : 'PANAMA';
+  let callSign = '3EPM4';
+
+  let loaRaw = $('sf_loa') ? $('sf_loa').value : '179.90 / 30.00';
+  let loa = loaRaw.includes('/') ? loaRaw.split('/')[0].trim() : loaRaw.trim();
+  let breadth = loaRaw.includes('/') ? loaRaw.split('/')[1].trim() : '30.00';
+  let loaNum = parseFloat(loa.replace(',', '.')) || 0;
+
+  let dwtRaw = $('sf_dwt') ? $('sf_dwt').value : '40.313 / 25,163';
+  let dwt = dwtRaw.includes('/') ? dwtRaw.split('/')[0].trim() : dwtRaw.trim();
+  let gt = dwtRaw.includes('/') ? dwtRaw.split('/')[1].trim() : '25,163';
+
+  let berth = ($('sf_berth') ? $('sf_berth').value : 'cầu cảng số 5 (TV5) – Bến Cảng Tân Vũ').trim();
+
+  // 2. Logic lựa chọn chính xác phương án tàu lai theo quy định (f, g, h)
+  let tugRuleText = "";
+  if (loaNum >= 170 && loaNum < 200) {
+    tugRuleText = "f) Tàu thuyền có chiều dài từ 170 mét đến dưới 200 mét: Có hai hoặc ba tàu lai với tổng công suất tối thiểu 5.000 HP, trong đó có ít nhất một tàu lai công suất tối thiểu 3.000 HP, các tàu lai còn lại công suất tối thiểu mỗi tàu 1.000 HP.";
+  } else if (loaNum >= 200 && loaNum < 220) {
+    tugRuleText = "g) Tàu thuyền có chiều dài từ 200 mét đến dưới 220 mét: Có ít nhất hai tàu lai hỗ trợ công suất tối thiểu mỗi tàu là 3.000 HP hoặc ba tàu lai, công suất tối thiểu mỗi tàu theo thứ tự 1.200 HP, 1.800 HP, 3.000 HP;";
+  } else if (loaNum >= 220 && loaNum <= 240) {
+    tugRuleText = "h) Tàu thuyền có chiều dài từ 220 mét đến 240 mét: Có ít nhất hai hoặc ba tàu lai hỗ trợ với tổng công suất tối thiểu 8.000 HP. Trường hợp sử dụng hai tàu lai: công suất tối thiểu mỗi tàu 3.000 HP. Trường hợp sử dụng ba tàu lai: trong đó có hai tàu lai công suất tối thiểu mỗi tàu 3.000 HP, tàu lai còn lại công suất tối thiểu 1.800 HP;";
+  } else {
+    tugRuleText = "Bố trí tàu lai hỗ trợ theo đúng quy định tại Nội quy cảng biển Hải Phòng đối với chiều dài tàu thực tế.";
+  }
+
+  // 3. Tạo tài liệu Word chuẩn A4 chứa các phân đoạn màu vàng
+  let htmlDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Noi dung thay the - PA Cang Hai Phong - ${vName}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
   <style>
-    @page Section1 { size: 210mm 297mm; margin: 20mm 15mm 20mm 25mm; }
+    @page Section1 {
+      size: 210mm 297mm;
+      margin: 20mm 15mm 20mm 25mm;
+      mso-header-margin: 10mm;
+      mso-footer-margin: 10mm;
+    }
     div.Section1 { page: Section1; }
-    body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.25; text-align: justify; }
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 13pt;
+      line-height: 1.25;
+      text-align: justify;
+    }
+    p { margin-top: 2pt; margin-bottom: 2pt; }
     .center { text-align: center; }
     .indent { text-indent: 10mm; }
-    .section-header { background-color: #f1f5f9; border: 1pt solid #cbd5e1; padding: 6pt; font-weight: bold; margin: 12pt 0 6pt 0; }
-    .highlight-box { border-left: 3pt solid #059669; padding-left: 8pt; margin: 4pt 0 10pt 0; }
-  </style></head><body><div class="Section1">
+    .section-header {
+      background-color: #f1f5f9;
+      border: 1pt solid #cbd5e1;
+      padding: 6pt 10pt;
+      font-size: 12pt;
+      font-weight: bold;
+      color: #0f172a;
+      margin-top: 14pt;
+      margin-bottom: 6pt;
+    }
+    .highlight-box {
+      border-left: 3pt solid #059669;
+      padding-left: 8pt;
+      margin: 4pt 0 10pt 0;
+    }
+  </style>
+</head>
+<body>
+<div class="Section1">
+
   <p class="center"><b><span style="font-size: 14pt; color: #059669;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN CẢNG HẢI PHÒNG</span></b></p>
-  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn để sao chép đè vào bản Word 10 trang của Cảng)</i></p>
+  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy và lề A4 chuẩn để sao chép đè vào bản Word 10 trang của Cảng)</i></p>
 
-  <div class="section-header">1. ĐOẠN CĂN CỨ MỞ ĐẦU (Trang 1)</div>
+  <!-- ==================== VỊ TRÍ 1 ==================== -->
+  <div class="section-header">1. ĐOẠN CĂN CỨ MỞ ĐẦU (Trang 1 - Dưới Quyết định số 723)</div>
   <div class="highlight-box">
     <p class="indent">
-      Công ty cổ phần Cảng Hải Phòng đã xây dựng phương án ứng phó sự cố khẩn cấp khi tàu neo đậu tại cảng xảy ra sự cố, tai nạn hàng hải cho tàu <b>${v.vName}</b> có đại diện chủ tàu là <b>${v.agentRaw}</b> có trọng tải <b>${v.dwt} MT</b> (lượng hàng: <b>${v.cargoTotalStr}</b>) vào, rời bến cảng vào, rời <b>${v.berth}</b> như sau:
+      Công ty cổ phần Cảng Hải Phòng đã xây dựng phương án ứng phó sự cố khẩn cấp khi tàu neo đậu tại cảng xảy ra sự cố, tai nạn hàng hải cho tàu <b>${vName}</b> có đại diện chủ tàu là Công ty <b>${agentFull}</b> có trọng tải <b>${dwt} MT</b> vào, rời bến cảng vào, rời <b>${berth}</b> như sau:
     </p>
   </div>
 
-  <div class="section-header">2. THÔNG SỐ TÀU & PHƯƠNG ÁN TÀU LAI, THIẾT BỊ (Trang 6)</div>
+  <!-- ==================== VỊ TRÍ 2 ==================== -->
+  <div class="section-header">2. THÔNG SỐ TÀU & PHƯƠNG ÁN TÀU LAI (Trang 6 - Mục 5, 5.1 và Mục B.1.1)</div>
   <div class="highlight-box">
-    <p><b>5. Tàu của đại diện chủ tàu - ${v.agentRaw}</b></p>
-    <p><b>5.1 Tàu ${v.vName}</b></p>
-    <p style="margin-left: 15mm;">- IMO Number: <b>${v.imo}</b></p>
-    <p style="margin-left: 15mm;">- Hô hiệu: <b>3EPM4</b></p>
-    <p style="margin-left: 15mm;">- Quốc tịch: <b>${v.flag}</b></p>
-    <p style="margin-left: 15mm;">- Chiều dài: <b>${v.loa} m</b></p>
-    <p style="margin-left: 15mm;">- Chiều rộng: <b>${v.breadth} m</b></p>
-    <p style="margin-left: 15mm;">- GT: <b>${v.grt} MT</b></p>
-    <p style="margin-left: 15mm;">- DWT: <b>${v.dwt} MT</b></p>
-    <p style="margin-left: 15mm;">- Phương án xếp dỡ: Bố trí <b>${v.equipment}</b> để giải phóng <b>${v.cargoTotalStr}</b>.</p>
+    <p><b>5. Tàu của đại diện chủ tàu - ${agentFull}</b></p>
+    <p><b>5.1 Tàu ${vName}</b></p>
+    <p style="margin-left: 15mm;">- IMO Number: <b>${imo}</b></p>
+    <p style="margin-left: 15mm;">- Hô hiệu: <b>${callSign}</b></p>
+    <p style="margin-left: 15mm;">- Quốc tịch: <b>${flag}</b></p>
+    <p style="margin-left: 15mm;">- Chiều dài: <b>${loa} m</b></p>
+    <p style="margin-left: 15mm;">- Chiều rộng: <b>${breadth} m</b></p>
+    <p style="margin-left: 15mm;">- GT: <b>${gt} MT</b></p>
+    <p style="margin-left: 15mm;">- DWT: <b>${dwt} MT</b></p>
     
-    <p style="margin-top: 8pt;"><b>Tại Mục B.1.1 (Công suất và số lượng tàu lai hỗ trợ lựa chọn theo chiều dài tàu LOA = ${v.loa}m):</b></p>
+    <p style="margin-top: 8pt;"><b>Tại Mục B.1.1 (Công suất và số lượng tàu lai hỗ trợ):</b></p>
     <p class="indent" style="color: #047857; font-weight: bold;">
-      ${v.tugRule}
+      ${tugRuleText}
     </p>
   </div>
 
-  <div class="section-header">3. ĐOẠN KẾT LUẬN (Trang 10)</div>
+  <!-- ==================== VỊ TRÍ 3 ==================== -->
+  <div class="section-header">3. ĐOẠN KẾT LUẬN (Trang 10 - Phía trên Nơi nhận)</div>
   <div class="highlight-box">
     <p class="indent">
-      Trên đây là Phương án đảm bảo an toàn và ứng phó với các tình huống tai nạn, sự cố hàng hải cho tàu <b>${v.vName}</b> trọng tải <b>${v.dwt} DWT</b> vào, rời bến <b>${v.berth}</b> (Chi nhánh Cảng Tân Vũ) thuộc Công ty cổ phần Cảng Hải Phòng.
+      Trên đây là Phương án đảm bảo an toàn và ứng phó với các tình huống tai nạn, sự cố hàng hải cho tàu <b>${vName}</b> trọng tải <b>${dwt} DWT</b> vào, rời bến <b>${berth}</b> (Chi nhánh Cảng Tân Vũ) thuộc Công ty cổ phần Cảng Hải Phòng.
     </p>
     <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét chấp thuận.</p>
     <p class="indent">Trân trọng báo cáo./.</p>
   </div>
-  </div></body></html>`;
-  downloadDocFile(htmlDoc, `2_Noi_Dung_Thay_The_PA_Cang_HP_${v.vName}.doc`);
+
+</div>
+</body>
+</html>`;
+
+  // 4. Xuất file
+  let blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `2_Noi_Dung_Thay_The_PA_Cang_HP_${vName}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // 3. NÚT XUẤT BẢNG TÍNH MỚN NƯỚC (UKC)
@@ -4380,23 +4465,53 @@ function exportWordPAMonNuoc() {
     alert("Vui lòng Bấm 'Tính Toán Bảng Mớn Nước' trước khi xuất nội dung!");
     return;
   }
-  let v = getCommonDocVars();
 
+  // 1. Thu thập dữ liệu từ Form
+  let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
+  let agentRaw = ($('sf_agent') ? $('sf_agent').value : 'Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)').trim();
+  
+  let imoRaw = $('sf_imo') ? $('sf_imo').value : '9880116 / Panama';
+  let imo = imoRaw.includes('/') ? imoRaw.split('/')[0].trim() : imoRaw.trim();
+  let flag = imoRaw.includes('/') ? imoRaw.split('/')[1].trim() : 'Panama';
+
+  let loaRaw = $('sf_loa') ? $('sf_loa').value : '179.90 / 30.00';
+  let loa = loaRaw.includes('/') ? loaRaw.split('/')[0].trim() : loaRaw.trim();
+  let breadth = loaRaw.includes('/') ? loaRaw.split('/')[1].trim() : '30.00';
+
+  let dwtRaw = $('sf_dwt') ? $('sf_dwt').value : '40.313,30 / 25.163';
+  let dwt = dwtRaw.includes('/') ? dwtRaw.split('/')[0].trim() : dwtRaw.trim();
+  let grt = dwtRaw.includes('/') ? dwtRaw.split('/')[1].trim() : '25.163';
+
+  let berth = ($('sf_berth') ? $('sf_berth').value : 'Cầu số 5 (TV5) – Bến Cảng Tân Vũ').trim();
+  let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+  let draftArr = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
+  
+  let cargoTotal = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
+  let cargoType = $('sf_cargoType') ? $('sf_cargoType').value : 'BULK';
+  let cargoUnitStr = cargoType === 'BULK' ? 'tấn sắt thép' : 'Container';
+  let ratePerHour = Number($('sf_rate') ? $('sf_rate').value : 250);
+
+  let etbRaw = $('sf_etb') ? $('sf_etb').value : '';
+  let etdRaw = $('sf_etd') ? $('sf_etd').value : '';
+  let etbStr = etbRaw ? new Date(etbRaw).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '09h30 ngày 11/11/2026';
+  let etdStr = etdRaw ? new Date(etdRaw).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '06h30 ngày 14/11/2026';
+
+  // 2. Trích xuất thông số tại thời điểm tiếp nhận và lúc triều kiệt từ bảng tính
   let firstRow = generatedPlanRows[0];
   let initTide = parseFloat((firstRow.tide || '2.8').replace(',', '.'));
-  let availDepthInit = (v.berthDepth + initTide).toFixed(2);
-  let ukcReqInit = (v.draftArr * 0.10).toFixed(2);
-  let minDepthReqInit = (v.draftArr + parseFloat(ukcReqInit)).toFixed(2);
+  let availDepthInit = (berthDepth + initTide).toFixed(2);
+  let ukcReqInit = (draftArr * 0.10).toFixed(2);
+  let minDepthReqInit = (draftArr + parseFloat(ukcReqInit)).toFixed(2);
 
-  // Lấy dòng triều kiệt
+  // Tìm hàng có mốc nước kiệt
   let lowRow = generatedPlanRows.find(r => r.label.includes('kiệt')) || generatedPlanRows[Math.min(8, generatedPlanRows.length - 1)];
   let lowTideVal = parseFloat((lowRow.tide || '0.7').replace(',', '.'));
   let lowDraftVal = parseFloat((lowRow.draft || '8.6').replace(',', '.'));
-  let availDepthLow = (v.berthDepth + lowTideVal).toFixed(2);
+  let availDepthLow = (berthDepth + lowTideVal).toFixed(2);
   let ukcReqLow = (lowDraftVal * 0.10).toFixed(2);
   let minDepthReqLow = (lowDraftVal + parseFloat(ukcReqLow)).toFixed(2);
-  let actualLowUkc = (parseFloat(availDepthLow) - lowDraftVal).toFixed(2);
 
+  // 3. Tạo các dòng của Bảng thời gian làm hàng
   let tableRowsHtml = generatedPlanRows.map(r => `
     <tr>
       <td style="font-weight: bold; text-align: left;">${r.label}</td>
@@ -4405,84 +4520,131 @@ function exportWordPAMonNuoc() {
       <td style="font-weight: bold;">${r.draft}</td>
       <td>${r.tide}</td>
       <td style="font-weight: bold;">${r.availDepth}</td>
-      <td style="font-weight: bold; color: green;">${r.ukcAct}</td>
+      <td style="font-weight: bold;">${r.ukcAct}</td>
       <td>${r.ukcReq}</td>
       <td style="font-weight: bold;">${r.status}</td>
     </tr>
   `).join('');
 
-  let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
+  // 4. Tạo tài liệu Word chuẩn A4 chứa đầy đủ các phân đoạn thay thế
+  let htmlDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Noi dung thay the - PA Mon Nuoc - ${vName}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
   <style>
-    @page Section1 { size: 210mm 297mm; margin: 20mm 15mm 20mm 25mm; }
+    @page Section1 {
+      size: 210mm 297mm;
+      margin: 20mm 15mm 20mm 25mm;
+      mso-header-margin: 10mm;
+      mso-footer-margin: 10mm;
+    }
     div.Section1 { page: Section1; }
-    body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.25; text-align: justify; }
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 13pt;
+      line-height: 1.25;
+      text-align: justify;
+    }
+    p { margin-top: 2pt; margin-bottom: 2pt; }
     .center { text-align: center; }
+    .bold { font-weight: bold; }
     .indent { text-indent: 10mm; }
     table.data-table { width: 100%; border-collapse: collapse; margin: 8pt 0; }
     table.data-table th, table.data-table td { border: 1pt solid windowtext; padding: 4pt 5pt; font-size: 11pt; text-align: center; }
     table.data-table th { background-color: #f2f2f2; font-weight: bold; }
-    .section-header { background-color: #f1f5f9; border: 1pt solid #cbd5e1; padding: 6pt; font-weight: bold; margin: 12pt 0 6pt 0; }
-    .highlight-box { border-left: 3pt solid #d97706; padding-left: 8pt; margin: 4pt 0 10pt 0; }
-  </style></head><body><div class="Section1">
-  <p class="center"><b><span style="font-size: 14pt; color: #d97706;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN MỚN NƯỚC (UKC)</span></b></p>
-  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn - Đã random ±20-30% và đảm bảo UKC > 0.3m)</i></p>
+    .section-header {
+      background-color: #f1f5f9;
+      border: 1pt solid #cbd5e1;
+      padding: 6pt 10pt;
+      font-size: 12pt;
+      font-weight: bold;
+      color: #0f172a;
+      margin-top: 14pt;
+      margin-bottom: 6pt;
+    }
+    .highlight-box {
+      border-left: 3pt solid #d97706;
+      padding-left: 8pt;
+      margin: 4pt 0 10pt 0;
+    }
+  </style>
+</head>
+<body>
+<div class="Section1">
 
-  <div class="section-header">1. TIÊU ĐỀ & ĐOẠN MỞ ĐẦU</div>
+  <p class="center"><b><span style="font-size: 14pt; color: #d97706;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN MỚN NƯỚC (UKC)</span></b></p>
+  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy và căn lề A4 chuẩn để sao chép đè vào bản Word Phương án mớn nước)</i></p>
+
+  <!-- ==================== VỊ TRÍ 1 ==================== -->
+  <div class="section-header">1. TIÊU ĐỀ & ĐOẠN CĂN CỨ MỞ ĐẦU</div>
   <div class="highlight-box">
     <p class="center" style="font-weight: bold; font-size: 13.5pt;">
-      PHƯƠNG ÁN ĐẢM BẢO AN TOÀN CHO TÀU ${v.vName}<br>cập, rời ${v.berth}
+      PHƯƠNG ÁN ĐẢM BẢO AN TOÀN CHO TÀU ${vName}<br>
+      cập, rời ${berth}
     </p>
     <p class="indent" style="margin-top: 6pt;">
-      Công ty cổ phần Cảng Hải Phòng xây dựng Phương án đảm bảo an toàn cho tàu <b>${v.vName}</b> cập, rời <b>${v.berth}</b> như sau:
+      Công ty cổ phần Cảng Hải Phòng xây dựng Phương án đảm bảo an toàn cho tàu <b>${vName}</b> cập, rời <b>${berth}</b> như sau:
     </p>
   </div>
 
+  <!-- ==================== VỊ TRÍ 2 ==================== -->
   <div class="section-header">2. BẢNG MỤC I. THÔNG TIN TÀU VÀ CẦU CẢNG</div>
   <div class="highlight-box">
     <table class="data-table">
-      <tr><td style="width: 35%; text-align: left; font-weight: bold;">Tên tàu</td><td style="width: 65%; text-align: left; font-weight: bold;">${v.vName}</td></tr>
-      <tr><td style="text-align: left;">IMO / Quốc tịch</td><td style="text-align: left;">${v.imo} / ${v.flag}</td></tr>
-      <tr><td style="text-align: left;">LOA / Chiều rộng (B)</td><td style="text-align: left;">${v.loa} m / ${v.breadth} m</td></tr>
-      <tr><td style="text-align: left;">DWT / GRT</td><td style="text-align: left;">${v.dwt} MT / ${v.grt}</td></tr>
-      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: ${v.draftArr} m</td></tr>
-      <tr><td style="text-align: left;">Thời gian đến cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etbStr}</td></tr>
-      <tr><td style="text-align: left;">Thời gian rời cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etdStr}</td></tr>
-      <tr><td style="text-align: left;">Cầu cập dự kiến</td><td style="text-align: left; font-weight: bold;">${v.berth}</td></tr>
-      <tr><td style="text-align: left;">Độ sâu đáy cầu</td><td style="text-align: left;">-${v.berthDepth.toFixed(1)} m (hệ cao độ Hải đồ)</td></tr>
-      <tr><td style="text-align: left;">Hàng nhập dự kiến</td><td style="text-align: left;">${v.cargoTotalStr}</td></tr>
+      <tr><td style="width: 35%; text-align: left; font-weight: bold;">Tên tàu</td><td style="width: 65%; text-align: left; font-weight: bold;">${vName}</td></tr>
+      <tr><td style="text-align: left;">IMO / Quốc tịch</td><td style="text-align: left;">${imo} / ${flag}</td></tr>
+      <tr><td style="text-align: left;">LOA / Chiều rộng (B)</td><td style="text-align: left;">${loa} m / ${breadth} m</td></tr>
+      <tr><td style="text-align: left;">DWT / GRT</td><td style="text-align: left;">${dwt} MT / ${grt}</td></tr>
+      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: ${draftArr} m</td></tr>
+      <tr><td style="text-align: left;">Thời gian đến cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${etbStr}</td></tr>
+      <tr><td style="text-align: left;">Thời gian rời cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${etdStr}</td></tr>
+      <tr><td style="text-align: left;">Cầu cập dự kiến</td><td style="text-align: left; font-weight: bold;">${berth}</td></tr>
+      <tr><td style="text-align: left;">Độ sâu đáy cầu</td><td style="text-align: left;">-${berthDepth.toFixed(1)} m (hệ cao độ Hải đồ)</td></tr>
+      <tr><td style="text-align: left;">Hàng nhập dự kiến</td><td style="text-align: left;">${cargoTotal.toLocaleString('vi-VN')} ${cargoUnitStr}</td></tr>
     </table>
   </div>
 
+  <!-- ==================== VỊ TRÍ 3 ==================== -->
   <div class="section-header">3. MỤC II. TÍNH TOÁN UKC LÚC TIẾP NHẬN & NƯỚC TRIỀU KIỆT</div>
   <div class="highlight-box">
-    <p><b>1. Tại thời điểm tiếp nhận tàu cập cầu (dự kiến ${v.etbStr})</b></p>
+    <p><b>1. Tại thời điểm tiếp nhận tàu cập cầu (dự kiến ${etbStr})</b></p>
     <p>- Mực nước thủy triều tại thời điểm tiếp nhận: <b>+${initTide.toFixed(1)} m</b> (Hải đồ).</p>
-    <p>- Độ sâu đáy cầu: <b>-${v.berthDepth.toFixed(1)} m</b>.</p>
-    <p>- Độ sâu nước thực tế khả dụng: ${v.berthDepth.toFixed(1)} m + ${initTide.toFixed(1)} m = <b>${availDepthInit} m</b>.</p>
-    <p>- Mớn nước lớn nhất của tàu khi đến: <b>${v.draftArr.toFixed(1)} m</b> (phía lái).</p>
-    <p class="indent">- UKC yêu cầu 10% mớn nước: ${ukcReqInit} m khi đó độ sâu nước tối thiểu cần thiết: ${v.draftArr.toFixed(1)} + ${ukcReqInit} = ${minDepthReqInit} m. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
+    <p>- Độ sâu đáy cầu: <b>-${berthDepth.toFixed(1)} m</b>.</p>
+    <p>- Độ sâu nước thực tế khả dụng: ${berthDepth.toFixed(1)} m + ${initTide.toFixed(1)} m = <b>${availDepthInit} m</b>.</p>
+    <p>- Mớn nước lớn nhất của tàu khi đến: <b>${draftArr.toFixed(1)} m</b> (phía lái).</p>
+    <p class="indent">- UKC yêu cầu 10% mớn nước: ${ukcReqInit} m khi đó độ sâu nước tối thiểu cần thiết: ${draftArr.toFixed(1)} + ${ukcReqInit} = ${minDepthReqInit} m. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
     
     <p style="margin-top: 6pt;"><b>2. Trong quá trình làm hàng và tại thời điểm nước triều kiệt</b></p>
-    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b>${v.equipment}</b> với năng suất khai thác trung bình ${v.ratePerHour} ${v.cargoUnit}/giờ để dỡ toàn bộ lô hàng nhập (${v.cargoTotalStr}).</p>
-    <p class="indent">- Theo kế hoạch làm hàng, đến thời điểm nước triều kiệt (khoảng <b>+${lowTideVal.toFixed(1)} m</b>), dự kiến tàu đã được dỡ một phần hàng nhập, mớn nước tàu giảm xuống còn khoảng <b>${lowDraftVal.toFixed(2)} m</b> (thấp hơn độ sâu đáy bến là ${(v.berthDepth - lowDraftVal).toFixed(2)} m &gt; 0.3m).</p>
-    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(1)} m = <b>${availDepthLow} m</b>.</p>
-    <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b>${actualLowUkc} m</b> (lớn hơn yêu cầu tối thiểu 10% là ${ukcReqLow} m và thỏa mãn trên 0.3m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt. Tàu hoàn toàn an toàn khi neo đậu làm hàng tại <b>${v.berth}</b>.</p>
+    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí phương tiện thiết bị làm hàng với năng suất khai thác trung bình ${ratePerHour} ${cargoType==='BULK'?'tấn':'move'}/giờ để dỡ toàn bộ lô hàng nhập (${cargoTotal.toLocaleString('vi-VN')} ${cargoUnitStr}).</p>
+    <p class="indent">- Theo kế hoạch làm hàng, đến thời điểm nước triều kiệt (khoảng <b>+${lowTideVal.toFixed(1)} m</b>), dự kiến tàu đã được dỡ một phần hàng nhập, mớn nước tàu giảm xuống còn khoảng <b>${lowDraftVal.toFixed(2)} m</b>.</p>
+    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(1)} m = <b>${availDepthLow} m</b>.</p>
+    <p class="indent">- UKC yêu cầu 10% với mớn nước ${lowDraftVal.toFixed(2)} m là ${ukcReqLow} m khi đó độ sâu nước tối thiểu cần thiết: ${lowDraftVal.toFixed(2)} + ${ukcReqLow} = ${minDepthReqLow} m. Với mớn nước ${minDepthReqLow} m và độ sâu nước khả dụng ${availDepthLow} m, điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt. Tàu hoàn toàn an toàn khi neo đậu làm hàng tại <b>${berth}</b>.</p>
   </div>
 
+  <!-- ==================== VỊ TRÍ 4 ==================== -->
   <div class="section-header">4. BẢNG THỜI GIAN LÀM HÀNG & MỚN NƯỚC (UKC) CỦA TÀU</div>
   <div class="highlight-box">
-    <p class="center" style="font-weight: bold; margin-bottom: 4pt;">BẢNG THỜI GIAN LÀM HÀNG CỦA TÀU ${v.vName}</p>
+    <p class="center" style="font-weight: bold; margin-bottom: 4pt;">BẢNG THỜI GIAN LÀM HÀNG CỦA TÀU ${vName}</p>
     <table class="data-table">
       <thead>
         <tr>
           <th style="width: 17%;">Thời gian</th>
-          <th style="width: 11%;">${v.cargoUnit} đã dỡ</th>
-          <th style="width: 11%;">${v.cargoUnit} còn lại</th>
+          <th style="width: 10%;">Đã dỡ</th>
+          <th style="width: 10%;">Còn lại</th>
           <th style="width: 10%;">Mớn tàu (m)</th>
-          <th style="width: 10%;">Triều Hòn Dáu</th>
-          <th style="width: 11%;">Độ sâu bến (m)</th>
-          <th style="width: 10%;">UKC TT (m)</th>
-          <th style="width: 10%;">UKC YC (m)</th>
+          <th style="width: 10%;">Triều Hòn Dáu (m)</th>
+          <th style="width: 11%;">Độ sâu khả dụng (m)</th>
+          <th style="width: 11%;">UKC thực tế (m)</th>
+          <th style="width: 11%;">UKC yêu cầu (m)</th>
           <th style="width: 10%;">Kết luận</th>
         </tr>
       </thead>
@@ -4492,14 +4654,31 @@ function exportWordPAMonNuoc() {
     </table>
   </div>
 
-  <div class="section-header">5. ĐOẠN KẾT LUẬN CUỐI VĂN BẢN</div>
+  <!-- ==================== VỊ TRÍ 5 ==================== -->
+  <div class="section-header">5. ĐOẠN CAM KẾT & KẾT LUẬN CUỐI VĂN BẢN</div>
   <div class="highlight-box">
-    <p class="indent">Trên đây là Phương án đảm bảo an toàn mớn nước cho tàu <b>${v.vName}</b> cập, rời <b>${v.berth}</b> thuộc Công ty cổ phần Cảng Hải Phòng.</p>
-    <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét, chấp thuận lên kế hoạch cho tàu <b>${v.vName}</b> cập Cảng để đảm bảo phục vụ tàu theo kế hoạch của Hãng tàu và khách hàng.</p>
+    <p class="indent">
+      Trên đây là Phương án đảm bảo an toàn mớn nước cho tàu <b>${vName}</b> cập, rời <b>${berth}</b> thuộc Công ty cổ phần Cảng Hải Phòng.
+    </p>
+    <p class="indent">
+      Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét, chấp thuận lên kế hoạch cho tàu <b>${vName}</b> cập Cảng để đảm bảo phục vụ tàu theo kế hoạch của Hãng tàu và khách hàng.
+    </p>
     <p class="indent">Trân trọng cảm ơn./.</p>
   </div>
-  </div></body></html>`;
-  downloadDocFile(htmlDoc, `3_Noi_Dung_Thay_The_PA_Mon_Nuoc_${v.vName}.doc`);
+
+</div>
+</body>
+</html>`;
+
+  // 5. Xuất file
+  let blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `3_Noi_Dung_Thay_The_PA_Mon_Nuoc_${vName}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
   
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.updateDefaultRates = updateDefaultRates;
@@ -4515,8 +4694,8 @@ window.scheduleHideTooltip = scheduleHideTooltip;
 window.showStatsPopover = showStatsPopover;
 window.scheduleHideStatsPopover = scheduleHideStatsPopover;
 window.clearStatsPopoverTimeout = clearStatsPopoverTimeout;
-window.pauseAutoScroll = pauseAutoScroll;
-window.resumeAutoScroll = resumeAutoScroll;
+window.pauseAutoScroll = () => { isUserHovering = true; };
+window.resumeAutoScroll = () => { isUserHovering = false; };
 window.renderGantt = renderGantt;
 window.renderTable = renderTable;
 window.getFilteredCalls = getFilteredCalls;
