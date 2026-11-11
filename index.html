@@ -3948,57 +3948,211 @@ function openShiftModalWithPassword() {
 let generatedPlanRows = [];
 
 // Cập nhật nhãn và tỷ lệ quy đổi khi người dùng chọn đơn vị khác nhau
+/* ==================== MODULE TÍNH TOÁN BẢNG MỚN NƯỚC (UKC) AN TOÀN ==================== */
+let generatedPlanRows = [];
+
+// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
+/* ==================== KHỐI TÍNH TOÁN BẢNG MỚN NƯỚC & TÀU LAI ==================== */
+let generatedPlanRows = [];
+
+// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
 function updateDefaultRates() {
-  const unit = $('sf_cargoUnit').value;
+  const unit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
   if (unit === 'Tấn') {
-    $('sf_rate').value = 250;
-    $('sf_rateLabel').textContent = 'Năng suất TB (Tấn/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 Tấn';
+    if ($('sf_rate')) $('sf_rate').value = 250;
+    if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (Tấn/giờ)';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 Tấn';
   } else if (unit === 'Cont') {
-    $('sf_rate').value = 70;
-    $('sf_rateLabel').textContent = 'Năng suất TB (Cont/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 30 Cont';
+    if ($('sf_rate')) $('sf_rate').value = 70;
+    if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (Cont/giờ)';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 30 Cont';
   } else if (unit === 'm³') {
-    $('sf_rate').value = 200;
-    $('sf_rateLabel').textContent = 'Năng suất TB (m³/giờ)';
-    $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 m³';
+    if ($('sf_rate')) $('sf_rate').value = 200;
+    if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (m³/giờ)';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 m³';
   }
 }
 
-// Thuật toán tính toán có biến thiên ngẫu nhiên và khóa cứng an toàn > 0.3m
+// 2. Lấy mức nước thủy triều theo timestamp (có cơ chế dự phòng an toàn)
+function getTideAtTime(timestamp) {
+  try {
+    let d = new Date(timestamp);
+    let dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let hr = d.getHours();
+
+    if (typeof multiDayTideData !== 'undefined' && multiDayTideData && multiDayTideData[dateKey]) {
+      let dayData = multiDayTideData[dateKey];
+      if (dayData.hourlyList && Array.isArray(dayData.hourlyList)) {
+        let exact = dayData.hourlyList.find(x => x.hour === hr);
+        if (exact && exact.val !== undefined) return Number(exact.val);
+      }
+    }
+    // Dự phòng nội suy dạng sóng nếu ngày chọn chưa kịp nạp dữ liệu triều
+    let hFloat = hr + d.getMinutes() / 60;
+    let approx = 2.15 + 1.45 * Math.cos(((hFloat - 6) / 12) * Math.PI);
+    return Number(approx.toFixed(2));
+  } catch(e) {
+    return 1.8;
+  }
+}
+
+// 3. Tìm mốc nước kiệt (Low tide) trong khoảng thời gian
+function getLowTideInWindow(startMs, endMs) {
+  let lowNodes = [];
+  try {
+    if (typeof multiDayTideData !== 'undefined' && multiDayTideData) {
+      for (let key in multiDayTideData) {
+        let day = multiDayTideData[key];
+        if (day && day.lowHour !== undefined && day.lowVal !== undefined) {
+          let d = new Date(day.date || key);
+          let h = Math.floor(day.lowHour);
+          let m = Math.round((day.lowHour % 1) * 60);
+          d.setHours(h, m, 0, 0);
+          let tMs = d.getTime();
+          if (tMs >= startMs && tMs <= endMs) {
+            lowNodes.push({
+              time: tMs,
+              val: Number(day.lowVal),
+              label: day.lowTimeStr || `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+            });
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.warn("Lỗi đọc multiDayTideData:", e);
+  }
+
+  // Dự phòng mốc kiệt lúc 18:16 (~0.7m) nếu bảng triều trống
+  if (lowNodes.length === 0) {
+    let cur = new Date(startMs);
+    cur.setHours(18, 16, 0, 0);
+    while (cur.getTime() <= endMs) {
+      if (cur.getTime() >= startMs) {
+        lowNodes.push({ time: cur.getTime(), val: 0.7, label: "18:16" });
+      }
+      cur.setTime(cur.getTime() + 24 * 3600000);
+    }
+  }
+  return lowNodes;
+}
+
+// 4. Tìm mốc đỉnh triều (High tide) trong khoảng thời gian
+function getHighTideInWindow(startMs, endMs) {
+  let highNodes = [];
+  try {
+    if (typeof multiDayTideData !== 'undefined' && multiDayTideData) {
+      for (let key in multiDayTideData) {
+        let day = multiDayTideData[key];
+        if (day && day.highHour !== undefined && day.highVal !== undefined) {
+          let d = new Date(day.date || key);
+          let h = Math.floor(day.highHour);
+          let m = Math.round((day.highHour % 1) * 60);
+          d.setHours(h, m, 0, 0);
+          let tMs = d.getTime();
+          if (tMs >= startMs && tMs <= endMs) {
+            highNodes.push({
+              time: tMs,
+              val: Number(day.highVal),
+              label: day.highTimeStr || `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+            });
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.warn("Lỗi đọc high tides:", e);
+  }
+
+  // Dự phòng mốc đỉnh triều lúc 06:00 (~3.6m) nếu bảng triều trống
+  if (highNodes.length === 0) {
+    let cur = new Date(startMs);
+    cur.setHours(6, 0, 0, 0);
+    while (cur.getTime() <= endMs) {
+      if (cur.getTime() >= startMs) {
+        highNodes.push({ time: cur.getTime(), val: 3.6, label: "06:00" });
+      }
+      cur.setTime(cur.getTime() + 24 * 3600000);
+    }
+  }
+  return highNodes;
+}
+
+// 5. Tạo dòng dữ liệu cho bảng (Đảm bảo điều kiện an toàn UKC >= 10% và UKC >= 0.3m)
+function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide, berthDepth) {
+  let availDepth = berthDepth + tide;
+  let ukcAct = availDepth - draft;
+  let ukcReq = draft * 0.10;
+  let isSafe = (ukcAct >= ukcReq) && (ukcAct >= 0.30);
+
+  return {
+    label: timeLabel,
+    discharged: Number((totalCargo - currentCargo).toFixed(0)).toLocaleString('vi-VN'),
+    remaining: Number(currentCargo.toFixed(0)).toLocaleString('vi-VN'),
+    draft: draft.toFixed(2).replace('.', ','),
+    tide: (typeof tide === 'number' ? tide.toFixed(2) : parseFloat(tide).toFixed(2)).replace('.', ','),
+    availDepth: availDepth.toFixed(2).replace('.', ','),
+    ukcAct: ukcAct.toFixed(2).replace('.', ','),
+    ukcReq: ukcReq.toFixed(2).replace('.', ','),
+    status: isSafe ? 'Đạt' : 'CẢNH BÁO'
+  };
+}
+
+// 6. Hiển thị bảng ra màn hình
+function renderSafetyTable() {
+  const tbody = $('sf_tbody');
+  if (!tbody) return;
+  tbody.innerHTML = generatedPlanRows.map(r => {
+    let color = (r.status === 'Đạt') ? 'var(--green, #10b981)' : 'var(--red, #ef4444)';
+    return `<tr>
+      <td style="font-weight:bold;text-align:left">${r.label}</td>
+      <td>${r.discharged}</td>
+      <td>${r.remaining}</td>
+      <td style="color:#d89a24;font-weight:bold">${r.draft}</td>
+      <td>${r.tide}</td>
+      <td style="color:#26bdc8;font-weight:bold">${r.availDepth}</td>
+      <td style="color:${color};font-weight:bold">${r.ukcAct}</td>
+      <td>${r.ukcReq}</td>
+      <td><span class="badge" style="background:${r.status==='Đạt'?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${r.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// 7. Thuật toán tính toán mớn nước có biến thiên ±20-30% và khóa cứng an toàn > 0.3m
 function calcSafetyPlan() {
-  let etbStr = $('sf_etb').value;
-  let etdStr = $('sf_etd').value;
-  let startWorkStr = $('sf_startWork').value;
-  
-  if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB) trước khi tính toán!"); return; }
-  
+  let etbStr = $('sf_etb') ? $('sf_etb').value : '';
+  let etdStr = $('sf_etd') ? $('sf_etd').value : '';
+  let startWorkStr = $('sf_startWork') ? $('sf_startWork').value : '';
+
+  if (!etbStr) {
+    alert("Vui lòng chọn Giờ cập (ETB) trước khi tính toán!");
+    return;
+  }
+
   let tStart = new Date(etbStr).getTime();
   let tEtd = etdStr ? new Date(etdStr).getTime() : Infinity;
   let tStartWork = startWorkStr ? new Date(startWorkStr).getTime() : tStart;
-  
-  let cargoUnit = $('sf_cargoUnit').value;
-  let totalCargo = Number($('sf_cargoTotal').value);
-  let baseRate = Number($('sf_rate').value);
-  let currentDraft = Number($('sf_draftArr').value);
-  let berthDepth = Number($('sf_berthDepth').value);
-  
-  // Tỷ lệ quy đổi giảm mớn
+
+  let cargoUnit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
+  let totalCargo = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
+  let baseRate = Number($('sf_rate') ? $('sf_rate').value : 250);
+  let currentDraft = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
+  let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+
   let cargoPer10cm = (cargoUnit === 'Cont') ? 30 : 800;
 
-  // Cập nhật tên cột theo đơn vị tính
   if ($('sf_thDischarged')) $('sf_thDischarged').textContent = `Đã dỡ (${cargoUnit})`;
   if ($('sf_thRemaining')) $('sf_thRemaining').textContent = `Còn lại (${cargoUnit})`;
 
   let currentCargo = totalCargo;
   let currentTime = tStart;
   generatedPlanRows = [];
-  
-  let tMaxLimit = tStart + 24 * 3600000; // Tối đa không vượt quá 24h
+
+  let tMaxLimit = tStart + 24 * 3600000; // Tối đa không quá 24 tiếng
   let lowTides = getLowTideInWindow(tStart, tMaxLimit + 12 * 3600000);
   let highTides = getHighTideInWindow(tStart, tMaxLimit + 12 * 3600000);
-  
-  // Dòng 1: Cập cầu ban đầu
+
+  // Dòng 1: Lúc tàu vừa cập cầu
   let initTide = getTideAtTime(currentTime);
   generatedPlanRows.push(createPlanRow(currentTime, "cập cầu", totalCargo, currentCargo, currentDraft, initTide, berthDepth));
 
@@ -4012,29 +4166,28 @@ function calcSafetyPlan() {
 
     let passedLowTide = lowTides.find(lt => lt.time > currentTime - 3600000 && lt.time <= currentTime);
     let passedHighTide = highTides.find(ht => ht.time > currentTime - 3600000 && ht.time <= currentTime);
-    
+
     let isWorking = (currentTime > tStartWork && currentCargo > 0);
     let label = "";
 
     if (isWorking) {
-      // 1. Biến thiên ngẫu nhiên từ -20% đến +30% (tương đương hệ số từ 0.80 đến 1.30)
+      // Biến thiên ngẫu nhiên quanh ±20% - 30% (hệ số 0.80 - 1.30)
       let randomFactor = 1.0 + (Math.random() * 0.50 - 0.20);
       let actualDischarged = Math.round(baseRate * randomFactor);
       actualDischarged = Math.min(actualDischarged, currentCargo);
 
       let trialDraft = currentDraft - (actualDischarged / cargoPer10cm) * 0.1;
 
-      // 2. Ràng buộc an toàn: Mớn tàu phải nhỏ hơn độ sâu nước ít nhất 0.35m (đảm bảo UKC > 0.3m)
+      // Ràng buộc mớn tàu phải nhỏ hơn độ sâu bến/nước ít nhất 0.35m (đảm bảo UKC > 0.3m)
       let currentTideVal = getTideAtTime(currentTime);
       let availDepth = berthDepth + currentTideVal;
       let maxSafeDraft = availDepth - 0.35;
 
-      // Khi chạm vùng nước kiệt (triều <= 1.0m), bảo đảm mớn tàu thấp hơn độ sâu đáy bến ít nhất 0.3m
+      // Kiểm soát tại vùng nước kiệt
       if (passedLowTide || currentTideVal <= 1.0) {
         maxSafeDraft = Math.min(maxSafeDraft, berthDepth - 0.30);
       }
 
-      // Tự động đẩy lượng dỡ lên nếu mớn chưa đạt chuẩn an toàn
       if (trialDraft > maxSafeDraft && currentCargo > 0) {
         let neededDrop = currentDraft - maxSafeDraft;
         let neededDischarge = Math.round((neededDrop / 0.1) * cargoPer10cm);
@@ -4075,52 +4228,21 @@ function calcSafetyPlan() {
 
   renderSafetyTable();
 }
-function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide, berthDepth) {
-  let availDepth = berthDepth + tide;
-  let ukcAct = availDepth - draft;
-  let ukcReq = draft * 0.10;
-  let isSafe = ukcAct >= ukcReq;
-  
-  return {
-    label: timeLabel,
-    // Đã thay thế hàm định dạng số bằng hàm chuẩn của Javascript
-    discharged: Number((totalCargo - currentCargo).toFixed(0)).toLocaleString('vi-VN'),
-    remaining: Number(currentCargo.toFixed(0)).toLocaleString('vi-VN'),
-    draft: draft.toFixed(2).replace('.', ','),
-    tide: tide.toFixed(2).replace('.', ','),
-    availDepth: availDepth.toFixed(2).replace('.', ','),
-    ukcAct: ukcAct.toFixed(2).replace('.', ','),
-    ukcReq: ukcReq.toFixed(2).replace('.', ','),
-    status: isSafe ? 'Đạt' : 'CẢNH BÁO'
-  };
-}
 
-function renderSafetyTable() {
-  const tbody = $('sf_tbody');
-  tbody.innerHTML = generatedPlanRows.map(r => {
-    let color = r.status === 'Đạt' ? '#10b981' : '#ef4444';
-    return `<tr>
-      <td><b>${r.label}</b></td>
-      <td>${r.discharged}</td>
-      <td>${r.remaining}</td>
-      <td style="color:#d89a24;font-weight:bold">${r.draft}</td>
-      <td>${r.tide}</td>
-      <td style="color:#26bdc8;font-weight:bold">${r.availDepth}</td>
-      <td style="color:${color};font-weight:bold">${r.ukcAct}</td>
-      <td>${r.ukcReq}</td>
-      <td><span class="badge" style="background:${r.status==='Đạt'?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${r.status}</span></td>
-    </tr>`;
-  }).join('');
-}
-
+// 8. Hàm xác định điều kiện tàu lai dắt theo chiều dài LOA
 function getTugRequirement(loaStr) {
-  let loa = parseFloat(loaStr.split('/')[0].replace(',','.'));
-  if (loa >= 170 && loa < 200) return "Có hai hoặc ba tàu lai với tổng công suất tối thiểu 5.000 HP, trong đó có ít nhất một tàu lai công suất tối thiểu 3.000 HP, các tàu lai còn lại công suất tối thiểu mỗi tàu 1.000 HP.";
-  if (loa >= 200 && loa < 220) return "Có ít nhất hai tàu lai hỗ trợ công suất tối thiểu mỗi tàu là 3.000 HP hoặc ba tàu lai, công suất tối thiểu mỗi tàu theo thứ tự 1.200 HP, 1.800 HP, 3.000 HP.";
-  if (loa >= 220 && loa <= 240) return "Có ít nhất hai hoặc ba tàu lai hỗ trợ với tổng công suất tối thiểu 8.000 HP. Trường hợp sử dụng hai tàu lai: công suất tối thiểu mỗi tàu 3.000 HP. Trường hợp sử dụng ba tàu lai: trong đó có hai tàu lai công suất tối thiểu mỗi tàu 3.000 HP, tàu lai còn lại công suất tối thiểu 1.800 HP.";
+  let loa = parseFloat((loaStr || '').split('/')[0].replace(',', '.'));
+  if (loa >= 170 && loa < 200) {
+    return "f) Tàu thuyền có chiều dài từ 170 mét đến dưới 200 mét: Có hai hoặc ba tàu lai với tổng công suất tối thiểu 5.000 HP, trong đó có ít nhất một tàu lai công suất tối thiểu 3.000 HP, các tàu lai còn lại công suất tối thiểu mỗi tàu 1.000 HP.";
+  }
+  if (loa >= 200 && loa < 220) {
+    return "g) Tàu thuyền có chiều dài từ 200 mét đến dưới 220 mét: Có ít nhất hai tàu lai hỗ trợ công suất tối thiểu mỗi tàu là 3.000 HP hoặc ba tàu lai, công suất tối thiểu mỗi tàu theo thứ tự 1.200 HP, 1.800 HP, 3.000 HP;";
+  }
+  if (loa >= 220 && loa <= 240) {
+    return "h) Tàu thuyền có chiều dài từ 220 mét đến 240 mét: Có ít nhất hai hoặc ba tàu lai hỗ trợ với tổng công suất tối thiểu 8.000 HP. Trường hợp sử dụng hai tàu lai: công suất tối thiểu mỗi tàu 3.000 HP. Trường hợp sử dụng ba tàu lai: trong đó có hai tàu lai công suất tối thiểu mỗi tàu 3.000 HP, tàu lai còn lại công suất tối thiểu 1.800 HP;";
+  }
   return "Sử dụng tàu lai dắt theo đúng quy định tại Nội quy cảng biển Hải Phòng.";
 }
-
 // Các hàm tiện ích chung để lấy dữ liệu từ Form
 function getCommonDocVars() {
   let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
