@@ -3944,16 +3944,7 @@ function openShiftModalWithPassword() {
   else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
-/* ==================== MODULE PHƯƠNG ÁN AN TOÀN & XUẤT WORD ==================== */
-let generatedPlanRows = [];
-
-// Cập nhật nhãn và tỷ lệ quy đổi khi người dùng chọn đơn vị khác nhau
-/* ==================== MODULE TÍNH TOÁN BẢNG MỚN NƯỚC (UKC) AN TOÀN ==================== */
-let generatedPlanRows = [];
-
-// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
-/* ==================== KHỐI TÍNH TOÁN BẢNG MỚN NƯỚC & TÀU LAI ==================== */
-let generatedPlanRows = [];
+var generatedPlanRows = window.generatedPlanRows || [];
 
 // 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
 function updateDefaultRates() {
