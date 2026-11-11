@@ -788,6 +788,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
         <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span></button>
         <button data-page="draft-setup" title="Setup Luồng & Bến"><span class="icon">⚙</span><span class="txt">Setup Luồng & Mớn</span></button>
+        <button data-page="safety-plan" title="Lập PA An Toàn"><span class="icon">🛡️</span><span class="txt" id="t_menuSafetyPlan">Lập PA An Toàn</span></button>
         <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt" id="t_menuReport">Báo cáo & Góp ý</span></button>
         <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt" id="t_menuResources">Nguồn & Liên hệ</span></button>
       </nav>
@@ -1336,6 +1337,84 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
         </div>
       </section>
+    <!-- MÀN HÌNH LẬP PHƯƠNG ÁN AN TOÀN -->
+      <section id="page-safety-plan" class="page hidden">
+        <div class="page-head">
+          <div>
+            <h2>Lập Phương Án Bảo Đảm An Toàn Mớn Nước (UKC)</h2>
+            <div class="muted">Tính toán tự động theo loại hàng và xuất bộ 3 báo cáo (Cảng, Hãng tàu, PA Mớn nước)</div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <!-- Form Nhập Liệu -->
+          <div class="panel">
+            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-ship"></i> Thông số Tàu & Hàng hóa</h3></div>
+            <div class="panel-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="form-group"><label>Tên tàu</label><input type="text" id="sf_vessel" class="field" value="TAC ODESSA"></div>
+                <div class="form-group"><label>Đại lý Hàng hải</label><input type="text" id="sf_agent" class="field" value="AGE-LINES CO.,LTD"></div>
+                <div class="form-group"><label>IMO / Quốc tịch</label><input type="text" id="sf_imo" class="field" value="9880116 / Panama"></div>
+                <div class="form-group"><label>Cầu bến dự kiến</label><input type="text" id="sf_berth" class="field" value="Cầu số 5 (TV5) – Bến Cảng Tân Vũ"></div>
+                <div class="form-group"><label>LOA (m) / Rộng (m)</label><input type="text" id="sf_loa" class="field" value="179.90 / 30.00"></div>
+                <div class="form-group"><label>DWT / GRT</label><input type="text" id="sf_dwt" class="field" value="40313 / 25163"></div>
+                <div class="form-group"><label>Độ sâu đáy bến (m)</label><input type="number" step="0.1" id="sf_berthDepth" class="field" value="9.0"></div>
+                <div class="form-group"><label>Mớn nước lúc đến (m)</label><input type="number" step="0.1" id="sf_draftArr" class="field" value="9.8"></div>
+                <div class="form-group"><label>Giờ cập (ETB)</label><input type="datetime-local" id="sf_etb" class="field"></div>
+                <div class="form-group"><label>Giờ rời (ETD)</label><input type="datetime-local" id="sf_etd" class="field"></div>
+              </div>
+              
+              <hr style="border:0;border-top:1px dashed var(--line);margin:12px 0">
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="form-group">
+                  <label>Loại hàng hóa</label>
+                  <select id="sf_cargoType" class="field" onchange="updateDefaultRates()">
+                    <option value="BULK">Hàng Rời (Sắt thép, nông sản...)</option>
+                    <option value="CONT">Hàng Container</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Tổng lượng (Tấn / Cont)</label><input type="number" id="sf_cargoTotal" class="field" value="15783"></div>
+                <div class="form-group"><label>Năng suất (Tấn/h hoặc Move/h)</label><input type="number" id="sf_rate" class="field" value="250"></div>
+                <div class="form-group">
+                  <label>Quy đổi giảm mớn</label>
+                  <input type="text" id="sf_rule" class="field" disabled style="background:rgba(0,0,0,0.05)" value="Giảm 10cm (0.1m) mỗi 800 Tấn">
+                </div>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:15px">
+                <button class="primary" style="flex:1" onclick="calcSafetyPlan()"><i class="fa-solid fa-calculator"></i> Tính Toán Bảng Mớn Nước</button>
+                <button class="ops-btn ops-b-word" style="flex:1;justify-content:center" onclick="export3SafetyDocs()"><i class="fa-solid fa-file-word"></i> Xuất 3 File Báo Cáo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bảng Kết Quả -->
+          <div class="panel">
+            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-table"></i> Bảng Lịch Trình Làm Hàng & Mớn Nước (UKC)</h3></div>
+            <div class="panel-body table-wrap" style="max-height: 520px;">
+              <table id="sf_resultTable">
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Đã dỡ</th>
+                    <th>Còn lại</th>
+                    <th>Mớn tàu (m)</th>
+                    <th>Triều Hòn Dáu</th>
+                    <th>Độ sâu bến (m)</th>
+                    <th>UKC TT (m)</th>
+                    <th>UKC YC (m)</th>
+                    <th>Kết luận</th>
+                  </tr>
+                </thead>
+                <tbody id="sf_tbody">
+                  <tr><td colspan="9" class="empty">Vui lòng bấm Tính toán để sinh dữ liệu...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </section>
 </div>
@@ -1431,6 +1510,7 @@ let tideViewDayOffset = 0;
 
 const dict = {
   vi: {
+    menuSafetyPlan: "Lập PA An Toàn",
     topTitle: "TT KHAI THÁC & DVKH",
     opCenter: "Operations & Customer Service Center",
     hpPort: "CẢNG HẢI PHÒNG",
@@ -1589,6 +1669,7 @@ const dict = {
     }
   },
   en: {
+    menuSafetyPlan: "Safety Plan",
     topTitle: "Operations & Customer Service Center",
     opCenter: "OPERATIONS & CUSTOMER SERVICE CENTER",
     hpPort: "PORT OF HAI PHONG",
@@ -3833,7 +3914,235 @@ function openShiftModalWithPassword() {
   else if (pwd !== null) alert(dict[currentLang].pwdWrong);
 }
 
+/* ==================== MODULE PHƯƠNG ÁN AN TOÀN & XUẤT WORD ==================== */
+let generatedPlanRows = [];
+
+function updateDefaultRates() {
+  const type = $('sf_cargoType').value;
+  if (type === 'BULK') {
+    $('sf_rate').value = 250;
+    $('sf_rule').value = "Giảm 10cm (0.1m) mỗi 800 Tấn";
+  } else {
+    $('sf_rate').value = 70;
+    $('sf_rule').value = "Giảm 10cm (0.1m) mỗi 30 Cont";
+  }
+}
+
+// Lấy mức nước thủy triều theo giờ từ dữ liệu Hòn Dáu
+function getTideAtTime(timestamp) {
+  let d = new Date(timestamp);
+  let dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let hr = d.getHours();
+  let dayData = multiDayTideData[dateKey];
+  if (dayData && dayData.hourlyList) {
+    let exact = dayData.hourlyList.find(x => x.hour === hr);
+    if (exact) return exact.val;
+  }
+  return 1.5; // Giá trị dự phòng
+}
+
+// Tìm các đỉnh nước kiệt (Low tide) trong khoảng thời gian
+function getLowTideInWindow(startMs, endMs) {
+  let lowNodes = [];
+  for (let key in multiDayTideData) {
+    let day = multiDayTideData[key];
+    if (day.lowHour !== undefined && day.lowVal !== undefined) {
+      let d = new Date(day.date);
+      d.setHours(Math.floor(day.lowHour), (day.lowHour % 1) * 60, 0, 0);
+      let tMs = d.getTime();
+      if (tMs >= startMs && tMs <= endMs) {
+        lowNodes.push({ time: tMs, val: day.lowVal, label: day.lowTimeStr });
+      }
+    }
+  }
+  return lowNodes;
+}
+
+function calcSafetyPlan() {
+  let etbStr = $('sf_etb').value;
+  if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB) trước khi tính toán!"); return; }
+  
+  let tStart = new Date(etbStr).getTime();
+  let cargoType = $('sf_cargoType').value;
+  let totalCargo = Number($('sf_cargoTotal').value);
+  let ratePerHour = Number($('sf_rate').value);
+  let currentDraft = Number($('sf_draftArr').value);
+  let berthDepth = Number($('sf_berthDepth').value);
+  
+  let currentCargo = totalCargo;
+  let currentTime = tStart;
+  generatedPlanRows = [];
+  
+  let lowTides = getLowTideInWindow(tStart, tStart + 72*3600000);
+  
+  // Dòng 1: Lúc mới cập
+  let initTide = getTideAtTime(currentTime);
+  generatedPlanRows.push(createPlanRow(currentTime, "cập cầu", totalCargo, currentCargo, currentDraft, initTide, berthDepth));
+
+  let hourCount = 0;
+  while (currentCargo > 0 && hourCount < 72) {
+    currentTime += 3600000;
+    hourCount++;
+
+    let passedLowTide = lowTides.find(lt => lt.time > currentTime - 3600000 && lt.time <= currentTime);
+    
+    let discharged = Math.min(ratePerHour, currentCargo);
+    currentCargo -= discharged;
+    
+    let draftDrop = (cargoType === 'BULK') ? (discharged / 800) * 0.1 : (discharged / 30) * 0.1;
+    currentDraft -= draftDrop;
+
+    // Chèn dòng báo nước kiệt vào giữa
+    if (passedLowTide) {
+      let tStr = passedLowTide.label + " nước kiệt";
+      generatedPlanRows.push(createPlanRow(passedLowTide.time, tStr, totalCargo, currentCargo, currentDraft, passedLowTide.val, berthDepth));
+    }
+
+    let tide = getTideAtTime(currentTime);
+    let d = new Date(currentTime);
+    let label = (d.getHours() === 0) ? `00:00 (${d.getDate()}/${d.getMonth()+1})` : `${String(d.getHours()).padStart(2,'0')}:00`;
+    generatedPlanRows.push(createPlanRow(currentTime, label, totalCargo, currentCargo, currentDraft, tide, berthDepth));
+  }
+
+  renderSafetyTable();
+}
+
+function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide, berthDepth) {
+  let availDepth = berthDepth + tide;
+  let ukcAct = availDepth - draft;
+  let ukcReq = draft * 0.10;
+  let isSafe = ukcAct >= ukcReq;
+  
+  return {
+    label: timeLabel,
+    discharged: ops_fmt((totalCargo - currentCargo).toFixed(0)),
+    remaining: ops_fmt(currentCargo.toFixed(0)),
+    draft: draft.toFixed(2).replace('.', ','),
+    tide: tide.toFixed(2).replace('.', ','),
+    availDepth: availDepth.toFixed(2).replace('.', ','),
+    ukcAct: ukcAct.toFixed(2).replace('.', ','),
+    ukcReq: ukcReq.toFixed(2).replace('.', ','),
+    status: isSafe ? 'Đạt' : 'CẢNH BÁO'
+  };
+}
+
+function renderSafetyTable() {
+  const tbody = $('sf_tbody');
+  tbody.innerHTML = generatedPlanRows.map(r => {
+    let color = r.status === 'Đạt' ? '#10b981' : '#ef4444';
+    return `<tr>
+      <td><b>${r.label}</b></td>
+      <td>${r.discharged}</td>
+      <td>${r.remaining}</td>
+      <td style="color:#d89a24;font-weight:bold">${r.draft}</td>
+      <td>${r.tide}</td>
+      <td style="color:#26bdc8;font-weight:bold">${r.availDepth}</td>
+      <td style="color:${color};font-weight:bold">${r.ukcAct}</td>
+      <td>${r.ukcReq}</td>
+      <td><span class="badge" style="background:${r.status==='Đạt'?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${r.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function getTugRequirement(loaStr) {
+  let loa = parseFloat(loaStr.split('/')[0].replace(',','.'));
+  if (loa >= 170 && loa < 200) return "Có hai hoặc ba tàu lai với tổng công suất tối thiểu 5.000 HP, trong đó có ít nhất một tàu lai công suất tối thiểu 3.000 HP, các tàu lai còn lại công suất tối thiểu mỗi tàu 1.000 HP.";
+  if (loa >= 200 && loa < 220) return "Có ít nhất hai tàu lai hỗ trợ công suất tối thiểu mỗi tàu là 3.000 HP hoặc ba tàu lai, công suất tối thiểu mỗi tàu theo thứ tự 1.200 HP, 1.800 HP, 3.000 HP.";
+  if (loa >= 220 && loa <= 240) return "Có ít nhất hai hoặc ba tàu lai hỗ trợ với tổng công suất tối thiểu 8.000 HP. Trường hợp sử dụng hai tàu lai: công suất tối thiểu mỗi tàu 3.000 HP. Trường hợp sử dụng ba tàu lai: trong đó có hai tàu lai công suất tối thiểu mỗi tàu 3.000 HP, tàu lai còn lại công suất tối thiểu 1.800 HP.";
+  return "Sử dụng tàu lai dắt theo đúng quy định tại Nội quy cảng biển Hải Phòng.";
+}
+
+function export3SafetyDocs() {
+  if (generatedPlanRows.length === 0) {
+    alert("Vui lòng Bấm Tính Toán trước khi xuất báo cáo!"); return;
+  }
+  
+  let vName = $('sf_vessel').value;
+  let agent = $('sf_agent').value;
+  let imo = $('sf_imo').value;
+  let loa = $('sf_loa').value;
+  let dwt = $('sf_dwt').value;
+  let berth = $('sf_berth').value;
+  let cargoTotal = $('sf_cargoTotal').value;
+  let tugRule = getTugRequirement(loa);
+  let etbRaw = $('sf_etb').value;
+  let etdRaw = $('sf_etd').value;
+  
+  let etbStr = etbRaw ? new Date(etbRaw).toLocaleString('vi-VN') : '....';
+  let etdStr = etdRaw ? new Date(etdRaw).toLocaleString('vi-VN') : '....';
+
+  // 1. HTML File Hãng Tàu
+  let htmlAgent = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:'Times New Roman';font-size:13pt;line-height:1.2}</style></head><body>
+    <table width="100%"><tr>
+      <td align="center"><b>${agent}</b><br>Số: .... / ....</td>
+      <td align="center"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc</b><br><i>Hải Phòng, ngày ... tháng ... năm ...</i></td>
+    </tr></table><br>
+    <h2 align="center">PHƯƠNG ÁN ỨNG PHÓ VỚI TAI NẠN, SỰ CỐ HÀNG HẢI<br>XẢY RA ĐỐI VỚI TÀU CÓ TRỌNG TẢI TỪ 40.000 DWT ĐẾN 55.000 DWT<br>GIẢM TẢI VÀO, RỜI CẦU CẢNG</h2>
+    <p align="center">Kính gửi: Cảng vụ Hàng hải Hải Phòng</p>
+    <p>Công ty ${agent} xin gửi phương án ứng phó tai nạn đối với tàu <b>${vName}</b> có trọng tải ${dwt} DWT, chiều dài LOA ${loa}m vào rời ${berth} như sau:</p>
+    <p><b>A. THÔNG TIN CHUNG</b><br>Tàu của đại diện chủ tàu: ${agent}<br>Tên tàu: ${vName}<br>IMO: ${imo}<br>Chiều dài: ${loa}m<br>Trọng tải: ${dwt} DWT</p>
+    <p><b>B. PHƯƠNG ÁN CỤ THỂ</b><br>Thực hiện các biện pháp đảm bảo an toàn, bố trí hoa tiêu và tàu lai dắt theo đúng quy định. <br><b>${tugRule}</b></p>
+    <table width="100%"><tr><td width="50%"><b>Nơi nhận:</b><br>- Như kính gửi;</td><td align="center"><b>ĐẠI DIỆN HÃNG TÀU</b></td></tr></table>
+  </body></html>`;
+
+  // 2. HTML File Cảng HP
+  let htmlPort = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:'Times New Roman';font-size:13pt;line-height:1.2}</style></head><body>
+    <table width="100%"><tr>
+      <td align="center"><b>CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG</b><br>Số: .... / CHP-KD</td>
+      <td align="center"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc</b><br><i>Hải Phòng, ngày ... tháng ... năm ...</i></td>
+    </tr></table><br>
+    <h2 align="center">PHƯƠNG ÁN ỨNG PHÓ SỰ CỐ KHẨN CẤP KHI TÀU NEO ĐẬU TẠI CẢNG XẢY RA SỰ CỐ, TAI NẠN HÀNG HẢI</h2>
+    <p align="center">Kính gửi: Cảng vụ Hàng hải Hải Phòng</p>
+    <p>Công ty cổ phần Cảng Hải Phòng đã xây dựng phương án ứng phó sự cố cho tàu <b>${vName}</b> do đại diện ${agent} làm đại lý, trọng tải ${dwt} MT, chiều dài ${loa}m tại ${berth}.</p>
+    <p><b>A. TÌNH HUỐNG SỰ CỐ</b><br>Tàu ${vName} có thể đối mặt nguy cơ trôi dạt, cháy nổ, mắc cạn tại ${berth}.</p>
+    <p><b>B. BIỆN PHÁP ỨNG PHÓ</b><br>Việc sử dụng tàu lai hỗ trợ trong vùng nước cảng biển quy định cụ thể như sau:<br><b>${tugRule}</b><br>Tùy theo điều kiện thực tế tàu phải cập, rời cầu trong điều kiện vận tốc dòng chảy và gió lớn hơn quy định hoặc sự thay đổi bất thường của thời tiết trong quá trình điều động tàu, hoặc trường hợp cần thiết, thuyền trưởng có thể yêu cầu bổ sung số lượng tàu lai hoặc yêu cầu tàu lai có công suất lớn hơn để đảm bảo hỗ trợ an toàn cho tàu cập, rời cầu, quay trở.</p>
+    <table width="100%"><tr><td width="50%"><b>Nơi nhận:</b><br>- Như kính gửi;</td><td align="center"><b>KT. TỔNG GIÁM ĐỐC</b><br><b>PHÓ TỔNG GIÁM ĐỐC</b></td></tr></table>
+  </body></html>`;
+
+  // 3. HTML File Mớn Nước (Bảng tính)
+  let tableRowsStr = generatedPlanRows.map(r => `<tr><td>${r.label}</td><td>${r.discharged}</td><td>${r.remaining}</td><td>${r.draft}</td><td>${r.tide}</td><td>${r.availDepth}</td><td>${r.ukcAct}</td><td>${r.ukcReq}</td><td>${r.status}</td></tr>`).join('');
+  
+  let htmlDraft = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:'Times New Roman';font-size:13pt;line-height:1.2} table, th, td {border: 1px solid black; border-collapse: collapse; padding: 4px; text-align: center}</style></head><body>
+    <table width="100%" style="border:none"><tr style="border:none">
+      <td style="border:none" align="center"><b>CÔNG TY CP CẢNG HẢI PHÒNG</b><br>Số: .... /CHP-KTDVKH</td>
+      <td style="border:none" align="center"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc</b><br><i>Hải Phòng, ngày ... tháng ... năm ...</i></td>
+    </tr></table><br>
+    <h2 align="center">PHƯƠNG ÁN ĐẢM BẢO AN TOÀN MỚN NƯỚC CHO TÀU ${vName}<br>cập, rời ${berth}</h2>
+    <p align="center">Kính gửi: Cảng vụ Hàng hải Hải Phòng</p>
+    <table width="100%">
+      <tr><td align="left">Tên tàu</td><td align="left"><b>${vName}</b></td></tr>
+      <tr><td align="left">Đại lý</td><td align="left">${agent}</td></tr>
+      <tr><td align="left">Cầu cập</td><td align="left">${berth}</td></tr>
+      <tr><td align="left">Thời gian dự kiến</td><td align="left">Từ ${etbStr} đến ${etdStr}</td></tr>
+      <tr><td align="left">Tổng lượng hàng</td><td align="left">${cargoTotal}</td></tr>
+    </table>
+    <br><p><b>BẢNG THỜI GIAN LÀM HÀNG VÀ TÍNH TOÁN UKC</b></p>
+    <table width="100%">
+      <tr><th>Thời gian</th><th>Đã dỡ</th><th>Còn lại</th><th>Mớn tàu</th><th>Triều Hòn Dáu</th><th>Độ sâu bến</th><th>UKC Thực tế</th><th>UKC Yêu cầu</th><th>Kết luận</th></tr>
+      ${tableRowsStr}
+    </table>
+    <br><table width="100%" style="border:none"><tr style="border:none"><td style="border:none" width="50%"></td><td style="border:none" align="center"><b>TL. TỔNG GIÁM ĐỐC<br>KT. TRƯỞNG TRUNG TÂM</b></td></tr></table>
+  </body></html>`;
+
+  const downloadDoc = (htmlStr, fileName) => {
+    let blob = new Blob(['\ufeff' + htmlStr], { type: 'application/msword' });
+    let a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  downloadDoc(htmlAgent, `1_PA_Hang_Tau_${vName}.doc`);
+  setTimeout(() => downloadDoc(htmlPort, `2_PA_Cang_Hai_Phong_${vName}.doc`), 500);
+  setTimeout(() => downloadDoc(htmlDraft, `3_PA_Mon_Nuoc_UKC_${vName}.doc`), 1000);
+}
+  
 // --- ĐƯA CÁC HÀM RA WINDOW ---
+window.updateDefaultRates = updateDefaultRates;
+window.calcSafetyPlan = calcSafetyPlan;
+window.export3SafetyDocs = export3SafetyDocs;
 window.nav = nav;
 window.filterMovement = filterMovement;
 window.filterPlanningArea = filterPlanningArea;
