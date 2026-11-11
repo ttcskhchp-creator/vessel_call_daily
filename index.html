@@ -4509,7 +4509,7 @@ function exportWordPACang() {
   downloadDocFile(htmlDoc, `2_Noi_Dung_Thay_The_PA_Cang_HP_${v.vName}.doc`);
 }
 
-// 3. Xuất nội dung thay thế Nút 3 (PA Mớn Nước UKC)
+// 3. XUẤT NỘI DUNG THAY THẾ CHO NÚT 3 (PA MỚN NƯỚC UKC)
 function exportWordPAMonNuoc() {
   if (!generatedPlanRows || generatedPlanRows.length === 0) {
     alert("Vui lòng Bấm 'Tính Toán Bảng Mớn Nước' trước khi xuất nội dung!");
@@ -4523,15 +4523,9 @@ function exportWordPAMonNuoc() {
   let ukcReqInit = (v.draftArr * 0.10).toFixed(2);
   let minDepthReqInit = (v.draftArr + parseFloat(ukcReqInit)).toFixed(2);
 
-  // Lấy chính xác mốc giờ và giá trị nước kiệt từ bảng tính
+  // Khai báo duy nhất 1 lần thông số nước kiệt từ bảng tính
   let lowRow = generatedPlanRows.find(r => r.label.includes('kiệt')) || generatedPlanRows[Math.min(8, generatedPlanRows.length - 1)];
   let lowTimeLabel = lowRow.label.replace(' nước kiệt', '').trim();
-  let lowTideVal = parseFloat((lowRow.tide || '0.7').replace(',', '.'));
-  let lowDraftVal = parseFloat((lowRow.draft || '8.6').replace(',', '.'));
-  let availDepthLow = (v.berthDepth + lowTideVal).toFixed(2);
-  let ukcReqLow = (lowDraftVal * 0.10).toFixed(2);
-  let minDepthReqLow = (lowDraftVal + parseFloat(ukcReqLow)).toFixed(2);
-  let actualLowUkc = (parseFloat(availDepthLow) - lowDraftVal).toFixed(2);
   let lowTideVal = parseFloat((lowRow.tide || '0.7').replace(',', '.'));
   let lowDraftVal = parseFloat((lowRow.draft || '8.6').replace(',', '.'));
   let availDepthLow = (v.berthDepth + lowTideVal).toFixed(2);
@@ -4606,7 +4600,7 @@ function exportWordPAMonNuoc() {
     
     <p style="margin-top: 6pt;"><b>2. Trong quá trình làm hàng và tại thời điểm nước triều kiệt</b></p>
     <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b>${v.equipment}</b> với năng suất khai thác trung bình ${v.ratePerHour} ${v.cargoUnit}/giờ để dỡ toàn bộ lô hàng nhập (${v.cargoTotalStr}).</p>
-    <p class="indent">- Theo kế hoạch làm hàng, đến thời điểm nước triều kiệt (khoảng <b>+${lowTideVal.toFixed(1)} m</b>), dự kiến tàu đã được dỡ một phần hàng nhập, mớn nước tàu giảm xuống còn khoảng <b>${lowDraftVal.toFixed(2)} m</b> (thấp hơn độ sâu đáy bến là ${(v.berthDepth - lowDraftVal).toFixed(2)} m &gt; 0.3m).</p>
+    <p class="indent">- Theo kế hoạch làm hàng, đến khoảng <b>${lowTimeLabel}</b> (thời điểm nước triều kiệt khoảng <b>+${lowTideVal.toFixed(1)} m</b>), dự kiến tàu đã được dỡ một phần hàng nhập, mớn nước tàu giảm xuống còn khoảng <b>${lowDraftVal.toFixed(2)} m</b> (thấp hơn độ sâu đáy bến là ${(v.berthDepth - lowDraftVal).toFixed(2)} m &gt; 0.3m).</p>
     <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(1)} m = <b>${availDepthLow} m</b>.</p>
     <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b>${actualLowUkc} m</b> (lớn hơn yêu cầu tối thiểu 10% là ${ukcReqLow} m và thỏa mãn trên 0.3m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt. Tàu hoàn toàn an toàn khi neo đậu làm hàng tại <b>${v.berth}</b>.</p>
   </div>
