@@ -4146,6 +4146,7 @@ function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
 window.getExactTideAt = getExactTideAt;
 
 // 6. Thuật toán tính mớn nước: Khóa cứng tối đa 24 giờ & hướng tới đỉnh triều ngày tiếp theo
+// Thuật toán tính toán kiểm soát UKC thực tế luôn >= UKC yêu cầu và >= 0.3m tại mọi giờ
 function calcSafetyPlan() {
   let etbStr = $('sf_etb') ? $('sf_etb').value : '';
   let etdStr = $('sf_etd') ? $('sf_etd').value : '';
@@ -4153,16 +4154,15 @@ function calcSafetyPlan() {
 
   if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB)!"); return; }
 
-  // Tự động kiểm tra và đồng bộ lại nếu chưa có thông số Đỉnh / Kiệt
   if (!$('sf_tideLowTime').value || !$('sf_tideHighTime').value) {
-    syncTideFromETB();
+    if (typeof syncTideFromETB === 'function') syncTideFromETB();
   }
 
   let tStart = new Date(etbStr).getTime();
   let tEtd = etdStr ? new Date(etdStr).getTime() : Infinity;
   let tStartWork = startWorkStr ? new Date(startWorkStr).getTime() : tStart;
 
-  // RÀNG BUỘC: Bảng tính toán không được vượt quá 24 tiếng kể từ khi cập
+  // Giới hạn tính toán tối đa không quá 24 tiếng kể từ khi cập
   let tMaxLimit = Math.min(tStart + 24 * 3600000, tEtd);
 
   let tLow = new Date($('sf_tideLowTime').value).getTime();
@@ -4175,6 +4175,14 @@ function calcSafetyPlan() {
   let baseRate = Number($('sf_rate') ? $('sf_rate').value : 250);
   let currentDraft = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
   let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+
+  // Tỷ lệ giảm mớn chuẩn theo từng loại hàng
+  let dropPerUnit = 0.1 / 550; // 550 tấn giảm 10cm
+  if (cargoUnit === 'Cont') {
+    dropPerUnit = 0.1 / 28;    // 28 cont giảm 10cm
+  } else if (cargoUnit === 'm³') {
+    dropPerUnit = 0.1 / 350;   // 350 m3 giảm 10cm
+  }
 
   if ($('sf_thDischarged')) $('sf_thDischarged').textContent = `Đã dỡ (${cargoUnit})`;
   if ($('sf_thRemaining')) $('sf_thRemaining').textContent = `Còn lại (${cargoUnit})`;
@@ -4189,21 +4197,21 @@ function calcSafetyPlan() {
     timeNodes.push({ time: tStartWork, label: "bắt đầu dỡ", isSpecial: true });
   }
 
-  // Mốc nước kiệt (trong phạm vi 24h)
+  // Mốc nước kiệt
   if (tLow >= tStart && tLow <= tMaxLimit) {
     let dL = new Date(tLow);
     let lblL = `${String(dL.getHours()).padStart(2, '0')}:${String(dL.getMinutes()).padStart(2, '0')} nước kiệt`;
     timeNodes.push({ time: tLow, label: lblL, isSpecial: true, isLowTide: true, tideVal: vLow });
   }
 
-  // Mốc đỉnh triều tiếp theo (hướng đến đỉnh triều của ngày hôm sau)
+  // Mốc đỉnh triều
   if (tHigh >= tStart && tHigh <= tMaxLimit) {
     let dH = new Date(tHigh);
     let lblH = `${String(dH.getHours()).padStart(2, '0')}:${String(dH.getMinutes()).padStart(2, '0')} (Đỉnh triều)`;
     timeNodes.push({ time: tHigh, label: lblH, isSpecial: true, isHighTide: true, tideVal: vHigh });
   }
 
-  // Các mốc giờ tròn tuần tự (tối đa đến hết 24 tiếng)
+  // Các mốc giờ tròn tuần tự
   let curHour = new Date(tStart);
   curHour.setMinutes(0, 0, 0);
   curHour.setTime(curHour.getTime() + 3600000);
@@ -4219,16 +4227,14 @@ function calcSafetyPlan() {
     curHour.setTime(curHour.getTime() + 3600000);
   }
 
-  // Mốc chốt đúng 24h nếu tàu nằm lâu dài
+  // Mốc kết thúc 24h
   if (tMaxLimit - tStart >= 23.5 * 3600000 && Math.abs(timeNodes[timeNodes.length - 1].time - tMaxLimit) > 600000) {
     let dEnd = new Date(tMaxLimit);
     timeNodes.push({ time: tMaxLimit, label: `${String(dEnd.getHours()).padStart(2, '0')}:${String(dEnd.getMinutes()).padStart(2, '0')} (Hết 24h)`, isSpecial: true });
   }
 
-  // Sắp xếp các mốc theo trình tự thời gian tăng dần
   timeNodes.sort((a, b) => a.time - b.time);
 
-  let dropPerUnit = 0.15 / 225; // Chuẩn quy đổi: dỡ 225 tấn hạ 0.15m mớn
   generatedPlanRows = [];
   let currentCargo = totalCargo;
   let lastCalcTime = tStart;
@@ -4239,22 +4245,37 @@ function calcSafetyPlan() {
     lastCalcTime = node.time;
 
     let currentTide = (node.tideVal !== undefined) ? node.tideVal : getExactTideAt(node.time, tLow, vLow, tHigh, vHigh);
+    let availDepth = berthDepth + currentTide;
 
-    // Tính lượng hàng dỡ (biến thiên ±20% - 30%)
+    // RÀNG BUỘC KÉP: Mớn tàu tối đa để UKC thực tế >= 10% Draft và >= 0.3m
+    // H - Draft >= 0.1 * Draft => Draft <= H / 1.10
+    let maxSafeDraft = Math.min(availDepth / 1.10, availDepth - 0.30);
+
+    // Tính toán lượng dỡ theo năng suất (dao động ±20% - 30%)
     if (node.time > tStartWork && currentCargo > 0 && timeDeltaHours > 0) {
       let factor = 1.0 + (Math.random() * 0.50 - 0.20);
       let actualDischarged = Math.round(baseRate * factor * timeDeltaHours);
       actualDischarged = Math.min(actualDischarged, currentCargo);
 
-      let draftDrop = actualDischarged * dropPerUnit;
+      let trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+
+      // NẾU MỚN TÀU DỰ KIẾN VƯỢT QUÁ NGƯỠNG AN TOÀN (UKC thực tế < UKC yêu cầu)
+      // Tự động đẩy sản lượng dỡ lên để hạ mớn đạt đúng chuẩn an toàn:
+      if (trialDraft > maxSafeDraft) {
+        let neededDrop = currentDraft - (maxSafeDraft - 0.02); // trừ nhẹ 2cm để luôn dư an toàn
+        let neededDischarge = Math.round(neededDrop / dropPerUnit);
+        actualDischarged = Math.max(actualDischarged, neededDischarge);
+        actualDischarged = Math.min(actualDischarged, currentCargo);
+        trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+      }
+
       currentCargo -= actualDischarged;
-      currentDraft -= draftDrop;
+      currentDraft = trialDraft;
     }
 
-    // RÀNG BUỘC AN TOÀN TUYỆT ĐỐI TẠI MỐC NƯỚC KIỆT:
-    // Mớn tàu luôn thấp hơn độ sâu đáy bến trên 0.3m (<= berthDepth - 0.35m)
-    if (node.isLowTide && currentDraft > (berthDepth - 0.35)) {
-      currentDraft = berthDepth - 0.40;
+    // Kiểm tra chốt chặn an toàn tại mốc nước kiệt
+    if (node.isLowTide && currentDraft > maxSafeDraft) {
+      currentDraft = maxSafeDraft - 0.05;
     }
 
     generatedPlanRows.push(createPlanRow(node.time, node.label, totalCargo, currentCargo, currentDraft, currentTide, berthDepth));
