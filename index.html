@@ -4167,6 +4167,7 @@ function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
 window.getExactTideAt = getExactTideAt;
 
 // 7. Thuật toán tính mớn nước (Hỗ trợ cả Hàng Nhập + Hàng Xuất và khóa cứng UKC TT >= UKC YC)
+// 7. Thuật toán tính mớn nước (Gộp dòng bắt đầu dỡ + Hàng xuất 80-90% năng suất + Khóa UKC TT >= UKC YC)
 function calcSafetyPlan() {
   let etbStr = $('sf_etb') ? $('sf_etb').value : '';
   let etdStr = $('sf_etd') ? $('sf_etd').value : '';
@@ -4206,40 +4207,62 @@ function calcSafetyPlan() {
   }
 
   let timeNodes = [];
-  timeNodes.push({ time: tStart, label: "cập cầu", isSpecial: true });
+  let dStart = new Date(tStart);
+  let startTimeStr = `${String(dStart.getHours()).padStart(2, '0')}:${String(dStart.getMinutes()).padStart(2, '0')}`;
 
-  if (tStartWork > tStart && tStartWork < tMaxLimit) {
-    timeNodes.push({ time: tStartWork, label: "bắt đầu dỡ", isSpecial: true });
+  // GỘP DÒNG BẮT ĐẦU DỠ VÀ GIỜ BẮT ĐẦU DỠ LÀM 1 DÒNG DUY NHẤT
+  if (tStartWork <= tStart) {
+    // Nếu bắt đầu làm hàng ngay khi cập cầu
+    timeNodes.push({ time: tStart, label: `${startTimeStr} cập cầu (b.đầu dỡ)`, isSpecial: true, isStartWork: true });
+  } else {
+    // Mốc cập cầu riêng
+    timeNodes.push({ time: tStart, label: `${startTimeStr} cập cầu`, isSpecial: true });
+    // Mốc giờ bắt đầu dỡ gộp chung cả giờ và nhãn trên 1 dòng
+    if (tStartWork < tMaxLimit) {
+      let dW = new Date(tStartWork);
+      let lblW = `${String(dW.getHours()).padStart(2, '0')}:${String(dW.getMinutes()).padStart(2, '0')} bắt đầu dỡ`;
+      timeNodes.push({ time: tStartWork, label: lblW, isSpecial: true, isStartWork: true });
+    }
   }
 
+  // Mốc nước kiệt
   if (tLow >= tStart && tLow <= tMaxLimit) {
     let dL = new Date(tLow);
     let lblL = `${String(dL.getHours()).padStart(2, '0')}:${String(dL.getMinutes()).padStart(2, '0')} nước kiệt`;
     timeNodes.push({ time: tLow, label: lblL, isSpecial: true, isLowTide: true, tideVal: vLow });
   }
 
+  // Mốc đỉnh triều
   if (tHigh >= tStart && tHigh <= tMaxLimit) {
     let dH = new Date(tHigh);
     let lblH = `${String(dH.getHours()).padStart(2, '0')}:${String(dH.getMinutes()).padStart(2, '0')} (Đỉnh triều)`;
     timeNodes.push({ time: tHigh, label: lblH, isSpecial: true, isHighTide: true, tideVal: vHigh });
   }
 
+  // Các mốc giờ tròn tuần tự (Bỏ qua giờ tròn nếu trùng khung giờ với dòng bắt đầu dỡ hoặc cách mốc đặc biệt < 20 phút)
   let curHour = new Date(tStart);
   curHour.setMinutes(0, 0, 0);
   curHour.setTime(curHour.getTime() + 3600000);
 
+  let dWorkObj = new Date(tStartWork);
+
   while (curHour.getTime() <= tMaxLimit) {
     let tMs = curHour.getTime();
-    let tooClose = timeNodes.some(n => Math.abs(n.time - tMs) < 600000);
-    if (!tooClose && tMs > tStart) {
-      let d = new Date(tMs);
+    let d = new Date(tMs);
+
+    // Kiểm tra trùng khung giờ bắt đầu dỡ (gộp làm 1 dòng) hoặc quá sát mốc đặc biệt
+    let sameWorkHour = (tStartWork > tStart) && (d.getDate() === dWorkObj.getDate() && d.getHours() === dWorkObj.getHours());
+    let tooClose = timeNodes.some(n => Math.abs(n.time - tMs) < 1200000); // Cách < 20 phút
+
+    if (!sameWorkHour && !tooClose && tMs > tStart) {
       let lbl = (d.getHours() === 0) ? `00:00 (${d.getDate()}/${d.getMonth() + 1})` : `${String(d.getHours()).padStart(2, '0')}:00`;
       timeNodes.push({ time: tMs, label: lbl, isSpecial: false });
     }
     curHour.setTime(curHour.getTime() + 3600000);
   }
 
-  if (tMaxLimit - tStart >= 23.5 * 3600000 && Math.abs(timeNodes[timeNodes.length - 1].time - tMaxLimit) > 600000) {
+  // Mốc chốt đúng 24h nếu tàu nằm lâu dài
+  if (tMaxLimit - tStart >= 23.5 * 3600000 && Math.abs(timeNodes[timeNodes.length - 1].time - tMaxLimit) > 900000) {
     let dEnd = new Date(tMaxLimit);
     timeNodes.push({ time: tMaxLimit, label: `${String(dEnd.getHours()).padStart(2, '0')}:${String(dEnd.getMinutes()).padStart(2, '0')} (Hết 24h)`, isSpecial: true });
   }
@@ -4270,7 +4293,7 @@ function calcSafetyPlan() {
     // Ngưỡng mớn tối đa tại giờ hiện tại để UKC TT >= 10% Mớn và >= 0.30m
     let maxSafeDraftNow = Math.min(availDepth / 1.10, availDepth - 0.30);
 
-    // Ngưỡng mớn tối đa đón đầu nếu phía trước còn mốc nước kiệt (dùng khi xếp hàng xuất để không bị quá mớn lúc nước ròng)
+    // Ngưỡng mớn tối đa đón đầu các giờ tiếp theo (đảm bảo khi xếp hàng xuất không bị vượt mớn lúc nước ròng)
     let minFutureSafeDraft = maxSafeDraftNow;
     for (let j = i + 1; j < timeNodes.length; j++) {
       let futAvail = berthDepth + timeNodes[j].calcTide;
@@ -4280,16 +4303,15 @@ function calcSafetyPlan() {
 
     let phase = (remImport > 0 || totalExport === 0) ? 'IMPORT' : 'EXPORT';
 
+    // Bắt đầu tính sản lượng từ sau mốc bắt đầu dỡ (hoặc ngay tại dòng bắt đầu dỡ nếu đã qua một khoảng thời gian làm hàng)
     if (node.time > tStartWork && timeDeltaHours > 0) {
-      let factor = 1.0 + (Math.random() * 0.50 - 0.20); // Biến thiên ±20% - 30%
-      let plannedQty = Math.round(baseRate * factor * timeDeltaHours);
-
       if (remImport > 0) {
-        // GIAI ĐOẠN 1: DỠ HÀNG NHẬP
-        let actualDischarged = Math.min(plannedQty, remImport);
+        // GIAI ĐOẠN 1: DỠ HÀNG NHẬP (Biến thiên ±20% - 30% năng suất TB)
+        let importFactor = 1.0 + (Math.random() * 0.50 - 0.20);
+        let plannedImportQty = Math.round(baseRate * importFactor * timeDeltaHours);
+        let actualDischarged = Math.min(plannedImportQty, remImport);
         let trialDraft = currentDraft - (actualDischarged * dropPerUnit);
 
-        // Nếu mớn vẫn cao hơn mức an toàn, tự động tăng lượng dỡ
         if (trialDraft > maxSafeDraftNow) {
           let neededDrop = currentDraft - (maxSafeDraftNow - 0.02);
           let neededDischarge = Math.round(neededDrop / dropPerUnit);
@@ -4302,23 +4324,25 @@ function calcSafetyPlan() {
         currentDraft = trialDraft;
         phase = 'IMPORT';
 
-        // Nếu vừa hết hàng nhập trong giờ này và có hàng xuất
         if (remImport === 0 && totalExport > 0 && !node.isSpecial) {
           node.label += " (Xong nhập)";
         }
       } else if (totalExport > 0 && remExport > 0) {
-        // GIAI ĐOẠN 2: XẾP HÀNG XUẤT (Đảm bảo mớn tăng lên vẫn tuyệt đối an toàn qua cả đáy triều)
+        // GIAI ĐOẠN 2: XẾP HÀNG XUẤT (Đạt 80% - 90% năng suất trung bình)
         phase = 'EXPORT';
         if (!exportStartedLogged && !node.isSpecial) {
           node.label += " (Bắt đầu xuất)";
           exportStartedLogged = true;
         }
 
+        let exportFactor = 0.80 + (Math.random() * 0.10); // 80% đến 90% năng suất TB
+        let plannedExportQty = Math.round(baseRate * exportFactor * timeDeltaHours);
+
         let safeCeilingForExport = minFutureSafeDraft - 0.02;
         let maxAllowedDraftIncrease = Math.max(0, safeCeilingForExport - currentDraft);
         let maxSafeLoadQty = Math.floor(maxAllowedDraftIncrease / dropPerUnit);
 
-        let actualLoaded = Math.min(plannedQty, remExport, maxSafeLoadQty);
+        let actualLoaded = Math.min(plannedExportQty, remExport, maxSafeLoadQty);
         remExport -= actualLoaded;
         loadedExport += actualLoaded;
         currentDraft += actualLoaded * dropPerUnit;
@@ -4499,6 +4523,7 @@ function recalcAllRowsFromBerth() {
 }
 
 // 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại mượt mà lượng hàng & mớn theo cột Triều người dùng vừa sửa
+// 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại lượng hàng & mớn (Hàng xuất 80-90% năng suất TB)
 function rebalanceDraftFromTide() {
   if (!generatedPlanRows || generatedPlanRows.length === 0) return;
   let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
@@ -4518,12 +4543,22 @@ function rebalanceDraftFromTide() {
     let availDepth = berthDepth + tideNum;
     let maxSafeDraftNow = Math.min(availDepth / 1.10, availDepth - 0.30);
 
-    if (i > 0) {
-      let factor = 1.0 + (Math.random() * 0.40 - 0.15);
-      let plannedQty = Math.round(baseRate * factor);
+    // Đón đầu ngưỡng an toàn các giờ phía sau khi xếp hàng xuất
+    let minFutureSafeDraft = maxSafeDraftNow;
+    for (let j = i + 1; j < generatedPlanRows.length; j++) {
+      let futTide = generatedPlanRows[j].tideNum !== undefined ? generatedPlanRows[j].tideNum : parseFloat(String(generatedPlanRows[j].tide).replace(',', '.'));
+      let futAvail = berthDepth + futTide;
+      let futSafe = Math.min(futAvail / 1.10, futAvail - 0.30);
+      if (futSafe < minFutureSafeDraft) minFutureSafeDraft = futSafe;
+    }
 
+    let isStartWait = r.label.includes('bắt đầu dỡ') && !r.label.includes('cập cầu');
+
+    if (i > 0 && !isStartWait) {
       if (remImport > 0) {
-        let actualDis = Math.min(plannedQty, remImport);
+        let importFactor = 1.0 + (Math.random() * 0.50 - 0.20);
+        let plannedImportQty = Math.round(baseRate * importFactor);
+        let actualDis = Math.min(plannedImportQty, remImport);
         let trialDraft = currentDraft - (actualDis * dropPerUnit);
         if (trialDraft > maxSafeDraftNow) {
           let neededDrop = currentDraft - (maxSafeDraftNow - 0.02);
@@ -4539,9 +4574,11 @@ function rebalanceDraftFromTide() {
         r.remaining = Number(remImport.toFixed(0)).toLocaleString('vi-VN');
       } else if (totalExport > 0 && remExport > 0) {
         r.phase = 'EXPORT';
-        let maxAllowedInc = Math.max(0, (maxSafeDraftNow - 0.02) - currentDraft);
+        let exportFactor = 0.80 + (Math.random() * 0.10); // 80% - 90% năng suất TB
+        let plannedExportQty = Math.round(baseRate * exportFactor);
+        let maxAllowedInc = Math.max(0, (minFutureSafeDraft - 0.02) - currentDraft);
         let maxSafeLoad = Math.floor(maxAllowedInc / dropPerUnit);
-        let actualLoad = Math.min(plannedQty, remExport, maxSafeLoad);
+        let actualLoad = Math.min(plannedExportQty, remExport, maxSafeLoad);
         remExport -= actualLoad;
         loadedExport += actualLoad;
         currentDraft += actualLoad * dropPerUnit;
