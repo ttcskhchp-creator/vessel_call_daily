@@ -4669,7 +4669,7 @@ function recalcAllRowsFromBerth() {
 }
 
 // 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại mượt mà lượng hàng & mớn theo cột Triều người dùng vừa sửa
-// 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại lượng hàng & mớn (Hàng xuất 80-90% năng suất TB)
+// 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại lượng hàng & mớn (Hàng xuất 70-80% năng suất TB)
 function rebalanceDraftFromTide() {
   if (!generatedPlanRows || generatedPlanRows.length === 0) return;
   let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
@@ -4720,7 +4720,7 @@ function rebalanceDraftFromTide() {
         r.remaining = Number(remImport.toFixed(0)).toLocaleString('vi-VN');
       } else if (totalExport > 0 && remExport > 0) {
         r.phase = 'EXPORT';
-        let exportFactor = 0.80 + (Math.random() * 0.10); // 80% - 90% năng suất TB
+        let exportFactor = 0.70 + (Math.random() * 0.10); // 70% - 80% năng suất TB
         let plannedExportQty = Math.round(baseRate * exportFactor);
         let maxAllowedInc = Math.max(0, (minFutureSafeDraft - 0.02) - currentDraft);
         let maxSafeLoad = Math.floor(maxAllowedInc / dropPerUnit);
