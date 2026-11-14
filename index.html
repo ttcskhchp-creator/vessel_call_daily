@@ -1359,19 +1359,19 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <div class="form-group"><label>LOA (m) / Rộng (m)</label><input type="text" id="sf_loa" class="field" value="179.90 / 30.00"></div>
                 <div class="form-group"><label>DWT / GRT</label><input type="text" id="sf_dwt" class="field" value="40.313 / 25.163"></div>
                 
-                <div class="form-group"><label>Giờ cập (ETB)</label><input type="datetime-local" id="sf_etb" class="field" onchange="syncTideFromETB()"> </div>
+                <div class="form-group"><label>Giờ cập (ETB)</label><input type="datetime-local" id="sf_etb" class="field" onchange="syncTideFromETB()"></div>
                 <div class="form-group"><label>Giờ d.kiến rời (ETD)</label><input type="datetime-local" id="sf_etd" class="field"></div>
                 
                 <div class="form-group"><label>Giờ b.đầu làm hàng</label><input type="datetime-local" id="sf_startWork" class="field"></div>
                 <div class="form-group"><label>Giờ d.kiến xong hàng</label><input type="datetime-local" id="sf_endWork" class="field"></div>
                 
-                <div class="form-group"><label>Độ sâu đáy bến (m)</label><input type="number" step="0.1" id="sf_berthDepth" class="field" value="9.0"></div>
+                <div class="form-group"><label>Độ sâu đáy bến (m)</label><input type="number" step="0.1" id="sf_berthDepth" class="field" value="9.0" oninput="recalcAllRowsFromBerth()"></div>
                 <div class="form-group"><label>Mớn lớn nhất lúc đến (m)</label><input type="number" step="0.1" id="sf_draftArr" class="field" value="9.8"></div>
               </div>
               
               <hr style="border:0;border-top:1px dashed var(--line);margin:12px 0">
               
-              <!-- 4 TRƯỜNG DỮ LIỆU MỚI BỔ SUNG -->
+              <!-- THÔNG TIN HÀNG NHẬP, HÀNG XUẤT & THIẾT BỊ -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <div class="form-group">
                   <label>Tên hàng hóa</label>
@@ -1386,8 +1386,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Tổng khối lượng hàng</label>
+                  <label style="color:#0ea5e9;font-weight:bold;">Tổng hàng NHẬP dự kiến</label>
                   <input type="number" id="sf_cargoTotal" class="field" value="15783">
+                </div>
+                <div class="form-group">
+                  <label style="color:#f59e0b;font-weight:bold;">Tổng hàng XUẤT dự kiến (nếu có)</label>
+                  <input type="number" id="sf_cargoExport" class="field" value="0" placeholder="Để 0 nếu chỉ có hàng nhập">
                 </div>
                 <div class="form-group">
                   <label>Loại thiết bị khai thác</label>
@@ -1403,39 +1407,38 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                   <label id="sf_rateLabel">Năng suất TB (Tấn/giờ)</label>
                   <input type="number" id="sf_rate" class="field" value="250">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="grid-column: span 2;">
                   <label>Quy đổi mớn nước</label>
-                  <input type="text" id="sf_rule" class="field" disabled style="background:rgba(0,0,0,0.05)" value="Giảm 10cm (0.1m) mỗi 800 Tấn">
+                  <input type="text" id="sf_rule" class="field" disabled style="background:rgba(0,0,0,0.05)" value="Giảm/Tăng 10cm (0.1m) mỗi 550 Tấn">
                 </div>
               </div>
 
-             
-              
               <!-- KHỐI ĐIỀU CHỈNH THỦY TRIỀU THEO NGÀY CẬP (ETB) -->
-<div style="background: rgba(38,189,200,0.08); border: 1px solid var(--cyan, #0ea5e9); border-radius: 6px; padding: 10px; margin: 12px 0;">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-    <b style="color:var(--cyan, #0ea5e9); font-size: 13px;"><i class="fa-solid fa-water"></i> Thủy Triều Hòn Dáu Theo Ngày Cập Tàu</b>
-    <button type="button" class="btn-sub" style="padding: 2px 8px; font-size: 11px;" onclick="syncTideFromETB()"><i class="fa-solid fa-rotate"></i> Nạp lại từ Lịch triều</button>
-  </div>
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-    <div class="form-group">
-      <label style="font-size:11px; font-weight:bold; color:#ef4444;">Giờ nước kiệt (Đáy triều)</label>
-      <input type="datetime-local" id="sf_tideLowTime" class="field" style="padding:4px">
-    </div>
-    <div class="form-group">
-      <label style="font-size:11px; font-weight:bold; color:#ef4444;">Mực nước kiệt (m)</label>
-      <input type="number" step="0.01" id="sf_tideLowVal" class="field" value="0.70" style="padding:4px">
-    </div>
-    <div class="form-group">
-      <label style="font-size:11px; font-weight:bold; color:#10b981;">Giờ nước lớn (Đỉnh triều)</label>
-      <input type="datetime-local" id="sf_tideHighTime" class="field" style="padding:4px">
-    </div>
-    <div class="form-group">
-      <label style="font-size:11px; font-weight:bold; color:#10b981;">Mực nước đỉnh (m)</label>
-      <input type="number" step="0.01" id="sf_tideHighVal" class="field" value="3.60" style="padding:4px">
-    </div>
-  </div>
-</div>
+              <div style="background: rgba(38,189,200,0.08); border: 1px solid var(--cyan, #0ea5e9); border-radius: 6px; padding: 10px; margin: 12px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                  <b style="color:var(--cyan, #0ea5e9); font-size: 13px;"><i class="fa-solid fa-water"></i> Thủy Triều Hòn Dáu Theo Ngày Cập Tàu</b>
+                  <button type="button" class="btn-sub" style="padding: 2px 8px; font-size: 11px;" onclick="syncTideFromETB()"><i class="fa-solid fa-rotate"></i> Nạp lại từ Lịch triều</button>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="form-group">
+                    <label style="font-size:11px; font-weight:bold; color:#ef4444;">Giờ nước kiệt (Đáy triều)</label>
+                    <input type="datetime-local" id="sf_tideLowTime" class="field" style="padding:4px">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:11px; font-weight:bold; color:#ef4444;">Mực nước kiệt (m)</label>
+                    <input type="number" step="0.01" id="sf_tideLowVal" class="field" value="0.60" style="padding:4px">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:11px; font-weight:bold; color:#10b981;">Giờ nước lớn (Đỉnh triều)</label>
+                    <input type="datetime-local" id="sf_tideHighTime" class="field" style="padding:4px">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:11px; font-weight:bold; color:#10b981;">Mực nước đỉnh (m)</label>
+                    <input type="number" step="0.01" id="sf_tideHighVal" class="field" value="3.55" style="padding:4px">
+                  </div>
+                </div>
+              </div>
+
               <!-- 4 Nút điều khiển -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px">
                 <button class="primary" style="grid-column: span 2; padding: 10px; font-size: 13px;" onclick="calcSafetyPlan()"><i class="fa-solid fa-calculator"></i> Tính Toán Bảng Mớn Nước (Biến thiên ±20-30%)</button>
@@ -1446,18 +1449,31 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             </div>
           </div>
 
-          <!-- Bảng Kết Quả -->
+          <!-- Bảng Kết Quả Tương Tác Như Excel -->
           <div class="panel">
-            <div class="panel-head"><h3 style="color:var(--cyan)"><i class="fa-solid fa-table"></i> Bảng Lịch Trình Làm Hàng & Mớn Nước (UKC)</h3></div>
-            <div class="panel-body table-wrap" style="max-height: 540px;">
+            <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <h3 style="color:var(--cyan); margin:0;"><i class="fa-solid fa-table"></i> Bảng Lịch Trình Làm Hàng & Mớn Nước (Chế độ Excel)</h3>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:11px; display:flex; align-items:center; gap:4px; cursor:pointer;" title="Khi sửa cột Triều Hòn Dáu, nếu mớn tàu vượt ngưỡng an toàn sẽ tự động ép mớn xuống">
+                  <input type="checkbox" id="sf_autoSafeOnEdit" checked> Tự khóa an toàn UKC khi sửa Triều
+                </label>
+                <button type="button" class="btn-sub" style="padding:3px 8px; font-size:11px;" onclick="rebalanceDraftFromTide()" title="Tính lại toàn bộ sản lượng và mớn tàu theo cột Triều Hòn Dáu bạn vừa sửa">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Cân bằng lại Mớn theo Triều
+                </button>
+              </div>
+            </div>
+            <div style="padding: 6px 12px; font-size: 11.5px; color: var(--muted, #64748b); background: rgba(14,165,233,0.05); border-bottom: 1px solid var(--line);">
+              💡 <b>Mẹo Excel:</b> Bạn có thể <b>gõ sửa trực tiếp</b> vào ô <b>Triều Hòn Dáu</b>, <b>Mớn tàu</b> hoặc <b>Đã dỡ/Xếp</b> dưới bảng. Các cột Độ sâu bến, UKC TT, UKC YC và file Word tải về sẽ tự động tính lại theo đúng số bạn nhập.
+            </div>
+            <div class="panel-body table-wrap" style="max-height: 560px;">
               <table id="sf_resultTable">
                 <thead>
                   <tr>
                     <th>Thời gian</th>
-                    <th id="sf_thDischarged">Đã dỡ</th>
+                    <th id="sf_thDischarged">Đã dỡ / Xếp</th>
                     <th id="sf_thRemaining">Còn lại</th>
                     <th>Mớn tàu (m)</th>
-                    <th>Triều Hòn Dáu</th>
+                    <th>Triều Hòn Dáu (m)</th>
                     <th>Độ sâu bến (m)</th>
                     <th>UKC TT (m)</th>
                     <th>UKC YC (m)</th>
@@ -3985,30 +4001,42 @@ var generatedPlanRows = window.generatedPlanRows || [];
 var generatedPlanRows = window.generatedPlanRows || [];
 
 // 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị hàng
+/* ==================== MODULE TÍNH TOÁN UKC, HÀNG XUẤT & BẢNG TƯƠNG TÁC EXCEL ==================== */
+var generatedPlanRows = window.generatedPlanRows || [];
+
+// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị hàng
 function updateDefaultRates() {
   const unit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
   if (unit === 'Tấn') {
     if ($('sf_rate')) $('sf_rate').value = 250;
     if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (Tấn/giờ)';
-    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 Tấn';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm/Tăng 10cm (0.1m) mỗi 550 Tấn';
   } else if (unit === 'Cont') {
     if ($('sf_rate')) $('sf_rate').value = 70;
     if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (Cont/giờ)';
-    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 30 Cont';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm/Tăng 10cm (0.1m) mỗi 28 Cont';
   } else if (unit === 'm³') {
     if ($('sf_rate')) $('sf_rate').value = 200;
     if ($('sf_rateLabel')) $('sf_rateLabel').textContent = 'Năng suất TB (m³/giờ)';
-    if ($('sf_rule')) $('sf_rule').value = 'Giảm 10cm (0.1m) mỗi 800 m³';
+    if ($('sf_rule')) $('sf_rule').value = 'Giảm/Tăng 10cm (0.1m) mỗi 350 m³';
   }
 }
 
-// 2. Định dạng chuẩn datetime-local (yyyy-MM-ddThh:mm)
+// 2. Lấy hệ số thay đổi mớn trên 1 đơn vị hàng
+function getDropPerUnit() {
+  const unit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
+  if (unit === 'Cont') return 0.1 / 28;
+  if (unit === 'm³') return 0.1 / 350;
+  return 0.1 / 550;
+}
+
+// 3. Định dạng datetime-local (yyyy-MM-ddThh:mm)
 function formatDateTimeLocal(dateObj) {
   let pad = (n) => String(n).padStart(2, '0');
   return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
 }
 
-// 3. Tra cứu dữ liệu thủy triều theo ngày trong kho quét thegioimoicau
+// 4. Tra cứu dữ liệu thủy triều theo ngày trong kho quét
 function getDayTideFromDatabase(dateObj) {
   let y = dateObj.getFullYear();
   let m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -4026,13 +4054,13 @@ function getDayTideFromDatabase(dateObj) {
   return null;
 }
 
-// 4. Tự động dò mốc Kiệt ngày cập và mốc Đỉnh tiếp theo (dò xuyên sang ngày hôm sau)
+// 5. Tự động dò mốc Kiệt ngày cập và mốc Đỉnh tiếp theo (dò xuyên sang ngày hôm sau)
 function syncTideFromETB() {
   let etbStr = $('sf_etb') ? $('sf_etb').value : '';
   if (!etbStr) return;
 
   let dETB = new Date(etbStr);
-  let dNext = new Date(dETB.getTime() + 86400000); // Ngày tiếp theo (Day + 1)
+  let dNext = new Date(dETB.getTime() + 86400000);
 
   let data1 = getDayTideFromDatabase(dETB);
   let data2 = getDayTideFromDatabase(dNext);
@@ -4040,42 +4068,37 @@ function syncTideFromETB() {
   let lowFound = false;
   let highFound = false;
 
-  // A. Dò mốc nước kiệt: Ưu tiên mốc kiệt diễn ra sau giờ cập của ngày cập
   if (data1 && data1.data) {
     let day = data1.data;
     let lHour = (day.lowHour !== undefined) ? day.lowHour : (day.lowTimeStr ? parseFloat(day.lowTimeStr.replace(':', '.')) : null);
     if (lHour !== null) {
       let dLow = new Date(dETB);
       dLow.setHours(Math.floor(lHour), Math.round((lHour % 1) * 60), 0, 0);
-      // Nếu giờ kiệt nằm sau giờ cập hoặc gần giờ cập
       if (dLow.getTime() >= dETB.getTime() - 1800000) {
-        $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-        $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.60";
+        if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
+        if ($('sf_tideLowVal')) $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.60";
         lowFound = true;
       }
     }
   }
 
-  // Nếu mốc kiệt ngày 1 đã trôi qua, lấy mốc kiệt của ngày thứ 2
   if (!lowFound && data2 && data2.data) {
     let day = data2.data;
     let lHour = (day.lowHour !== undefined) ? day.lowHour : (day.lowTimeStr ? parseFloat(day.lowTimeStr.replace(':', '.')) : 19.5);
     let dLow = new Date(dNext);
     dLow.setHours(Math.floor(lHour), Math.round((lHour % 1) * 60), 0, 0);
-    $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-    $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.65";
+    if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
+    if ($('sf_tideLowVal')) $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.65";
     lowFound = true;
   }
 
-  // B. Dò mốc đỉnh triều tiếp theo: Tìm đỉnh triều diễn ra SAU giờ cập hoặc sau mốc kiệt
-  // Kiểm tra ngày tiếp theo trước để đón đầu đỉnh triều rạng sáng hôm sau
   if (data2 && data2.data) {
     let day = data2.data;
     let hHour = (day.highHour !== undefined) ? day.highHour : (day.highTimeStr ? parseFloat(day.highTimeStr.replace(':', '.')) : 5.8);
     let dHigh = new Date(dNext);
     dHigh.setHours(Math.floor(hHour), Math.round((hHour % 1) * 60), 0, 0);
-    $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-    $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.55";
+    if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
+    if ($('sf_tideHighVal')) $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.55";
     highFound = true;
   } else if (data1 && data1.data) {
     let day = data1.data;
@@ -4083,28 +4106,27 @@ function syncTideFromETB() {
     let dHigh = new Date(dETB);
     dHigh.setHours(Math.floor(hHour), Math.round((hHour % 1) * 60), 0, 0);
     if (dHigh.getTime() > dETB.getTime()) {
-      $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-      $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.60";
+      if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
+      if ($('sf_tideHighVal')) $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.60";
       highFound = true;
     }
   }
 
-  // C. Cơ chế dự phòng tính toán thiên văn (không bao giờ ghim cứng 18:16)
   if (!lowFound) {
     let dLow = new Date(dETB);
-    dLow.setHours(19, 0, 0, 0); // Thực tế trạm Hòn Dáu lúc kiệt ngày 12/11 là 19:00
-    $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-    $('sf_tideLowVal').value = "0.60";
+    dLow.setHours(19, 0, 0, 0);
+    if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
+    if ($('sf_tideLowVal')) $('sf_tideLowVal').value = "0.60";
   }
   if (!highFound) {
     let dHigh = new Date(dNext);
-    dHigh.setHours(5, 45, 0, 0); // Đỉnh triều rạng sáng ngày tiếp theo khoảng 05:45
-    $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-    $('sf_tideHighVal').value = "3.55";
+    dHigh.setHours(5, 45, 0, 0);
+    if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
+    if ($('sf_tideHighVal')) $('sf_tideHighVal').value = "3.55";
   }
 }
 
-// 5. Hàm lấy chính xác mực nước triều cho từng giờ (Khắc phục hoàn toàn lỗi ReferenceError)
+// 6. Lấy chính xác mực nước triều cho từng mốc thời gian
 function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
   try {
     let d = new Date(targetMs);
@@ -4135,7 +4157,6 @@ function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
     console.warn("Lỗi nội suy triều:", e);
   }
 
-  // Nội suy điều hòa theo đúng 2 mốc Đỉnh & Kiệt của khoảng thời gian này
   let period = Math.abs(tHighMs - tLowMs) || (12 * 3600000);
   let mean = (vHigh + vLow) / 2;
   let amp = (vHigh - vLow) / 2;
@@ -4145,8 +4166,7 @@ function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
 }
 window.getExactTideAt = getExactTideAt;
 
-// 6. Thuật toán tính mớn nước: Khóa cứng tối đa 24 giờ & hướng tới đỉnh triều ngày tiếp theo
-// Thuật toán tính toán kiểm soát UKC thực tế luôn >= UKC yêu cầu và >= 0.3m tại mọi giờ
+// 7. Thuật toán tính mớn nước (Hỗ trợ cả Hàng Nhập + Hàng Xuất và khóa cứng UKC TT >= UKC YC)
 function calcSafetyPlan() {
   let etbStr = $('sf_etb') ? $('sf_etb').value : '';
   let etdStr = $('sf_etd') ? $('sf_etd').value : '';
@@ -4155,14 +4175,14 @@ function calcSafetyPlan() {
   if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB)!"); return; }
 
   if (!$('sf_tideLowTime').value || !$('sf_tideHighTime').value) {
-    if (typeof syncTideFromETB === 'function') syncTideFromETB();
+    syncTideFromETB();
   }
 
   let tStart = new Date(etbStr).getTime();
   let tEtd = etdStr ? new Date(etdStr).getTime() : Infinity;
   let tStartWork = startWorkStr ? new Date(startWorkStr).getTime() : tStart;
 
-  // Giới hạn tính toán tối đa không quá 24 tiếng kể từ khi cập
+  // Giới hạn bảng tính tối đa không quá 24 tiếng kể từ khi cập
   let tMaxLimit = Math.min(tStart + 24 * 3600000, tEtd);
 
   let tLow = new Date($('sf_tideLowTime').value).getTime();
@@ -4171,47 +4191,39 @@ function calcSafetyPlan() {
   let vHigh = Number($('sf_tideHighVal').value) || 3.55;
 
   let cargoUnit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
-  let totalCargo = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
+  let totalImport = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
+  let totalExport = Number($('sf_cargoExport') ? $('sf_cargoExport').value : 0);
   let baseRate = Number($('sf_rate') ? $('sf_rate').value : 250);
   let currentDraft = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
   let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+  let dropPerUnit = getDropPerUnit();
 
-  // Tỷ lệ giảm mớn chuẩn theo từng loại hàng
-  let dropPerUnit = 0.1 / 550; // 550 tấn giảm 10cm
-  if (cargoUnit === 'Cont') {
-    dropPerUnit = 0.1 / 28;    // 28 cont giảm 10cm
-  } else if (cargoUnit === 'm³') {
-    dropPerUnit = 0.1 / 350;   // 350 m3 giảm 10cm
+  if ($('sf_thDischarged')) {
+    $('sf_thDischarged').textContent = totalExport > 0 ? `Dỡ / Xếp (${cargoUnit})` : `Đã dỡ (${cargoUnit})`;
+  }
+  if ($('sf_thRemaining')) {
+    $('sf_thRemaining').textContent = `Còn lại (${cargoUnit})`;
   }
 
-  if ($('sf_thDischarged')) $('sf_thDischarged').textContent = `Đã dỡ (${cargoUnit})`;
-  if ($('sf_thRemaining')) $('sf_thRemaining').textContent = `Còn lại (${cargoUnit})`;
-
   let timeNodes = [];
-
-  // Mốc 1: Cập cầu
   timeNodes.push({ time: tStart, label: "cập cầu", isSpecial: true });
 
-  // Mốc bắt đầu dỡ hàng
   if (tStartWork > tStart && tStartWork < tMaxLimit) {
     timeNodes.push({ time: tStartWork, label: "bắt đầu dỡ", isSpecial: true });
   }
 
-  // Mốc nước kiệt
   if (tLow >= tStart && tLow <= tMaxLimit) {
     let dL = new Date(tLow);
     let lblL = `${String(dL.getHours()).padStart(2, '0')}:${String(dL.getMinutes()).padStart(2, '0')} nước kiệt`;
     timeNodes.push({ time: tLow, label: lblL, isSpecial: true, isLowTide: true, tideVal: vLow });
   }
 
-  // Mốc đỉnh triều
   if (tHigh >= tStart && tHigh <= tMaxLimit) {
     let dH = new Date(tHigh);
     let lblH = `${String(dH.getHours()).padStart(2, '0')}:${String(dH.getMinutes()).padStart(2, '0')} (Đỉnh triều)`;
     timeNodes.push({ time: tHigh, label: lblH, isSpecial: true, isHighTide: true, tideVal: vHigh });
   }
 
-  // Các mốc giờ tròn tuần tự
   let curHour = new Date(tStart);
   curHour.setMinutes(0, 0, 0);
   curHour.setTime(curHour.getTime() + 3600000);
@@ -4227,7 +4239,6 @@ function calcSafetyPlan() {
     curHour.setTime(curHour.getTime() + 3600000);
   }
 
-  // Mốc kết thúc 24h
   if (tMaxLimit - tStart >= 23.5 * 3600000 && Math.abs(timeNodes[timeNodes.length - 1].time - tMaxLimit) > 600000) {
     let dEnd = new Date(tMaxLimit);
     timeNodes.push({ time: tMaxLimit, label: `${String(dEnd.getHours()).padStart(2, '0')}:${String(dEnd.getMinutes()).padStart(2, '0')} (Hết 24h)`, isSpecial: true });
@@ -4235,68 +4246,124 @@ function calcSafetyPlan() {
 
   timeNodes.sort((a, b) => a.time - b.time);
 
+  // Tiền xử lý mực nước triều cho từng mốc
+  for (let i = 0; i < timeNodes.length; i++) {
+    let n = timeNodes[i];
+    n.calcTide = (n.tideVal !== undefined) ? n.tideVal : getExactTideAt(n.time, tLow, vLow, tHigh, vHigh);
+  }
+
   generatedPlanRows = [];
-  let currentCargo = totalCargo;
+  let remImport = totalImport;
+  let remExport = totalExport;
+  let loadedExport = 0;
   let lastCalcTime = tStart;
+  let exportStartedLogged = false;
 
   for (let i = 0; i < timeNodes.length; i++) {
     let node = timeNodes[i];
     let timeDeltaHours = (node.time - lastCalcTime) / 3600000;
     lastCalcTime = node.time;
 
-    let currentTide = (node.tideVal !== undefined) ? node.tideVal : getExactTideAt(node.time, tLow, vLow, tHigh, vHigh);
+    let currentTide = node.calcTide;
     let availDepth = berthDepth + currentTide;
 
-    // RÀNG BUỘC KÉP: Mớn tàu tối đa để UKC thực tế >= 10% Draft và >= 0.3m
-    // H - Draft >= 0.1 * Draft => Draft <= H / 1.10
-    let maxSafeDraft = Math.min(availDepth / 1.10, availDepth - 0.30);
+    // Ngưỡng mớn tối đa tại giờ hiện tại để UKC TT >= 10% Mớn và >= 0.30m
+    let maxSafeDraftNow = Math.min(availDepth / 1.10, availDepth - 0.30);
 
-    // Tính toán lượng dỡ theo năng suất (dao động ±20% - 30%)
-    if (node.time > tStartWork && currentCargo > 0 && timeDeltaHours > 0) {
-      let factor = 1.0 + (Math.random() * 0.50 - 0.20);
-      let actualDischarged = Math.round(baseRate * factor * timeDeltaHours);
-      actualDischarged = Math.min(actualDischarged, currentCargo);
+    // Ngưỡng mớn tối đa đón đầu nếu phía trước còn mốc nước kiệt (dùng khi xếp hàng xuất để không bị quá mớn lúc nước ròng)
+    let minFutureSafeDraft = maxSafeDraftNow;
+    for (let j = i + 1; j < timeNodes.length; j++) {
+      let futAvail = berthDepth + timeNodes[j].calcTide;
+      let futSafe = Math.min(futAvail / 1.10, futAvail - 0.30);
+      if (futSafe < minFutureSafeDraft) minFutureSafeDraft = futSafe;
+    }
 
-      let trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+    let phase = (remImport > 0 || totalExport === 0) ? 'IMPORT' : 'EXPORT';
 
-      // NẾU MỚN TÀU DỰ KIẾN VƯỢT QUÁ NGƯỠNG AN TOÀN (UKC thực tế < UKC yêu cầu)
-      // Tự động đẩy sản lượng dỡ lên để hạ mớn đạt đúng chuẩn an toàn:
-      if (trialDraft > maxSafeDraft) {
-        let neededDrop = currentDraft - (maxSafeDraft - 0.02); // trừ nhẹ 2cm để luôn dư an toàn
-        let neededDischarge = Math.round(neededDrop / dropPerUnit);
-        actualDischarged = Math.max(actualDischarged, neededDischarge);
-        actualDischarged = Math.min(actualDischarged, currentCargo);
-        trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+    if (node.time > tStartWork && timeDeltaHours > 0) {
+      let factor = 1.0 + (Math.random() * 0.50 - 0.20); // Biến thiên ±20% - 30%
+      let plannedQty = Math.round(baseRate * factor * timeDeltaHours);
+
+      if (remImport > 0) {
+        // GIAI ĐOẠN 1: DỠ HÀNG NHẬP
+        let actualDischarged = Math.min(plannedQty, remImport);
+        let trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+
+        // Nếu mớn vẫn cao hơn mức an toàn, tự động tăng lượng dỡ
+        if (trialDraft > maxSafeDraftNow) {
+          let neededDrop = currentDraft - (maxSafeDraftNow - 0.02);
+          let neededDischarge = Math.round(neededDrop / dropPerUnit);
+          actualDischarged = Math.max(actualDischarged, neededDischarge);
+          actualDischarged = Math.min(actualDischarged, remImport);
+          trialDraft = currentDraft - (actualDischarged * dropPerUnit);
+        }
+
+        remImport -= actualDischarged;
+        currentDraft = trialDraft;
+        phase = 'IMPORT';
+
+        // Nếu vừa hết hàng nhập trong giờ này và có hàng xuất
+        if (remImport === 0 && totalExport > 0 && !node.isSpecial) {
+          node.label += " (Xong nhập)";
+        }
+      } else if (totalExport > 0 && remExport > 0) {
+        // GIAI ĐOẠN 2: XẾP HÀNG XUẤT (Đảm bảo mớn tăng lên vẫn tuyệt đối an toàn qua cả đáy triều)
+        phase = 'EXPORT';
+        if (!exportStartedLogged && !node.isSpecial) {
+          node.label += " (Bắt đầu xuất)";
+          exportStartedLogged = true;
+        }
+
+        let safeCeilingForExport = minFutureSafeDraft - 0.02;
+        let maxAllowedDraftIncrease = Math.max(0, safeCeilingForExport - currentDraft);
+        let maxSafeLoadQty = Math.floor(maxAllowedDraftIncrease / dropPerUnit);
+
+        let actualLoaded = Math.min(plannedQty, remExport, maxSafeLoadQty);
+        remExport -= actualLoaded;
+        loadedExport += actualLoaded;
+        currentDraft += actualLoaded * dropPerUnit;
       }
-
-      currentCargo -= actualDischarged;
-      currentDraft = trialDraft;
     }
 
-    // Kiểm tra chốt chặn an toàn tại mốc nước kiệt
-    if (node.isLowTide && currentDraft > maxSafeDraft) {
-      currentDraft = maxSafeDraft - 0.05;
+    // Chốt chặn an toàn tuyệt đối tại mọi thời điểm
+    if (currentDraft > maxSafeDraftNow) {
+      currentDraft = maxSafeDraftNow - 0.02;
     }
 
-    generatedPlanRows.push(createPlanRow(node.time, node.label, totalCargo, currentCargo, currentDraft, currentTide, berthDepth));
+    let dischargedDisplay = "";
+    let remainingDisplay = "";
+
+    if (phase === 'IMPORT') {
+      dischargedDisplay = Number((totalImport - remImport).toFixed(0)).toLocaleString('vi-VN');
+      remainingDisplay = Number(remImport.toFixed(0)).toLocaleString('vi-VN');
+    } else {
+      dischargedDisplay = `Xuất: +${Number(loadedExport.toFixed(0)).toLocaleString('vi-VN')}`;
+      remainingDisplay = `Xuất: ${Number(remExport.toFixed(0)).toLocaleString('vi-VN')}`;
+    }
+
+    generatedPlanRows.push(createPlanRowObj(node.time, node.label, dischargedDisplay, remainingDisplay, currentDraft, currentTide, berthDepth, phase));
   }
 
   renderSafetyTable();
 }
 
-// 7. Tạo dòng dữ liệu cho bảng
-function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide, berthDepth) {
-  let availDepth = berthDepth + tide;
-  let ukcAct = availDepth - draft;
-  let ukcReq = draft * 0.10;
-  let isSafe = (ukcAct >= ukcReq) && (ukcAct >= 0.30);
+// 8. Tạo đối tượng dòng dữ liệu
+function createPlanRowObj(timeMs, timeLabel, dischargedStr, remainingStr, draftNum, tideNum, berthDepth, phase = 'IMPORT') {
+  let availDepth = berthDepth + tideNum;
+  let ukcAct = availDepth - draftNum;
+  let ukcReq = draftNum * 0.10;
+  let isSafe = (ukcAct + 0.001 >= ukcReq) && (ukcAct + 0.001 >= 0.30);
 
   return {
+    timeMs: timeMs,
+    phase: phase,
     label: timeLabel,
-    discharged: Number((totalCargo - currentCargo).toFixed(0)).toLocaleString('vi-VN'),
-    remaining: Number(currentCargo.toFixed(0)).toLocaleString('vi-VN'),
-    draft: draft.toFixed(2).replace('.', ','),
-    tide: (typeof tide === 'number' ? tide.toFixed(2) : parseFloat(tide).toFixed(2)).replace('.', ','),
+    discharged: dischargedStr,
+    remaining: remainingStr,
+    draftNum: Number(draftNum.toFixed(2)),
+    tideNum: Number(tideNum.toFixed(2)),
+    draft: draftNum.toFixed(2).replace('.', ','),
+    tide: tideNum.toFixed(2).replace('.', ','),
     availDepth: availDepth.toFixed(2).replace('.', ','),
     ukcAct: ukcAct.toFixed(2).replace('.', ','),
     ukcReq: ukcReq.toFixed(2).replace('.', ','),
@@ -4304,26 +4371,194 @@ function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide,
   };
 }
 
-// 8. Xuất bảng dữ liệu ra màn hình
+// Giữ tương thích ngược nếu có nơi gọi createPlanRow cũ
+function createPlanRow(timeMs, timeLabel, totalCargo, currentCargo, draft, tide, berthDepth) {
+  let disStr = Number((totalCargo - currentCargo).toFixed(0)).toLocaleString('vi-VN');
+  let remStr = Number(currentCargo.toFixed(0)).toLocaleString('vi-VN');
+  return createPlanRowObj(timeMs, timeLabel, disStr, remStr, draft, tide, berthDepth, 'IMPORT');
+}
+
+// 9. Hiển thị bảng tương tác trực tiếp như Excel
 function renderSafetyTable() {
   const tbody = $('sf_tbody');
   if (!tbody) return;
-  tbody.innerHTML = generatedPlanRows.map(r => {
+  const inputStyle = `width:100%; border:1px solid rgba(148,163,184,0.35); border-radius:4px; padding:3px 5px; text-align:center; font-family:inherit; font-size:12px; background:rgba(255,255,255,0.06); color:inherit;`;
+
+  tbody.innerHTML = generatedPlanRows.map((r, i) => {
     let color = (r.status === 'Đạt') ? 'var(--green, #10b981)' : 'var(--red, #ef4444)';
-    return `<tr>
-      <td style="font-weight:bold;text-align:left">${r.label}</td>
-      <td>${r.discharged}</td>
-      <td>${r.remaining}</td>
-      <td style="color:#d89a24;font-weight:bold">${r.draft}</td>
-      <td>${r.tide}</td>
-      <td style="color:#26bdc8;font-weight:bold">${r.availDepth}</td>
-      <td style="color:${color};font-weight:bold">${r.ukcAct}</td>
-      <td>${r.ukcReq}</td>
-      <td><span class="badge" style="background:${r.status==='Đạt'?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${r.status}</span></td>
+    let rowBg = r.phase === 'EXPORT' ? 'background:rgba(245,158,11,0.06);' : '';
+    return `<tr style="${rowBg}">
+      <td style="text-align:left; min-width:115px;">
+        <input type="text" value="${r.label}" style="${inputStyle} text-align:left; font-weight:bold;" oninput="onTableCellEdit(${i}, 'label', this.value)">
+      </td>
+      <td style="min-width:85px;">
+        <input type="text" id="inp_dis_${i}" value="${r.discharged}" style="${inputStyle}" oninput="onTableCellEdit(${i}, 'discharged', this.value)">
+      </td>
+      <td style="min-width:85px;">
+        <input type="text" id="inp_rem_${i}" value="${r.remaining}" style="${inputStyle}" oninput="onTableCellEdit(${i}, 'remaining', this.value)">
+      </td>
+      <td style="min-width:80px;">
+        <input type="number" step="0.01" id="inp_draft_${i}" value="${r.draftNum !== undefined ? r.draftNum : parseFloat(r.draft.replace(',','.'))}" style="${inputStyle} color:#d89a24; font-weight:bold;" oninput="onTableCellEdit(${i}, 'draft', this.value)">
+      </td>
+      <td style="min-width:85px;">
+        <input type="number" step="0.01" id="inp_tide_${i}" value="${r.tideNum !== undefined ? r.tideNum : parseFloat(r.tide.replace(',','.'))}" style="${inputStyle} color:#0ea5e9; font-weight:bold; border-color:#0ea5e9;" title="Sửa trực tiếp Triều Hòn Dáu theo sách" oninput="onTableCellEdit(${i}, 'tide', this.value)">
+      </td>
+      <td id="cell_avail_${i}" style="color:#26bdc8;font-weight:bold">${r.availDepth}</td>
+      <td id="cell_ukcAct_${i}" style="color:${color};font-weight:bold">${r.ukcAct}</td>
+      <td id="cell_ukcReq_${i}">${r.ukcReq}</td>
+      <td id="cell_status_${i}"><span class="badge" style="background:${r.status==='Đạt'?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${r.status}</span></td>
     </tr>`;
   }).join('');
 }
-// 9. Xác định điều kiện tàu lai dắt theo chiều dài LOA
+
+// 10. Hàm xử lý công thức Excel tức thì khi người dùng gõ sửa trên bảng
+function onTableCellEdit(rowIndex, field, rawVal) {
+  let row = generatedPlanRows[rowIndex];
+  if (!row) return;
+
+  let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+  let autoSafe = $('sf_autoSafeOnEdit') ? $('sf_autoSafeOnEdit').checked : false;
+
+  if (field === 'label') {
+    row.label = rawVal;
+    return;
+  }
+  if (field === 'discharged') {
+    row.discharged = rawVal;
+    return;
+  }
+  if (field === 'remaining') {
+    row.remaining = rawVal;
+    return;
+  }
+
+  let draftNum = row.draftNum !== undefined ? row.draftNum : parseFloat(String(row.draft).replace(',', '.'));
+  let tideNum = row.tideNum !== undefined ? row.tideNum : parseFloat(String(row.tide).replace(',', '.'));
+
+  if (field === 'tide') {
+    let parsedTide = parseFloat(String(rawVal).replace(',', '.'));
+    if (isNaN(parsedTide)) return;
+    tideNum = parsedTide;
+    row.tideNum = tideNum;
+    row.tide = tideNum.toFixed(2).replace('.', ',');
+
+    // Nếu bật "Tự khóa an toàn UKC khi sửa Triều", tự ép mớn tàu xuống nếu triều mới thấp
+    if (autoSafe) {
+      let avail = berthDepth + tideNum;
+      let maxSafeDraft = Math.min(avail / 1.10, avail - 0.30);
+      if (draftNum > maxSafeDraft) {
+        draftNum = Number((maxSafeDraft - 0.02).toFixed(2));
+        row.draftNum = draftNum;
+        row.draft = draftNum.toFixed(2).replace('.', ',');
+        let draftInputEl = document.getElementById(`inp_draft_${rowIndex}`);
+        if (draftInputEl) draftInputEl.value = draftNum;
+      }
+    }
+  } else if (field === 'draft') {
+    let parsedDraft = parseFloat(String(rawVal).replace(',', '.'));
+    if (isNaN(parsedDraft)) return;
+    draftNum = parsedDraft;
+    row.draftNum = draftNum;
+    row.draft = draftNum.toFixed(2).replace('.', ',');
+  }
+
+  // CÔNG THỨC EXCEL TỰ ĐỘNG CẬP NHẬT CÁC CỘT PHỤ THUỘC
+  let availDepth = berthDepth + tideNum;
+  let ukcAct = availDepth - draftNum;
+  let ukcReq = draftNum * 0.10;
+  let isSafe = (ukcAct + 0.001 >= ukcReq) && (ukcAct + 0.001 >= 0.30);
+
+  row.availDepth = availDepth.toFixed(2).replace('.', ',');
+  row.ukcAct = ukcAct.toFixed(2).replace('.', ',');
+  row.ukcReq = ukcReq.toFixed(2).replace('.', ',');
+  row.status = isSafe ? 'Đạt' : 'CẢNH BÁO';
+
+  // Cập nhật DOM tức thì không làm mất con trỏ đang gõ
+  let elAvail = document.getElementById(`cell_avail_${rowIndex}`);
+  let elUkcAct = document.getElementById(`cell_ukcAct_${rowIndex}`);
+  let elUkcReq = document.getElementById(`cell_ukcReq_${rowIndex}`);
+  let elStatus = document.getElementById(`cell_status_${rowIndex}`);
+
+  if (elAvail) elAvail.textContent = row.availDepth;
+  if (elUkcAct) {
+    elUkcAct.textContent = row.ukcAct;
+    elUkcAct.style.color = isSafe ? 'var(--green, #10b981)' : 'var(--red, #ef4444)';
+  }
+  if (elUkcReq) elUkcReq.textContent = row.ukcReq;
+  if (elStatus) {
+    elStatus.innerHTML = `<span class="badge" style="background:${isSafe?'#10b98126;color:#10b981':'#ef444426;color:#ef4444'}">${row.status}</span>`;
+  }
+}
+
+// 11. Khi sửa Độ sâu đáy bến trên Form, toàn bộ bảng tự tính lại như Excel
+function recalcAllRowsFromBerth() {
+  if (!generatedPlanRows || generatedPlanRows.length === 0) return;
+  for (let i = 0; i < generatedPlanRows.length; i++) {
+    onTableCellEdit(i, 'tide', generatedPlanRows[i].tideNum);
+  }
+}
+
+// 12. Nút "Cân bằng lại Mớn theo Triều": Tính lại mượt mà lượng hàng & mớn theo cột Triều người dùng vừa sửa
+function rebalanceDraftFromTide() {
+  if (!generatedPlanRows || generatedPlanRows.length === 0) return;
+  let berthDepth = Number($('sf_berthDepth') ? $('sf_berthDepth').value : 9.0);
+  let totalImport = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
+  let totalExport = Number($('sf_cargoExport') ? $('sf_cargoExport').value : 0);
+  let baseRate = Number($('sf_rate') ? $('sf_rate').value : 250);
+  let currentDraft = Number($('sf_draftArr') ? $('sf_draftArr').value : 9.8);
+  let dropPerUnit = getDropPerUnit();
+
+  let remImport = totalImport;
+  let remExport = totalExport;
+  let loadedExport = 0;
+
+  for (let i = 0; i < generatedPlanRows.length; i++) {
+    let r = generatedPlanRows[i];
+    let tideNum = r.tideNum !== undefined ? r.tideNum : parseFloat(String(r.tide).replace(',', '.'));
+    let availDepth = berthDepth + tideNum;
+    let maxSafeDraftNow = Math.min(availDepth / 1.10, availDepth - 0.30);
+
+    if (i > 0) {
+      let factor = 1.0 + (Math.random() * 0.40 - 0.15);
+      let plannedQty = Math.round(baseRate * factor);
+
+      if (remImport > 0) {
+        let actualDis = Math.min(plannedQty, remImport);
+        let trialDraft = currentDraft - (actualDis * dropPerUnit);
+        if (trialDraft > maxSafeDraftNow) {
+          let neededDrop = currentDraft - (maxSafeDraftNow - 0.02);
+          let neededDis = Math.round(neededDrop / dropPerUnit);
+          actualDis = Math.max(actualDis, neededDis);
+          actualDis = Math.min(actualDis, remImport);
+          trialDraft = currentDraft - (actualDis * dropPerUnit);
+        }
+        remImport -= actualDis;
+        currentDraft = trialDraft;
+        r.phase = 'IMPORT';
+        r.discharged = Number((totalImport - remImport).toFixed(0)).toLocaleString('vi-VN');
+        r.remaining = Number(remImport.toFixed(0)).toLocaleString('vi-VN');
+      } else if (totalExport > 0 && remExport > 0) {
+        r.phase = 'EXPORT';
+        let maxAllowedInc = Math.max(0, (maxSafeDraftNow - 0.02) - currentDraft);
+        let maxSafeLoad = Math.floor(maxAllowedInc / dropPerUnit);
+        let actualLoad = Math.min(plannedQty, remExport, maxSafeLoad);
+        remExport -= actualLoad;
+        loadedExport += actualLoad;
+        currentDraft += actualLoad * dropPerUnit;
+        r.discharged = `Xuất: +${Number(loadedExport.toFixed(0)).toLocaleString('vi-VN')}`;
+        r.remaining = `Xuất: ${Number(remExport.toFixed(0)).toLocaleString('vi-VN')}`;
+      }
+    }
+
+    if (currentDraft > maxSafeDraftNow) currentDraft = maxSafeDraftNow - 0.02;
+    r.draftNum = Number(currentDraft.toFixed(2));
+    r.draft = currentDraft.toFixed(2).replace('.', ',');
+    onTableCellEdit(i, 'draft', r.draftNum);
+  }
+  renderSafetyTable();
+}
+
+// 13. Xác định điều kiện tàu lai dắt theo chiều dài LOA
 function getTugRequirement(loaStr) {
   let loa = parseFloat((loaStr || '').split('/')[0].replace(',', '.'));
   if (loa >= 170 && loa < 200) {
@@ -4338,7 +4573,21 @@ function getTugRequirement(loaStr) {
   return "Sử dụng tàu lai dắt theo đúng quy định tại Nội quy cảng biển Hải Phòng.";
 }
 
-  // Các hàm tiện ích chung để lấy dữ liệu từ Form
+// 14. Hàm tải file Word (.doc)
+function downloadDocFile(htmlStr, fileName) {
+  let blob = new Blob(['\ufeff' + htmlStr], { type: 'application/msword;charset=utf-8' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 1000);
+}
+
+// 15. Thu thập thông tin chung từ Form (Đồng bộ cả Hàng Nhập & Hàng Xuất)
 function getCommonDocVars() {
   let vName = ($('sf_vessel') ? $('sf_vessel').value : 'TAC ODESSA').trim().toUpperCase();
   let agentRaw = ($('sf_agent') ? $('sf_agent').value : 'Công ty TNHH Đại lý và Môi giới vận tải biển Quốc tế (AGE-LINES CO.,LTD)').trim();
@@ -4364,7 +4613,13 @@ function getCommonDocVars() {
   let cargoName = ($('sf_cargoName') ? $('sf_cargoName').value : 'sắt thép').trim();
   let cargoUnit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
   let cargoTotalNum = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
-  let cargoTotalStr = `${cargoTotalNum.toLocaleString('vi-VN')} ${cargoUnit} ${cargoName}`;
+  let cargoExportNum = Number($('sf_cargoExport') ? $('sf_cargoExport').value : 0);
+
+  let cargoImportStr = `${cargoTotalNum.toLocaleString('vi-VN')} ${cargoUnit} ${cargoName}`;
+  let cargoExportStr = cargoExportNum > 0 ? `${cargoExportNum.toLocaleString('vi-VN')} ${cargoUnit} ${cargoName}` : '';
+  let cargoTotalStr = cargoExportNum > 0 
+    ? `Nhập: ${cargoImportStr} / Xuất: ${cargoExportStr}` 
+    : cargoImportStr;
   
   let equipment = $('sf_equipment') ? $('sf_equipment').value : '04 cần trục bờ (TK)';
   let ratePerHour = Number($('sf_rate') ? $('sf_rate').value : 250);
@@ -4378,27 +4633,13 @@ function getCommonDocVars() {
 
   return {
     vName, agentRaw, agentShort, imo, flag, loa, breadth, loaNum, dwt, grt,
-    berth, berthDepth, draftArr, cargoName, cargoUnit, cargoTotalNum, cargoTotalStr,
+    berth, berthDepth, draftArr, cargoName, cargoUnit, cargoTotalNum, cargoExportNum,
+    cargoImportStr, cargoExportStr, cargoTotalStr,
     equipment, ratePerHour, etbStr, etdStr, tugRule
   };
 }
 
- // Hàm phụ trách xuất và tải file Word (.doc) trực tiếp về máy
-function downloadDocFile(htmlStr, fileName) {
-  let blob = new Blob(['\ufeff' + htmlStr], { type: 'application/msword;charset=utf-8' });
-  let a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(a.href);
-    a.remove();
-  }, 1000);
-}
-window.downloadDocFile = downloadDocFile;
-  
-  // 1. Xuất nội dung thay thế Nút 1 (PA Hãng Tàu)
+// 16. XUẤT NỘI DUNG THAY THẾ CHO NÚT 1 (PA HÃNG TÀU)
 function exportWordPAHangTau() {
   let v = getCommonDocVars();
   let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
@@ -4425,7 +4666,7 @@ function exportWordPAHangTau() {
       </tr>
     </table>
     <p class="indent" style="margin-top: 8pt;">
-      ${v.agentRaw} xin gửi phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} DWT</b> chở <b>${v.cargoTotalStr}</b> vào, rời <b>${v.berth}</b> như sau:
+      ${v.agentRaw} xin gửi phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} DWT</b> (${v.cargoTotalStr}) vào, rời <b>${v.berth}</b> như sau:
     </p>
   </div>
 
@@ -4440,12 +4681,12 @@ function exportWordPAHangTau() {
     <p style="margin-left: 15mm;">- Chiều rộng: <b>${v.breadth} m</b></p>
     <p style="margin-left: 15mm;">- GT: <b>${v.grt} MT</b></p>
     <p style="margin-left: 15mm;">- DWT: <b>${v.dwt} MT</b></p>
-    <p style="margin-left: 15mm;">- Lượng hàng khai thác: <b>${v.cargoTotalStr}</b></p>
+    <p style="margin-left: 15mm;">- Hàng hóa khai thác: <b>${v.cargoTotalStr}</b></p>
   </div>
 
   <div class="section-header">3. KHỐI KẾT LUẬN & CHỮ KÝ (Trang 9)</div>
   <div class="highlight-box">
-    <p class="indent">Trên đây là Phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} MT</b> chở <b>${v.cargoTotalStr}</b> vào, rời <b>${v.berth}</b>.</p>
+    <p class="indent">Trên đây là Phương án ứng phó với tai nạn, sự cố hàng hải xảy ra đối với tàu <b>${v.vName}</b> có trọng tải <b>${v.dwt} MT</b> (${v.cargoTotalStr}) vào, rời <b>${v.berth}</b>.</p>
     <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét chấp thuận.</p>
     <p class="indent">Trân trọng báo cáo./.</p>
     <table class="header-box" style="margin-top: 14pt;">
@@ -4459,7 +4700,7 @@ function exportWordPAHangTau() {
   downloadDocFile(htmlDoc, `1_Noi_Dung_Thay_The_PA_Hang_Tau_${v.vName}.doc`);
 }
 
-// 2. Xuất nội dung thay thế Nút 2 (PA Cảng Hải Phòng)
+// 17. XUẤT NỘI DUNG THAY THẾ CHO NÚT 2 (PA CẢNG HẢI PHÒNG)
 function exportWordPACang() {
   let v = getCommonDocVars();
   let htmlDoc = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
@@ -4478,7 +4719,7 @@ function exportWordPACang() {
   <div class="section-header">1. ĐOẠN CĂN CỨ MỞ ĐẦU (Trang 1)</div>
   <div class="highlight-box">
     <p class="indent">
-      Công ty cổ phần Cảng Hải Phòng đã xây dựng phương án ứng phó sự cố khẩn cấp khi tàu neo đậu tại cảng xảy ra sự cố, tai nạn hàng hải cho tàu <b>${v.vName}</b> có đại diện chủ tàu là <b>${v.agentRaw}</b> có trọng tải <b>${v.dwt} MT</b> (lượng hàng: <b>${v.cargoTotalStr}</b>) vào, rời bến cảng vào, rời <b>${v.berth}</b> như sau:
+      Công ty cổ phần Cảng Hải Phòng đã xây dựng phương án ứng phó sự cố khẩn cấp khi tàu neo đậu tại cảng xảy ra sự cố, tai nạn hàng hải cho tàu <b>${v.vName}</b> có đại diện chủ tàu là <b>${v.agentRaw}</b> có trọng tải <b>${v.dwt} MT</b> (${v.cargoTotalStr}) vào, rời bến cảng vào, rời <b>${v.berth}</b> như sau:
     </p>
   </div>
 
@@ -4493,7 +4734,7 @@ function exportWordPACang() {
     <p style="margin-left: 15mm;">- Chiều rộng: <b>${v.breadth} m</b></p>
     <p style="margin-left: 15mm;">- GT: <b>${v.grt} MT</b></p>
     <p style="margin-left: 15mm;">- DWT: <b>${v.dwt} MT</b></p>
-    <p style="margin-left: 15mm;">- Phương án xếp dỡ: Bố trí <b>${v.equipment}</b> để giải phóng <b>${v.cargoTotalStr}</b>.</p>
+    <p style="margin-left: 15mm;">- Phương án xếp dỡ: Bố trí <b>${v.equipment}</b> để khai thác <b>${v.cargoTotalStr}</b>.</p>
     
     <p style="margin-top: 8pt;"><b>Tại Mục B.1.1 (Công suất và số lượng tàu lai hỗ trợ theo LOA = ${v.loa}m):</b></p>
     <p class="indent" style="color: #047857; font-weight: bold;">
@@ -4513,7 +4754,7 @@ function exportWordPACang() {
   downloadDocFile(htmlDoc, `2_Noi_Dung_Thay_The_PA_Cang_HP_${v.vName}.doc`);
 }
 
-// 3. XUẤT NỘI DUNG THAY THẾ CHO NÚT 3 (PA MỚN NƯỚC UKC)
+// 18. XUẤT NỘI DUNG THAY THẾ CHO NÚT 3 (PA MỚN NƯỚC UKC - LẤY CHÍNH XÁC SỐ LIỆU ĐÃ SỬA TRÊN BẢNG EXCEL)
 function exportWordPAMonNuoc() {
   if (!generatedPlanRows || generatedPlanRows.length === 0) {
     alert("Vui lòng Bấm 'Tính Toán Bảng Mớn Nước' trước khi xuất nội dung!");
@@ -4521,21 +4762,37 @@ function exportWordPAMonNuoc() {
   }
   let v = getCommonDocVars();
 
+  // Lấy trực tiếp con số từ dòng đầu tiên trên bảng (đã bao gồm số người dùng tự sửa)
   let firstRow = generatedPlanRows[0];
-  let initTide = parseFloat((firstRow.tide || '2.8').replace(',', '.'));
+  let initTide = firstRow.tideNum !== undefined ? firstRow.tideNum : parseFloat(String(firstRow.tide || '2.8').replace(',', '.'));
+  let initDraft = firstRow.draftNum !== undefined ? firstRow.draftNum : parseFloat(String(firstRow.draft || v.draftArr).replace(',', '.'));
   let availDepthInit = (v.berthDepth + initTide).toFixed(2);
-  let ukcReqInit = (v.draftArr * 0.10).toFixed(2);
-  let minDepthReqInit = (v.draftArr + parseFloat(ukcReqInit)).toFixed(2);
+  let ukcReqInit = (initDraft * 0.10).toFixed(2);
+  let minDepthReqInit = (initDraft + parseFloat(ukcReqInit)).toFixed(2);
 
-  // Khai báo duy nhất 1 lần thông số nước kiệt từ bảng tính
-  let lowRow = generatedPlanRows.find(r => r.label.includes('kiệt')) || generatedPlanRows[Math.min(8, generatedPlanRows.length - 1)];
-  let lowTimeLabel = lowRow.label.replace(' nước kiệt', '').trim();
-  let lowTideVal = parseFloat((lowRow.tide || '0.7').replace(',', '.'));
-  let lowDraftVal = parseFloat((lowRow.draft || '8.6').replace(',', '.'));
+  // Lấy dòng nước kiệt từ bảng (hoặc dòng có triều thấp nhất nếu người dùng tự sửa tên dòng)
+  let lowRow = generatedPlanRows.find(r => r.label.toLowerCase().includes('kiệt'));
+  if (!lowRow) {
+    lowRow = generatedPlanRows.reduce((minR, curR) => {
+      let tMin = minR.tideNum !== undefined ? minR.tideNum : parseFloat(String(minR.tide).replace(',', '.'));
+      let tCur = curR.tideNum !== undefined ? curR.tideNum : parseFloat(String(curR.tide).replace(',', '.'));
+      return tCur < tMin ? curR : minR;
+    }, generatedPlanRows[0]);
+  }
+
+  let lowTimeLabel = lowRow.label.replace(/nước kiệt/i, '').trim();
+  let lowTideVal = lowRow.tideNum !== undefined ? lowRow.tideNum : parseFloat(String(lowRow.tide || '0.7').replace(',', '.'));
+  let lowDraftVal = lowRow.draftNum !== undefined ? lowRow.draftNum : parseFloat(String(lowRow.draft || '8.6').replace(',', '.'));
   let availDepthLow = (v.berthDepth + lowTideVal).toFixed(2);
   let ukcReqLow = (lowDraftVal * 0.10).toFixed(2);
   let minDepthReqLow = (lowDraftVal + parseFloat(ukcReqLow)).toFixed(2);
   let actualLowUkc = (parseFloat(availDepthLow) - lowDraftVal).toFixed(2);
+
+  let exportExtraNote = v.cargoExportNum > 0
+    ? `<p class="indent">- Sau khi giải phóng xong lượng hàng nhập (${v.cargoImportStr}), Cảng tiếp tục tổ chức xếp lô hàng xuất dự kiến (<b>${v.cargoExportStr}</b>) xuống tàu, đồng thời kiểm soát chặt chẽ tốc độ xếp hàng theo diễn biến thủy triều đảm bảo UKC thực tế tại mọi thời điểm luôn lớn hơn UKC yêu cầu (10% mớn nước) và trên 0,3 m.</p>`
+    : '';
+
+  let colDisHeader = v.cargoExportNum > 0 ? `${v.cargoUnit} dỡ / xếp` : `${v.cargoUnit} đã dỡ`;
 
   let tableRowsHtml = generatedPlanRows.map(r => `
     <tr>
@@ -4565,7 +4822,7 @@ function exportWordPAMonNuoc() {
     .highlight-box { border-left: 3pt solid #d97706; padding-left: 8pt; margin: 4pt 0 10pt 0; }
   </style></head><body><div class="Section1">
   <p class="center"><b><span style="font-size: 14pt; color: #d97706;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN MỚN NƯỚC (UKC)</span></b></p>
-  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn - Đã biến thiên ±20-30% và đảm bảo an toàn > 0.3m)</i></p>
+  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn - Đã đồng bộ trực tiếp từ bảng tính Excel)</i></p>
 
   <div class="section-header">1. TIÊU ĐỀ & ĐOẠN MỞ ĐẦU</div>
   <div class="highlight-box">
@@ -4584,29 +4841,30 @@ function exportWordPAMonNuoc() {
       <tr><td style="text-align: left;">IMO / Quốc tịch</td><td style="text-align: left;">${v.imo} / ${v.flag}</td></tr>
       <tr><td style="text-align: left;">LOA / Chiều rộng (B)</td><td style="text-align: left;">${v.loa} m / ${v.breadth} m</td></tr>
       <tr><td style="text-align: left;">DWT / GRT</td><td style="text-align: left;">${v.dwt} MT / ${v.grt}</td></tr>
-      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: ${v.draftArr} m</td></tr>
+      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: ${initDraft.toFixed(2)} m</td></tr>
       <tr><td style="text-align: left;">Thời gian đến cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etbStr}</td></tr>
       <tr><td style="text-align: left;">Thời gian rời cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etdStr}</td></tr>
       <tr><td style="text-align: left;">Cầu cập dự kiến</td><td style="text-align: left; font-weight: bold;">${v.berth}</td></tr>
       <tr><td style="text-align: left;">Độ sâu đáy cầu</td><td style="text-align: left;">-${v.berthDepth.toFixed(1)} m (hệ cao độ Hải đồ)</td></tr>
-      <tr><td style="text-align: left;">Hàng nhập dự kiến</td><td style="text-align: left;">${v.cargoTotalStr}</td></tr>
+      <tr><td style="text-align: left;">Hàng hóa dự kiến</td><td style="text-align: left;">${v.cargoTotalStr}</td></tr>
     </table>
   </div>
 
   <div class="section-header">3. MỤC II. TÍNH TOÁN UKC LÚC TIẾP NHẬN & NƯỚC TRIỀU KIỆT</div>
   <div class="highlight-box">
     <p><b>1. Tại thời điểm tiếp nhận tàu cập cầu (dự kiến ${v.etbStr})</b></p>
-    <p>- Mực nước thủy triều tại thời điểm tiếp nhận: <b>+${initTide.toFixed(1)} m</b> (Hải đồ).</p>
+    <p>- Mực nước thủy triều tại thời điểm tiếp nhận: <b>+${initTide.toFixed(2)} m</b> (Hải đồ).</p>
     <p>- Độ sâu đáy cầu: <b>-${v.berthDepth.toFixed(1)} m</b>.</p>
-    <p>- Độ sâu nước thực tế khả dụng: ${v.berthDepth.toFixed(1)} m + ${initTide.toFixed(1)} m = <b>${availDepthInit} m</b>.</p>
-    <p>- Mớn nước lớn nhất của tàu khi đến: <b>${v.draftArr.toFixed(1)} m</b> (phía lái).</p>
-    <p class="indent">- UKC yêu cầu 10% mớn nước: ${ukcReqInit} m khi đó độ sâu nước tối thiểu cần thiết: ${v.draftArr.toFixed(1)} + ${ukcReqInit} = ${minDepthReqInit} m. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
+    <p>- Độ sâu nước thực tế khả dụng: ${v.berthDepth.toFixed(1)} m + ${initTide.toFixed(2)} m = <b>${availDepthInit} m</b>.</p>
+    <p>- Mớn nước lớn nhất của tàu khi đến: <b>${initDraft.toFixed(2)} m</b> (phía lái).</p>
+    <p class="indent">- UKC yêu cầu 10% mớn nước: ${ukcReqInit} m khi đó độ sâu nước tối thiểu cần thiết: ${initDraft.toFixed(2)} + ${ukcReqInit} = ${minDepthReqInit} m. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
     
     <p style="margin-top: 6pt;"><b>2. Trong quá trình làm hàng và tại thời điểm nước triều kiệt</b></p>
-    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b>${v.equipment}</b> với năng suất khai thác trung bình ${v.ratePerHour} ${v.cargoUnit}/giờ để dỡ toàn bộ lô hàng nhập (${v.cargoTotalStr}).</p>
-    <p class="indent">- Theo kế hoạch làm hàng, đến khoảng <b>${lowTimeLabel}</b> (thời điểm nước triều kiệt khoảng <b>+${lowTideVal.toFixed(1)} m</b>), dự kiến tàu đã được dỡ một phần hàng nhập, mớn nước tàu giảm xuống còn khoảng <b>${lowDraftVal.toFixed(2)} m</b> (thấp hơn độ sâu đáy bến là ${(v.berthDepth - lowDraftVal).toFixed(2)} m &gt; 0.3m).</p>
-    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(1)} m = <b>${availDepthLow} m</b>.</p>
-    <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b>${actualLowUkc} m</b> (lớn hơn yêu cầu tối thiểu 10% là ${ukcReqLow} m và thỏa mãn trên 0.3m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt. Tàu hoàn toàn an toàn khi neo đậu làm hàng tại <b>${v.berth}</b>.</p>
+    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b>${v.equipment}</b> với năng suất khai thác trung bình ${v.ratePerHour} ${v.cargoUnit}/giờ để khai thác lô hàng (${v.cargoTotalStr}).</p>
+    <p class="indent">- Theo kế hoạch làm hàng, đến khoảng <b>${lowTimeLabel}</b> (thời điểm nước triều kiệt khoảng <b>+${lowTideVal.toFixed(2)} m</b>), mớn nước tàu ở mức <b>${lowDraftVal.toFixed(2)} m</b>.</p>
+    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(2)} m = <b>${availDepthLow} m</b>.</p>
+    <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b>${actualLowUkc} m</b> (đảm bảo lớn hơn hoặc bằng yêu cầu tối thiểu 10% là ${ukcReqLow} m và thỏa mãn trên 0,3 m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt.</p>
+    ${exportExtraNote}
   </div>
 
   <div class="section-header">4. BẢNG THỜI GIAN LÀM HÀNG & MỚN NƯỚC (UKC) CỦA TÀU</div>
@@ -4616,7 +4874,7 @@ function exportWordPAMonNuoc() {
       <thead>
         <tr>
           <th style="width: 17%;">Thời gian</th>
-          <th style="width: 11%;">${v.cargoUnit} đã dỡ</th>
+          <th style="width: 11%;">${colDisHeader}</th>
           <th style="width: 11%;">${v.cargoUnit} còn lại</th>
           <th style="width: 10%;">Mớn tàu (m)</th>
           <th style="width: 10%;">Triều Hòn Dáu</th>
@@ -4648,6 +4906,10 @@ function autoFillTideFromSystem() {
   }
 }
 // --- ĐƯA CÁC HÀM RA WINDOW ---
+window.onTableCellEdit = onTableCellEdit;
+window.recalcAllRowsFromBerth = recalcAllRowsFromBerth;
+window.rebalanceDraftFromTide = rebalanceDraftFromTide;
+window.downloadDocFile = downloadDocFile;
 window.syncTideFromETB = syncTideFromETB;
 window.autoFillTideFromSystem = syncTideFromETB;
 window.calcSafetyPlan = calcSafetyPlan;
