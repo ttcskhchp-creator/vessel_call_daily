@@ -1413,32 +1413,42 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 </div>
               </div>
 
-              <!-- KHỐI ĐIỀU CHỈNH THỦY TRIỀU THEO NGÀY CẬP (ETB) -->
+             <!-- KHỐI ĐIỀU CHỈNH THỦY TRIỀU THEO NGÀY CẬP (ETB) -->
               <div style="background: rgba(38,189,200,0.08); border: 1px solid var(--cyan, #0ea5e9); border-radius: 6px; padding: 10px; margin: 12px 0;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                   <b style="color:var(--cyan, #0ea5e9); font-size: 13px;"><i class="fa-solid fa-water"></i> Thủy Triều Hòn Dáu Theo Ngày Cập Tàu</b>
                   <button type="button" class="btn-sub" style="padding: 2px 8px; font-size: 11px;" onclick="syncTideFromETB()"><i class="fa-solid fa-rotate"></i> Nạp lại từ Lịch triều</button>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                  <div class="form-group">
-                    <label style="font-size:11px; font-weight:bold; color:#ef4444;">Giờ nước kiệt (Đáy triều)</label>
+                  <div class="form-group" style="margin-bottom:4px;">
+                    <label style="font-size:11px; font-weight:bold; color:#10b981;">▲ Giờ nước lớn (Đỉnh ngày cập)</label>
+                    <input type="datetime-local" id="sf_tideHighTime" class="field" style="padding:4px">
+                  </div>
+                  <div class="form-group" style="margin-bottom:4px;">
+                    <label style="font-size:11px; font-weight:bold; color:#10b981;">Mực nước đỉnh (m)</label>
+                    <input type="number" step="0.01" id="sf_tideHighVal" class="field" value="3.60" style="padding:4px">
+                  </div>
+                  <div class="form-group" style="margin-bottom:4px;">
+                    <label style="font-size:11px; font-weight:bold; color:#ef4444;">▼ Giờ nước ròng (Kiệt ngày cập)</label>
                     <input type="datetime-local" id="sf_tideLowTime" class="field" style="padding:4px">
                   </div>
-                  <div class="form-group">
+                  <div class="form-group" style="margin-bottom:4px;">
                     <label style="font-size:11px; font-weight:bold; color:#ef4444;">Mực nước kiệt (m)</label>
                     <input type="number" step="0.01" id="sf_tideLowVal" class="field" value="0.60" style="padding:4px">
                   </div>
-                  <div class="form-group">
-                    <label style="font-size:11px; font-weight:bold; color:#10b981;">Giờ nước lớn (Đỉnh triều)</label>
-                    <input type="datetime-local" id="sf_tideHighTime" class="field" style="padding:4px">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:11px; font-weight:bold; color:#0ea5e9;">▲ Đỉnh triều kế tiếp (Ngày +1)</label>
+                    <input type="datetime-local" id="sf_tideNextHighTime" class="field" style="padding:4px">
                   </div>
-                  <div class="form-group">
-                    <label style="font-size:11px; font-weight:bold; color:#10b981;">Mực nước đỉnh (m)</label>
-                    <input type="number" step="0.01" id="sf_tideHighVal" class="field" value="3.55" style="padding:4px">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:11px; font-weight:bold; color:#0ea5e9;">Mực đỉnh kế tiếp (m)</label>
+                    <input type="number" step="0.01" id="sf_tideNextHighVal" class="field" value="3.55" style="padding:4px">
                   </div>
                 </div>
+                <div id="sf_tideSyncStatus" style="font-size:10.5px; color:var(--cyan, #0ea5e9); margin-top:6px; font-weight:700;">
+                  Đang đồng bộ dữ liệu trạm Hòn Dáu (thegioimoicau.com)...
+                </div>
               </div>
-
               <!-- 4 Nút điều khiển -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px">
                 <button class="primary" style="grid-column: span 2; padding: 10px; font-size: 13px;" onclick="calcSafetyPlan()"><i class="fa-solid fa-calculator"></i> Tính Toán Bảng Mớn Nước (Biến thiên ±20-30%)</button>
@@ -2735,43 +2745,45 @@ async function fetchTideFromTheGioiMoiCau() {
   }
 
   let isLoaded = false;
+  window.multiDayTideData = multiDayTideData;
 
-  // 1. Ưu tiên đọc trực tiếp từ Database Supabase (tide_readings)
+  // 1. Đọc từ bảng tide_readings trên Supabase (lấy rộng 60 ngày cả quá khứ & tương lai để tra cứu mọi ngày cập)
   if (supabaseClient) {
     try {
-      const todayStr = getTodayString();
       const { data, error } = await supabaseClient
         .from('tide_readings')
         .select('*')
-        .gte('date_key', todayStr)
-        .order('date_key', { ascending: true })
-        .limit(5);
+        .order('date_key', { ascending: false })
+        .limit(60);
 
       if (data && !error && data.length > 0) {
-        data.forEach((row, idx) => {
+        data.forEach((row) => {
           const parts = row.date_key.split('-');
+          let hData = row.hourly_data;
+          if (typeof hData === 'string') {
+            try { hData = JSON.parse(hData); } catch(e) { hData = []; }
+          }
           multiDayTideData[row.date_key] = {
             date: row.date_key,
             displayDate: `${parts[2]}/${parts[1]}/${parts[0]}`,
-            dayOffset: idx,
             station: row.station || 'Hòn Dáu',
             sourceType: 'live',
             highVal: Number(row.high_val),
-            highTimeStr: row.high_time,
+            highTimeStr: String(row.high_time || '').trim(),
             lowVal: Number(row.low_val),
-            lowTimeStr: row.low_time,
-            hourlyList: row.hourly_data
+            lowTimeStr: String(row.low_time || '').trim(),
+            hourlyList: Array.isArray(hData) ? hData : []
           };
         });
         isLoaded = true;
       }
     } catch (e) {
-      console.warn("Lỗi đọc Database:", e);
+      console.warn("Lỗi đọc Database tide_readings:", e);
     }
   }
 
-  // 2. Dự phòng: Đọc file snapshot JSON từ Storage Bucket ('port-documents')
-  if (!isLoaded && supabaseClient) {
+  // 2. Bổ sung thêm các ngày từ file hon_dau_tide_full.json trong Storage Bucket
+  if (supabaseClient) {
     try {
       const { data, error } = await supabaseClient.storage
         .from('port-documents')
@@ -2780,24 +2792,27 @@ async function fetchTideFromTheGioiMoiCau() {
       if (data && !error) {
         const jsonText = await data.text();
         const parsed = JSON.parse(jsonText);
-        for (let offset = 0; offset < 4; offset++) {
-          const p = getVNCurrentDateParts(offset);
-          if (parsed[p.dateKey]) {
-            const item = parsed[p.dateKey];
-            multiDayTideData[p.dateKey] = {
-              date: p.dateKey,
-              displayDate: p.labelDate,
-              dayOffset: offset,
+        Object.keys(parsed).forEach(dateKey => {
+          if (!multiDayTideData[dateKey]) {
+            const item = parsed[dateKey];
+            const parts = dateKey.split('-');
+            let hData = item.hourly_data;
+            if (typeof hData === 'string') {
+              try { hData = JSON.parse(hData); } catch(e) { hData = []; }
+            }
+            multiDayTideData[dateKey] = {
+              date: dateKey,
+              displayDate: parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateKey,
               station: 'Hòn Dáu',
               sourceType: 'live',
               highVal: Number(item.high_val),
-              highTimeStr: item.high_time,
+              highTimeStr: String(item.high_time || '').trim(),
               lowVal: Number(item.low_val),
-              lowTimeStr: item.low_time,
-              hourlyList: item.hourly_data
+              lowTimeStr: String(item.low_time || '').trim(),
+              hourlyList: Array.isArray(hData) ? hData : []
             };
           }
-        }
+        });
         isLoaded = true;
       }
     } catch (e) {
@@ -2805,13 +2820,23 @@ async function fetchTideFromTheGioiMoiCau() {
     }
   }
 
+  window.multiDayTideData = multiDayTideData;
   updateRealtimeWidgets();
+
+  // Tự động đồng bộ ngay sang khung Lập PA An Toàn
+  if (typeof syncTideFromETB === 'function') {
+    syncTideFromETB();
+  }
 }
 
 // Bấm chuyển đổi 3 ngày liên tục mượt mà
 function cycleTideDayView() {
   tideViewDayOffset = (tideViewDayOffset + 1) % 3;
   updateRealtimeWidgets();
+  // Nếu chưa chọn ETB cố định thì đồng bộ khung PA An Toàn theo ngày đang xem ở Toàn cảnh
+  if ($('sf_etb') && !$('sf_etb').value && typeof syncTideFromETB === 'function') {
+    syncTideFromETB();
+  }
 }
 
 function updateRealtimeWidgets() {
@@ -4036,139 +4061,253 @@ function formatDateTimeLocal(dateObj) {
   return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
 }
 
-// 4. Tra cứu dữ liệu thủy triều theo ngày trong kho quét
+// 4. Hàm tách chính xác Giờ & Phút từ chuỗi "HH:mm" hoặc "HHhMM" (Khắc phục lỗi lệch phút)
+function parseTimeStrToHM(timeStr, defaultH = 0, defaultM = 0) {
+  if (timeStr === undefined || timeStr === null || timeStr === '') return { h: defaultH, m: defaultM };
+  if (typeof timeStr === 'number') {
+    return { h: Math.floor(timeStr), m: Math.round((timeStr % 1) * 60) };
+  }
+  let clean = String(timeStr).trim().replace(/h/i, ':');
+  let match = clean.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+  if (match) {
+    return { h: parseInt(match[1], 10), m: parseInt(match[2], 10) };
+  }
+  let num = parseFloat(clean.replace(',', '.'));
+  if (!isNaN(num)) {
+    return { h: Math.floor(num), m: Math.round((num % 1) * 60) };
+  }
+  return { h: defaultH, m: defaultM };
+}
+
+// 5. Tra cứu dữ liệu thủy triều trực tiếp từ biến multiDayTideData (và bảng đối soát Hòn Dáu)
 function getDayTideFromDatabase(dateObj) {
   let y = dateObj.getFullYear();
   let m = String(dateObj.getMonth() + 1).padStart(2, '0');
   let d = String(dateObj.getDate()).padStart(2, '0');
-  let keys = [`${y}-${m}-${d}`, `${d}/${m}/${y}`, `${d}-${m}-${y}`, `${dateObj.getDate()}/${dateObj.getMonth() + 1}`];
-  let sources = [window.multiDayTideData, window.tideData, window.tideTable, window.allTides];
+  let isoKey = `${y}-${m}-${d}`;
+  let vnKey = `${d}/${m}/${y}`;
+  let keys = [isoKey, vnKey, `${d}-${m}-${y}`, `${dateObj.getDate()}/${dateObj.getMonth() + 1}`];
+
+  // Đọc trực tiếp từ biến toàn cục multiDayTideData (khắc phục lỗi window.multiDayTideData = undefined)
+  let sources = [
+    typeof multiDayTideData !== 'undefined' ? multiDayTideData : null,
+    window.multiDayTideData,
+    window.tideData,
+    window.tideTable
+  ];
 
   for (let src of sources) {
     if (src && typeof src === 'object') {
       for (let k of keys) {
-        if (src[k]) return { data: src[k], dateKey: k };
+        if (src[k]) return { data: src[k], dateKey: isoKey };
       }
     }
   }
+
+  // Kiểm tra trong HON_DAU_EXACT_TABLES nếu có
+  if (typeof HON_DAU_EXACT_TABLES !== 'undefined' && HON_DAU_EXACT_TABLES[isoKey]) {
+    let hList = HON_DAU_EXACT_TABLES[isoKey];
+    let ext = calculateDayExtremes(hList);
+    return {
+      data: {
+        date: isoKey,
+        displayDate: vnKey,
+        highVal: ext.highVal,
+        highTimeStr: ext.highTimeStr,
+        lowVal: ext.lowVal,
+        lowTimeStr: ext.lowTimeStr,
+        hourlyList: hList
+      },
+      dateKey: isoKey
+    };
+  }
+
   return null;
 }
 
-// 5. Tự động dò mốc Kiệt ngày cập và mốc Đỉnh tiếp theo (dò xuyên sang ngày hôm sau)
-function syncTideFromETB() {
-  let etbStr = $('sf_etb') ? $('sf_etb').value : '';
-  if (!etbStr) return;
+// Tự động truy vấn bổ sung từ Supabase nếu người dùng chọn ngày cập chưa có trong bộ nhớ
+async function ensureTideDataForDates(dateKeys) {
+  if (!supabaseClient || !Array.isArray(dateKeys) || dateKeys.length === 0) return;
+  let missing = dateKeys.filter(k => !multiDayTideData[k]);
+  if (missing.length === 0) return;
 
-  let dETB = new Date(etbStr);
-  let dNext = new Date(dETB.getTime() + 86400000);
+  try {
+    const { data, error } = await supabaseClient
+      .from('tide_readings')
+      .select('*')
+      .in('date_key', missing);
 
-  let data1 = getDayTideFromDatabase(dETB);
-  let data2 = getDayTideFromDatabase(dNext);
-
-  let lowFound = false;
-  let highFound = false;
-
-  if (data1 && data1.data) {
-    let day = data1.data;
-    let lHour = (day.lowHour !== undefined) ? day.lowHour : (day.lowTimeStr ? parseFloat(day.lowTimeStr.replace(':', '.')) : null);
-    if (lHour !== null) {
-      let dLow = new Date(dETB);
-      dLow.setHours(Math.floor(lHour), Math.round((lHour % 1) * 60), 0, 0);
-      if (dLow.getTime() >= dETB.getTime() - 1800000) {
-        if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-        if ($('sf_tideLowVal')) $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.60";
-        lowFound = true;
-      }
+    if (data && !error && data.length > 0) {
+      data.forEach(row => {
+        const parts = row.date_key.split('-');
+        let hData = row.hourly_data;
+        if (typeof hData === 'string') {
+          try { hData = JSON.parse(hData); } catch(e) { hData = []; }
+        }
+        multiDayTideData[row.date_key] = {
+          date: row.date_key,
+          displayDate: `${parts[2]}/${parts[1]}/${parts[0]}`,
+          station: row.station || 'Hòn Dáu',
+          sourceType: 'live',
+          highVal: Number(row.high_val),
+          highTimeStr: String(row.high_time || '').trim(),
+          lowVal: Number(row.low_val),
+          lowTimeStr: String(row.low_time || '').trim(),
+          hourlyList: Array.isArray(hData) ? hData : []
+        };
+      });
     }
-  }
-
-  if (!lowFound && data2 && data2.data) {
-    let day = data2.data;
-    let lHour = (day.lowHour !== undefined) ? day.lowHour : (day.lowTimeStr ? parseFloat(day.lowTimeStr.replace(':', '.')) : 19.5);
-    let dLow = new Date(dNext);
-    dLow.setHours(Math.floor(lHour), Math.round((lHour % 1) * 60), 0, 0);
-    if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-    if ($('sf_tideLowVal')) $('sf_tideLowVal').value = (day.lowVal !== undefined) ? Number(day.lowVal).toFixed(2) : "0.65";
-    lowFound = true;
-  }
-
-  if (data2 && data2.data) {
-    let day = data2.data;
-    let hHour = (day.highHour !== undefined) ? day.highHour : (day.highTimeStr ? parseFloat(day.highTimeStr.replace(':', '.')) : 5.8);
-    let dHigh = new Date(dNext);
-    dHigh.setHours(Math.floor(hHour), Math.round((hHour % 1) * 60), 0, 0);
-    if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-    if ($('sf_tideHighVal')) $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.55";
-    highFound = true;
-  } else if (data1 && data1.data) {
-    let day = data1.data;
-    let hHour = (day.highHour !== undefined) ? day.highHour : (day.highTimeStr ? parseFloat(day.highTimeStr.replace(':', '.')) : 5.0);
-    let dHigh = new Date(dETB);
-    dHigh.setHours(Math.floor(hHour), Math.round((hHour % 1) * 60), 0, 0);
-    if (dHigh.getTime() > dETB.getTime()) {
-      if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-      if ($('sf_tideHighVal')) $('sf_tideHighVal').value = (day.highVal !== undefined) ? Number(day.highVal).toFixed(2) : "3.60";
-      highFound = true;
-    }
-  }
-
-  if (!lowFound) {
-    let dLow = new Date(dETB);
-    dLow.setHours(19, 0, 0, 0);
-    if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow);
-    if ($('sf_tideLowVal')) $('sf_tideLowVal').value = "0.60";
-  }
-  if (!highFound) {
-    let dHigh = new Date(dNext);
-    dHigh.setHours(5, 45, 0, 0);
-    if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh);
-    if ($('sf_tideHighVal')) $('sf_tideHighVal').value = "3.55";
+  } catch (e) {
+    console.warn("Lỗi truy vấn bổ sung tide_readings:", e);
   }
 }
 
-// 6. Lấy chính xác mực nước triều cho từng mốc thời gian
-function getExactTideAt(targetMs, tLowMs, vLow, tHighMs, vHigh) {
+// 6. Đồng bộ chính xác 100% Thủy Triều Hòn Dáu theo Ngày Cập Tàu & Ngày Kế Tiếp
+async function syncTideFromETB() {
+  let etbStr = $('sf_etb') ? $('sf_etb').value : '';
+  let dETB;
+
+  if (etbStr) {
+    dETB = new Date(etbStr);
+  } else {
+    // Nếu chưa nhập ETB, lấy đúng ngày đang hiển thị trên thẻ Toàn cảnh (Hôm nay / Ngày mai / Ngày kia)
+    let activePart = getVNCurrentDateParts(typeof tideViewDayOffset !== 'undefined' ? tideViewDayOffset : 0);
+    dETB = new Date(`${activePart.dateKey}T08:00:00`);
+  }
+
+  if (isNaN(dETB.getTime())) return;
+
+  let dNext = new Date(dETB.getFullYear(), dETB.getMonth(), dETB.getDate() + 1, 8, 0, 0);
+
+  let pad = n => String(n).padStart(2, '0');
+  let key1 = `${dETB.getFullYear()}-${pad(dETB.getMonth() + 1)}-${pad(dETB.getDate())}`;
+  let key2 = `${dNext.getFullYear()}-${pad(dNext.getMonth() + 1)}-${pad(dNext.getDate())}`;
+
+  // Đảm bảo dữ liệu của cả Ngày cập và Ngày kế tiếp đã được nạp từ Supabase
+  await ensureTideDataForDates([key1, key2]);
+
+  let db1 = getDayTideFromDatabase(dETB);
+  let db2 = getDayTideFromDatabase(dNext);
+
+  let statusEl = $('sf_tideSyncStatus');
+
+  // A. Điền Đỉnh triều & Đáy triều của NGÀY CẬP TÀU (Khớp 100% với thẻ Toàn cảnh)
+  if (db1 && db1.data) {
+    let day1 = db1.data;
+    let highHM = parseTimeStrToHM(day1.highTimeStr !== undefined ? day1.highTimeStr : day1.highHour, 5, 0);
+    let lowHM = parseTimeStrToHM(day1.lowTimeStr !== undefined ? day1.lowTimeStr : day1.lowHour, 19, 0);
+
+    let dHigh1 = new Date(dETB.getFullYear(), dETB.getMonth(), dETB.getDate(), highHM.h, highHM.m, 0, 0);
+    let dLow1 = new Date(dETB.getFullYear(), dETB.getMonth(), dETB.getDate(), lowHM.h, lowHM.m, 0, 0);
+
+    if ($('sf_tideHighTime')) $('sf_tideHighTime').value = formatDateTimeLocal(dHigh1);
+    if ($('sf_tideHighVal')) $('sf_tideHighVal').value = Number(day1.highVal).toFixed(1);
+
+    if ($('sf_tideLowTime')) $('sf_tideLowTime').value = formatDateTimeLocal(dLow1);
+    if ($('sf_tideLowVal')) $('sf_tideLowVal').value = Number(day1.lowVal).toFixed(1);
+  }
+
+  // B. Điền Đỉnh triều của NGÀY KẾ TIẾP (Ngày +1) để phục vụ tính bảng 24h xuyên đêm
+  if (db2 && db2.data) {
+    let day2 = db2.data;
+    let highHM2 = parseTimeStrToHM(day2.highTimeStr !== undefined ? day2.highTimeStr : day2.highHour, 5, 30);
+    let dHigh2 = new Date(dNext.getFullYear(), dNext.getMonth(), dNext.getDate(), highHM2.h, highHM2.m, 0, 0);
+
+    if ($('sf_tideNextHighTime')) $('sf_tideNextHighTime').value = formatDateTimeLocal(dHigh2);
+    if ($('sf_tideNextHighVal')) $('sf_tideNextHighVal').value = Number(day2.highVal).toFixed(1);
+  } else if (db1 && db1.data) {
+    // Nếu ngày +1 chưa có bản ghi riêng, tịnh tiến chu kỳ nhật triều +50 phút từ ngày cập
+    let day1 = db1.data;
+    let highHM1 = parseTimeStrToHM(day1.highTimeStr !== undefined ? day1.highTimeStr : day1.highHour, 5, 0);
+    let totalMins = highHM1.h * 60 + highHM1.m + 50;
+    let dHigh2 = new Date(dNext.getFullYear(), dNext.getMonth(), dNext.getDate(), Math.floor((totalMins / 60) % 24), totalMins % 60, 0, 0);
+
+    if ($('sf_tideNextHighTime')) $('sf_tideNextHighTime').value = formatDateTimeLocal(dHigh2);
+    if ($('sf_tideNextHighVal')) $('sf_tideNextHighVal').value = Number(day1.highVal).toFixed(1);
+  }
+
+  if (statusEl) {
+    if (db1 && db1.data) {
+      let d1 = db1.data;
+      let d2Text = (db2 && db2.data) ? ` | Ngày kế (${pad(dNext.getDate())}/${pad(dNext.getMonth()+1)}): Đỉnh ${Number(db2.data.highVal).toFixed(1)}m (${db2.data.highTimeStr})` : '';
+      statusEl.innerHTML = `✓ Đã đồng bộ chuẩn Hòn Dáu ngày <b>${pad(dETB.getDate())}/${pad(dETB.getMonth()+1)}/${dETB.getFullYear()}</b>: Đỉnh <b>${Number(d1.highVal).toFixed(1)}m (${d1.highTimeStr})</b> · Ròng <b>${Number(d1.lowVal).toFixed(1)}m (${d1.lowTimeStr})</b>${d2Text}`;
+      statusEl.style.color = 'var(--green, #10b981)';
+    } else {
+      statusEl.innerHTML = `⚠️ Ngày ${pad(dETB.getDate())}/${pad(dETB.getMonth()+1)}/${dETB.getFullYear()} chưa có trong CSDL thegioimoicau, bạn có thể nhập tay theo Sách thủy triều.`;
+      statusEl.style.color = 'var(--amber, #d89a24)';
+    }
+  }
+}
+
+// 7. Lấy chính xác mực nước triều từng giờ từ bảng 24h thegioimoicau (kèm nội suy đa cực trị)
+function getExactTideAt(targetMs, extremesList) {
   try {
     let d = new Date(targetMs);
     let dbResult = getDayTideFromDatabase(d);
 
-    if (dbResult && dbResult.data && Array.isArray(dbResult.data.hourlyList)) {
+    if (dbResult && dbResult.data && Array.isArray(dbResult.data.hourlyList) && dbResult.data.hourlyList.length > 0) {
       let hr = d.getHours();
       let min = d.getMinutes();
       let list = dbResult.data.hourlyList;
 
-      let getHVal = (h) => {
-        let item = list.find(x => typeof x === 'object' ? x.hour === h : false);
+      let getHVal = (h, dayList) => {
+        if (!Array.isArray(dayList)) return null;
+        let item = dayList.find(x => (typeof x === 'object' && x !== null) ? Number(x.hour) === h : false);
         if (item && item.val !== undefined) return Number(item.val);
-        if (typeof list[h] === 'number') return list[h];
-        if (list[h] && list[h].val !== undefined) return Number(list[h].val);
+        if (typeof dayList[h] === 'number') return dayList[h];
+        if (dayList[h] && dayList[h].val !== undefined) return Number(dayList[h].val);
         return null;
       };
 
-      let v1 = getHVal(hr);
+      let v1 = getHVal(hr, list);
       if (v1 !== null) {
-        if (min === 0) return v1;
-        let v2 = getHVal((hr + 1) % 24);
+        if (min === 0) return Number(v1.toFixed(2));
+        let nextHr = (hr + 1) % 24;
+        let nextList = list;
+        if (nextHr === 0) {
+          let dbNext = getDayTideFromDatabase(new Date(d.getTime() + 86400000));
+          if (dbNext && dbNext.data && Array.isArray(dbNext.data.hourlyList)) {
+            nextList = dbNext.data.hourlyList;
+          }
+        }
+        let v2 = getHVal(nextHr, nextList);
         if (v2 !== null) return Number((v1 + (v2 - v1) * (min / 60)).toFixed(2));
-        return v1;
+        return Number(v1.toFixed(2));
       }
     }
   } catch (e) {
-    console.warn("Lỗi nội suy triều:", e);
+    console.warn("Lỗi đọc hourlyList:", e);
   }
 
-  let period = Math.abs(tHighMs - tLowMs) || (12 * 3600000);
-  let mean = (vHigh + vLow) / 2;
-  let amp = (vHigh - vLow) / 2;
-  let diff = (targetMs - tLowMs) / period;
-  let val = mean - amp * Math.cos(diff * Math.PI);
-  return Number(Math.max(Math.min(vLow, vHigh), Math.min(Math.max(vLow, vHigh), val)).toFixed(2));
+  // Nội suy Cosine qua danh sách các điểm cực trị Đỉnh - Kiệt liên tiếp
+  if (Array.isArray(extremesList) && extremesList.length >= 2) {
+    let sorted = [...extremesList].sort((a, b) => a.time - b.time);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      let e0 = sorted[i];
+      let e1 = sorted[i + 1];
+      if (targetMs >= e0.time && targetMs <= e1.time) {
+        let period = e1.time - e0.time;
+        if (period <= 0) return Number(e0.val.toFixed(2));
+        let frac = (targetMs - e0.time) / period;
+        let mean = (e0.val + e1.val) / 2;
+        let amp = (e0.val - e1.val) / 2;
+        return Number((mean + amp * Math.cos(frac * Math.PI)).toFixed(2));
+      }
+    }
+    let eFirst = sorted[0], eSecond = sorted[1];
+    let period = Math.abs(eSecond.time - eFirst.time) || (12 * 3600000);
+    let diff = (targetMs - eFirst.time) / period;
+    let mean = (eFirst.val + eSecond.val) / 2;
+    let amp = (eFirst.val - eSecond.val) / 2;
+    return Number((mean + amp * Math.cos(diff * Math.PI)).toFixed(2));
+  }
+
+  return 2.0;
 }
 window.getExactTideAt = getExactTideAt;
 
-// 7. Thuật toán tính mớn nước (Hỗ trợ cả Hàng Nhập + Hàng Xuất và khóa cứng UKC TT >= UKC YC)
-// 7. Thuật toán tính mớn nước (Gộp dòng bắt đầu dỡ + Hàng xuất 80-90% năng suất + Khóa UKC TT >= UKC YC)
-function calcSafetyPlan() {
+// 8. Thuật toán tính mớn nước (Kết hợp Đỉnh/Kiệt Ngày cập + Ngày kế tiếp, giới hạn <= 24h)
+async function calcSafetyPlan() {
   let etbStr = $('sf_etb') ? $('sf_etb').value : '';
   let etdStr = $('sf_etd') ? $('sf_etd').value : '';
   let startWorkStr = $('sf_startWork') ? $('sf_startWork').value : '';
@@ -4176,7 +4315,7 @@ function calcSafetyPlan() {
   if (!etbStr) { alert("Vui lòng chọn Giờ cập (ETB)!"); return; }
 
   if (!$('sf_tideLowTime').value || !$('sf_tideHighTime').value) {
-    syncTideFromETB();
+    await syncTideFromETB();
   }
 
   let tStart = new Date(etbStr).getTime();
@@ -4186,10 +4325,33 @@ function calcSafetyPlan() {
   // Giới hạn bảng tính tối đa không quá 24 tiếng kể từ khi cập
   let tMaxLimit = Math.min(tStart + 24 * 3600000, tEtd);
 
-  let tLow = new Date($('sf_tideLowTime').value).getTime();
-  let vLow = Number($('sf_tideLowVal').value) || 0.60;
-  let tHigh = new Date($('sf_tideHighTime').value).getTime();
-  let vHigh = Number($('sf_tideHighVal').value) || 3.55;
+  let tHigh1 = new Date($('sf_tideHighTime').value).getTime();
+  let vHigh1 = Number($('sf_tideHighVal').value) || 3.60;
+  let tLow1 = new Date($('sf_tideLowTime').value).getTime();
+  let vLow1 = Number($('sf_tideLowVal').value) || 0.60;
+
+  let nextHighStr = $('sf_tideNextHighTime') ? $('sf_tideNextHighTime').value : '';
+  let tHigh2 = nextHighStr ? new Date(nextHighStr).getTime() : (tHigh1 + 24.8 * 3600000);
+  let vHigh2 = Number($('sf_tideNextHighVal') ? $('sf_tideNextHighVal').value : vHigh1) || 3.55;
+
+  // Kiểm tra thêm mốc kiệt của Ngày +1 (nếu tàu cập vào tối muộn sau giờ kiệt Ngày 1)
+  let dNextObj = new Date(tStart + 86400000);
+  let dbNext = getDayTideFromDatabase(dNextObj);
+  let tLow2 = tLow1 + 24.8 * 3600000;
+  let vLow2 = vLow1;
+  if (dbNext && dbNext.data) {
+    let lowHM2 = parseTimeStrToHM(dbNext.data.lowTimeStr !== undefined ? dbNext.data.lowTimeStr : dbNext.data.lowHour, 19, 30);
+    let dL2 = new Date(dNextObj.getFullYear(), dNextObj.getMonth(), dNextObj.getDate(), lowHM2.h, lowHM2.m, 0, 0);
+    tLow2 = dL2.getTime();
+    vLow2 = Number(dbNext.data.lowVal) || vLow1;
+  }
+
+  let extremesList = [
+    { time: tHigh1, val: vHigh1, type: 'high' },
+    { time: tLow1, val: vLow1, type: 'low' },
+    { time: tHigh2, val: vHigh2, type: 'high' },
+    { time: tLow2, val: vLow2, type: 'low' }
+  ];
 
   let cargoUnit = $('sf_cargoUnit') ? $('sf_cargoUnit').value : 'Tấn';
   let totalImport = Number($('sf_cargoTotal') ? $('sf_cargoTotal').value : 15783);
@@ -4210,14 +4372,11 @@ function calcSafetyPlan() {
   let dStart = new Date(tStart);
   let startTimeStr = `${String(dStart.getHours()).padStart(2, '0')}:${String(dStart.getMinutes()).padStart(2, '0')}`;
 
-  // GỘP DÒNG BẮT ĐẦU DỠ VÀ GIỜ BẮT ĐẦU DỠ LÀM 1 DÒNG DUY NHẤT
+  // Gộp dòng bắt đầu dỡ và giờ bắt đầu dỡ làm 1 dòng duy nhất
   if (tStartWork <= tStart) {
-    // Nếu bắt đầu làm hàng ngay khi cập cầu
     timeNodes.push({ time: tStart, label: `${startTimeStr} cập cầu (b.đầu dỡ)`, isSpecial: true, isStartWork: true });
   } else {
-    // Mốc cập cầu riêng
     timeNodes.push({ time: tStart, label: `${startTimeStr} cập cầu`, isSpecial: true });
-    // Mốc giờ bắt đầu dỡ gộp chung cả giờ và nhãn trên 1 dòng
     if (tStartWork < tMaxLimit) {
       let dW = new Date(tStartWork);
       let lblW = `${String(dW.getHours()).padStart(2, '0')}:${String(dW.getMinutes()).padStart(2, '0')} bắt đầu dỡ`;
@@ -4225,34 +4384,30 @@ function calcSafetyPlan() {
     }
   }
 
-  // Mốc nước kiệt
-  if (tLow >= tStart && tLow <= tMaxLimit) {
-    let dL = new Date(tLow);
-    let lblL = `${String(dL.getHours()).padStart(2, '0')}:${String(dL.getMinutes()).padStart(2, '0')} nước kiệt`;
-    timeNodes.push({ time: tLow, label: lblL, isSpecial: true, isLowTide: true, tideVal: vLow });
-  }
+  // Chèn tất cả các mốc Nước kiệt & Đỉnh triều nằm trong cửa sổ 24h kể từ lúc cập
+  extremesList.forEach(ext => {
+    if (ext.time >= tStart && ext.time <= tMaxLimit) {
+      let dE = new Date(ext.time);
+      let hmStr = `${String(dE.getHours()).padStart(2, '0')}:${String(dE.getMinutes()).padStart(2, '0')}`;
+      if (ext.type === 'low') {
+        timeNodes.push({ time: ext.time, label: `${hmStr} nước kiệt`, isSpecial: true, isLowTide: true, tideVal: ext.val });
+      } else {
+        timeNodes.push({ time: ext.time, label: `${hmStr} (Đỉnh triều)`, isSpecial: true, isHighTide: true, tideVal: ext.val });
+      }
+    }
+  });
 
-  // Mốc đỉnh triều
-  if (tHigh >= tStart && tHigh <= tMaxLimit) {
-    let dH = new Date(tHigh);
-    let lblH = `${String(dH.getHours()).padStart(2, '0')}:${String(dH.getMinutes()).padStart(2, '0')} (Đỉnh triều)`;
-    timeNodes.push({ time: tHigh, label: lblH, isSpecial: true, isHighTide: true, tideVal: vHigh });
-  }
-
-  // Các mốc giờ tròn tuần tự (Bỏ qua giờ tròn nếu trùng khung giờ với dòng bắt đầu dỡ hoặc cách mốc đặc biệt < 20 phút)
+  // Các mốc giờ tròn tuần tự
   let curHour = new Date(tStart);
   curHour.setMinutes(0, 0, 0);
   curHour.setTime(curHour.getTime() + 3600000);
-
   let dWorkObj = new Date(tStartWork);
 
   while (curHour.getTime() <= tMaxLimit) {
     let tMs = curHour.getTime();
     let d = new Date(tMs);
-
-    // Kiểm tra trùng khung giờ bắt đầu dỡ (gộp làm 1 dòng) hoặc quá sát mốc đặc biệt
     let sameWorkHour = (tStartWork > tStart) && (d.getDate() === dWorkObj.getDate() && d.getHours() === dWorkObj.getHours());
-    let tooClose = timeNodes.some(n => Math.abs(n.time - tMs) < 1200000); // Cách < 20 phút
+    let tooClose = timeNodes.some(n => Math.abs(n.time - tMs) < 1200000);
 
     if (!sameWorkHour && !tooClose && tMs > tStart) {
       let lbl = (d.getHours() === 0) ? `00:00 (${d.getDate()}/${d.getMonth() + 1})` : `${String(d.getHours()).padStart(2, '0')}:00`;
@@ -4269,10 +4424,9 @@ function calcSafetyPlan() {
 
   timeNodes.sort((a, b) => a.time - b.time);
 
-  // Tiền xử lý mực nước triều cho từng mốc
   for (let i = 0; i < timeNodes.length; i++) {
     let n = timeNodes[i];
-    n.calcTide = (n.tideVal !== undefined) ? n.tideVal : getExactTideAt(n.time, tLow, vLow, tHigh, vHigh);
+    n.calcTide = (n.tideVal !== undefined) ? n.tideVal : getExactTideAt(n.time, extremesList);
   }
 
   generatedPlanRows = [];
@@ -4289,11 +4443,8 @@ function calcSafetyPlan() {
 
     let currentTide = node.calcTide;
     let availDepth = berthDepth + currentTide;
-
-    // Ngưỡng mớn tối đa tại giờ hiện tại để UKC TT >= 10% Mớn và >= 0.30m
     let maxSafeDraftNow = Math.min(availDepth / 1.10, availDepth - 0.30);
 
-    // Ngưỡng mớn tối đa đón đầu các giờ tiếp theo (đảm bảo khi xếp hàng xuất không bị vượt mớn lúc nước ròng)
     let minFutureSafeDraft = maxSafeDraftNow;
     for (let j = i + 1; j < timeNodes.length; j++) {
       let futAvail = berthDepth + timeNodes[j].calcTide;
@@ -4303,10 +4454,8 @@ function calcSafetyPlan() {
 
     let phase = (remImport > 0 || totalExport === 0) ? 'IMPORT' : 'EXPORT';
 
-    // Bắt đầu tính sản lượng từ sau mốc bắt đầu dỡ (hoặc ngay tại dòng bắt đầu dỡ nếu đã qua một khoảng thời gian làm hàng)
     if (node.time > tStartWork && timeDeltaHours > 0) {
       if (remImport > 0) {
-        // GIAI ĐOẠN 1: DỠ HÀNG NHẬP (Biến thiên ±20% - 30% năng suất TB)
         let importFactor = 1.0 + (Math.random() * 0.50 - 0.20);
         let plannedImportQty = Math.round(baseRate * importFactor * timeDeltaHours);
         let actualDischarged = Math.min(plannedImportQty, remImport);
@@ -4328,14 +4477,13 @@ function calcSafetyPlan() {
           node.label += " (Xong nhập)";
         }
       } else if (totalExport > 0 && remExport > 0) {
-        // GIAI ĐOẠN 2: XẾP HÀNG XUẤT (Đạt 80% - 90% năng suất trung bình)
         phase = 'EXPORT';
         if (!exportStartedLogged && !node.isSpecial) {
           node.label += " (Bắt đầu xuất)";
           exportStartedLogged = true;
         }
 
-        let exportFactor = 0.80 + (Math.random() * 0.10); // 80% đến 90% năng suất TB
+        let exportFactor = 0.80 + (Math.random() * 0.10);
         let plannedExportQty = Math.round(baseRate * exportFactor * timeDeltaHours);
 
         let safeCeilingForExport = minFutureSafeDraft - 0.02;
@@ -4349,7 +4497,6 @@ function calcSafetyPlan() {
       }
     }
 
-    // Chốt chặn an toàn tuyệt đối tại mọi thời điểm
     if (currentDraft > maxSafeDraftNow) {
       currentDraft = maxSafeDraftNow - 0.02;
     }
@@ -4370,7 +4517,6 @@ function calcSafetyPlan() {
 
   renderSafetyTable();
 }
-
 // 8. Tạo đối tượng dòng dữ liệu
 function createPlanRowObj(timeMs, timeLabel, dischargedStr, remainingStr, draftNum, tideNum, berthDepth, phase = 'IMPORT') {
   let availDepth = berthDepth + tideNum;
