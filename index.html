@@ -6265,25 +6265,31 @@ function autoFillFromCatalogOnType(val) {
 }
 
 // 11. Quét tự động thông số từ VesselFinder
+// 11. Quét trực tiếp thông số & Hành trình HIỆN TẠI (Live Destination / Last Port) từ VesselFinder
 async function fetchShipSpecsFromVesselFinder() {
   let imo = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
   let vName = ($('editVesselName')?.value || '').trim().toUpperCase();
   let statusEl = $('vfLookupStatus');
 
   if (!imo && !vName) {
-    alert('Vui lòng nhập Số IMO (ví dụ: 9403217) hoặc Tên tàu trước khi tra cứu!');
+    alert('Vui lòng nhập Số IMO (ví dụ: 9595797) hoặc Tên tàu trước khi tra cứu!');
     return;
   }
 
   if (statusEl) {
-    statusEl.textContent = '⏳ Đang kết nối VesselFinder...';
+    statusEl.textContent = '⏳ Đang truy vấn thời gian thực từ VesselFinder...';
     statusEl.style.color = '#f59e0b';
   }
 
+  // Xóa trắng 2 ô Cảng trước & Cảng đến trước khi truy vấn để đảm bảo chỉ hiển thị dữ liệu thời điểm hiện tại
+  if ($('editVesselLastPort')) $('editVesselLastPort').value = '';
+  if ($('editVesselDestination')) $('editVesselDestination').value = '';
+
   try {
+    // Bước 1: Tự động tìm IMO nếu người dùng chỉ nhập Tên tàu
     if (!imo && vName) {
       let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(vName)}`;
-      let sRes = await fetch(searchUrl);
+      let sRes = await fetch(searchUrl, { headers: { 'X-No-Cache': 'true' } });
       if (sRes.ok) {
         let sText = await sRes.text();
         let imoMatch = sText.match(/\/vessels\/details\/(\d{7})/);
@@ -6306,33 +6312,52 @@ async function fetchShipSpecsFromVesselFinder() {
     }
 
     let detailUrl = `https://www.vesselfinder.com/vessels/details/${imo}`;
-    let pageText = '';
+    let rawHtml = '';
+    let jinaText = '';
 
+    // Cổng 1: Ưu tiên lấy HTML gốc thời gian thực (bắt chính xác class .vi__sbt, .vi__stp, ._npNa, ._mcol12ext)
     try {
-      let r1 = await fetch(`https://r.jina.ai/${detailUrl}`);
-      if (r1.ok) pageText = await r1.text();
+      let rHtml = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(detailUrl)}&_t=${Date.now()}`, { cache: 'no-store' });
+      if (rHtml.ok) {
+        let jHtml = await rHtml.json();
+        rawHtml = jHtml.contents || '';
+      }
     } catch (e1) {}
 
-    if (!pageText || pageText.length < 200) {
-      try {
-        let r2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(detailUrl)}`);
-        if (r2.ok) {
-          let j2 = await r2.json();
-          pageText = j2.contents || '';
-        }
-      } catch (e2) {}
-    }
+    // Cổng 2: Lấy qua Jina Reader (với cờ X-No-Cache để luôn lấy hành trình mới nhất tại thời điểm truy vấn)
+    try {
+      let rJina = await fetch(`https://r.jina.ai/${detailUrl}`, {
+        cache: 'no-store',
+        headers: { 'X-No-Cache': 'true' }
+      });
+      if (rJina.ok) jinaText = await rJina.text();
+    } catch (e2) {}
 
-    if (!pageText || pageText.length < 100) {
+    if ((!rawHtml || rawHtml.length < 100) && (!jinaText || jinaText.length < 100)) {
       throw new Error('Trang VesselFinder chặn truy cập tự động tạm thời.');
     }
 
-    let parsed = parseVesselFinderContent(pageText);
+    // Kết hợp bóc tách từ cả HTML gốc (DOM) và văn bản Jina để không sót trường nào
+    let parsedHtml = rawHtml ? parseVesselFinderContent(rawHtml) : {};
+    let parsedJina = jinaText ? parseVesselFinderContent(jinaText) : {};
+    let parsed = { ...parsedJina, ...parsedHtml };
+
+    // Giữ lại các trường nếu 1 trong 2 nguồn bóc tách được
+    parsed.destination = parsedHtml.destination || parsedJina.destination || '';
+    parsed.last_port = parsedHtml.last_port || parsedJina.last_port || '';
+    parsed.year_built = parsedHtml.year_built || parsedJina.year_built || '';
+    parsed.loa = parsedHtml.loa || parsedJina.loa || 0;
+    parsed.beam = parsedHtml.beam || parsedJina.beam || 0;
+    parsed.dwt = parsedHtml.dwt || parsedJina.dwt || '';
+    parsed.gt = parsedHtml.gt || parsedJina.gt || '';
+    parsed.teu = parsedHtml.teu || parsedJina.teu || 0;
+    parsed.capacity_unit = parsedHtml.capacity_unit || parsedJina.capacity_unit || '';
+
     applyParsedSpecsToForm(parsed, imo);
 
     if (statusEl) {
-      let capNote = parsed.is_estimated ? ` (Sức chở tính theo TK & Tuổi tàu)` : '';
-      statusEl.textContent = `✓ Đã nạp từ IMO ${imo}${capNote}`;
+      let routeNote = (parsed.last_port || parsed.destination) ? ` · Đã lấy Cảng đi/đến hiện tại` : '';
+      statusEl.textContent = `✓ Đã nạp trực tiếp IMO ${imo}${routeNote}`;
       statusEl.style.color = '#10b981';
     }
   } catch (err) {
@@ -6346,16 +6371,98 @@ async function fetchShipSpecsFromVesselFinder() {
   }
 }
 
-// 12. Bóc tách chuẩn xác nội dung VesselFinder (Không nhảy qua dấu '-' lấy nhầm DWT & Lấy Năm SX, Last Port, Destination)
+// 12. Bóc tách chuẩn xác cấu trúc DOM (.vi__sbt, .vi__stp, ._npNa) & Markdown của VesselFinder
 function parseVesselFinderContent(rawText) {
-  let lineText = rawText
-    .replace(/<\/(tr|td|th|p|div|li|h1|h2|h3)>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[ \t]+/g, ' ');
-  let clean = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   let res = {};
 
-  // A. Tên tàu & Loại tàu
+  // PHẦN 1: BÓC TÁCH TRỰC TIẾP TỪ CÂY DOM HTML CỦA VESSELFINDER (Khớp 100% với DevTools F12)
+  if (rawText.includes('<div') || rawText.includes('_npNa') || rawText.includes('vilabel')) {
+    try {
+      const doc = new DOMParser().parseFromString(rawText, 'text/html');
+
+      // 1. Lấy Destination từ khối .vi__sbt (VD: Shekou, China + ETA: Nov 17, 03:00)
+      const sbt = doc.querySelector('.vi__sbt');
+      if (sbt) {
+        const destPort = sbt.querySelector('._npNa')?.textContent.trim() || '';
+        const etaSpan = sbt.querySelector('._mcol12ext')?.textContent.trim()
+                     || sbt.querySelector('._value')?.textContent.replace(/\s*\([^\)]*\)\s*/g, '').replace(/\s+/g, ' ').trim() || '';
+        if (destPort && destPort !== '-') {
+          res.destination = etaSpan ? `${destPort} (${etaSpan})` : destPort;
+        }
+      }
+
+      // 2. Lấy Last Port từ khối .vi__stp (VD: Haiphong, Vietnam + ATD: Nov 15, 17:43 UTC)
+      const stp = doc.querySelector('.vi__stp');
+      if (stp) {
+        const lastPort = stp.querySelector('._npNa')?.textContent.trim() || '';
+        const atdVal = stp.querySelector('._value')?.textContent.replace(/\s*\([^\)]*\)\s*/g, '').replace(/\s+/g, ' ').trim() || '';
+        if (lastPort && lastPort !== '-') {
+          res.last_port = atdVal ? `${lastPort} (${atdVal})` : lastPort;
+        }
+      }
+
+      // Dự phòng quét tất cả các thẻ .vilabel nếu thiếu
+      if (!res.destination || !res.last_port) {
+        doc.querySelectorAll('.vilabel').forEach(lbl => {
+          const labelTxt = lbl.textContent.trim().toLowerCase();
+          const box = lbl.parentElement;
+          if (!box) return;
+          const pName = (box.querySelector('._npNa') || lbl.nextElementSibling)?.textContent.trim() || '';
+          const tVal = (box.querySelector('._mcol12ext') || box.querySelector('._value'))?.textContent.replace(/\s*\([^\)]*\)\s*/g, '').replace(/\s+/g, ' ').trim() || '';
+          if (labelTxt === 'destination' && pName && pName !== '-' && !res.destination) {
+            res.destination = tVal ? `${pName} (${tVal})` : pName;
+          }
+          if (labelTxt === 'last port' && pName && pName !== '-' && !res.last_port) {
+            res.last_port = tVal ? `${pName} (${tVal})` : pName;
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  // PHẦN 2: QUÉT THEO DÒNG CHO MARKDOWN JINA READER & COPY-PASTE ("📋 Dán nhanh")
+  let rawLines = rawText
+    .replace(/<\/(tr|td|th|p|div|li|a|span|h1|h2|h3)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .split(/[\r\n]+/)
+    .map(l => l.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  for (let i = 0; i < rawLines.length; i++) {
+    let line = rawLines[i];
+
+    // Bắt dòng Destination (VD: Dòng 1: Destination -> Dòng 2: Shekou, China -> Dòng 3: ETA: Nov 17, 03:00 (in 1 day))
+    if (!res.destination && /^Destination$/i.test(line)) {
+      let pName = rawLines[i + 1] || '';
+      let nextLine = rawLines[i + 2] || '';
+      if (pName && pName !== '-' && !/^(Predicted|Remaining|Distance|Course|Current|Navigation|Position|IMO|Callsign|AIS|Length|Last Port)/i.test(pName)) {
+        let cleanEta = '';
+        if (/^(ETA|ATA)\s*:/i.test(nextLine)) {
+          cleanEta = nextLine.replace(/\s*\([^\)]*\)\s*/g, '').trim();
+        }
+        res.destination = cleanEta ? `${pName} (${cleanEta})` : pName;
+      }
+    }
+
+    // Bắt dòng Last Port (VD: Dòng 1: Last Port -> Dòng 2: Haiphong, Vietnam -> Dòng 3: ATD: Nov 15, 17:43 UTC (14 minutes ago))
+    if (!res.last_port && /^Last\s*Port$/i.test(line)) {
+      let pName = rawLines[i + 1] || '';
+      let nextLine = rawLines[i + 2] || '';
+      if (pName && pName !== '-' && !/^(Have an AIS|Vessel|Management|Particulars|Year|Length|Become)/i.test(pName)) {
+        let cleanAtd = '';
+        if (/^(ATD|ATA)\s*:/i.test(nextLine)) {
+          cleanAtd = nextLine.replace(/\s*\([^\)]*\)\s*/g, '').trim();
+        }
+        res.last_port = cleanAtd ? `${pName} (${cleanAtd})` : pName;
+      }
+    }
+  }
+
+  // PHẦN 3: BÓC TÁCH CÁC THÔNG SỐ KỸ THUẬT KHÁC (Tên tàu, Loại tàu, Năm SX, LOA, Beam, DWT, GT, Sức chở)
+  let lineText = rawLines.join('\n');
+  let clean = rawLines.join(' ');
+
+  // A. Tên tàu & Loại tàu (Hỗ trợ cả tiêu đề và dòng AIS Type: Cargo ship như trong ảnh IMO 9595797)
   let titleMatch = clean.match(/([A-Z0-9\s\-]{3,35}),\s*(Container Ship|Bulk Carrier|General Cargo|Vehicles Carrier|Ro-Ro Cargo|Car Carrier|Chemical|Oil Products Tanker|Crude Oil Tanker|LPG Tanker|LNG Tanker|Heavy Load Carrier|Cargo Ship)/i);
   if (titleMatch) {
     res.name = titleMatch[1].trim().toUpperCase();
@@ -6366,6 +6473,16 @@ function parseVesselFinderContent(rawText) {
     else if (rawType.includes('tanker') || rawType.includes('chemical')) res.type = 'Tàu dầu / Hóa chất';
     else if (rawType.includes('heavy')) res.type = 'Tàu thiết bị / Project';
     else res.type = 'Hàng rời / tổng hợp';
+  } else {
+    let aisTypeM = lineText.match(/AIS\s*Type\s*[:\s]*(Container|Vehicles|Ro-Ro|Car Carrier|Tanker|Chemical|LPG|LNG|Bulk|General Cargo|Cargo ship)/i);
+    if (aisTypeM) {
+      let rt = aisTypeM[1].toLowerCase();
+      if (rt.includes('container')) res.type = 'Container';
+      else if (rt.includes('vehicles') || rt.includes('ro-ro') || rt.includes('car')) res.type = 'Ô tô (PCTC)';
+      else if (rt.includes('lpg') || rt.includes('lng')) res.type = 'Tàu khí (LPG / LNG)';
+      else if (rt.includes('tanker') || rt.includes('chemical')) res.type = 'Tàu dầu / Hóa chất';
+      else res.type = 'Hàng rời / tổng hợp';
+    }
   }
 
   // B. Năm sản xuất (Year of Built)
@@ -6376,26 +6493,7 @@ function parseVesselFinderContent(rawText) {
     res.year_built = parseInt(ybMatch[1], 10);
   }
 
-  // C. Cảng tiếp theo (Destination) & Cảng trước (Last Port)
-  let destMatch = lineText.match(/Destination\s+([A-Z0-9\s,\-\(\)\/]{2,35}?)(?:\n|ETA|Predicted|Distance|Current|$)/i)
-               || clean.match(/en\s*route\s*to\s*(?:the\s*port\s*of\s*)?([A-Za-z0-9\s\-\(\)]{2,30}?)(?:,\s*sailing|\.\s*|$)/i);
-  if (destMatch) {
-    let dVal = destMatch[1].trim().replace(/\s+/g, ' ');
-    if (dVal && !/^(n\/a|none|-|unknown|ais)$/i.test(dVal)) {
-      res.destination = dVal.toUpperCase();
-    }
-  }
-
-  let lastPortMatch = lineText.match(/(?:Last\s*Port|Departure\s*Port|Previous\s*Port)\s+([A-Z0-9\s,\-\(\)\/]{2,35}?)(?:\n|ATD|ATA|Arrival|Departed|$)/i)
-                   || clean.match(/departed\s*from\s*([A-Za-z0-9\s\-\(\)]{2,30}?)(?:\s*on\s*|\.\s*|$)/i);
-  if (lastPortMatch) {
-    let lpVal = lastPortMatch[1].trim().replace(/\s+/g, ' ');
-    if (lpVal && !/^(n\/a|none|-|unknown)$/i.test(lpVal)) {
-      res.last_port = lpVal.toUpperCase();
-    }
-  }
-
-  // D. LOA & Beam
+  // C. LOA & Beam (Bắt chuẩn cả "Length / Beam 146 / 23 m" trong bảng AIS)
   let lbCombo = clean.match(/(?:Length\s*\/\s*Beam|Length\s*Overall)[^\d]{1,25}(\d{2,3}(?:[.,]\d+)?)\s*\/\s*(\d{2}(?:[.,]\d+)?)\s*m/i)
              || clean.match(/(\d{2,3}(?:[.,]\d+)?)\s*m\s*[×x\/]\s*(\d{2}(?:[.,]\d+)?)\s*m/i);
   if (lbCombo) {
@@ -6410,13 +6508,13 @@ function parseVesselFinderContent(rawText) {
     if (beamM) res.beam = parseFloat(beamM[1].replace(',', '.'));
   }
 
-  // E. DWT & GT
+  // D. DWT & GT
   let dwtM = lineText.match(/(?:Deadweight\s*\(t\)|Deadweight|DWT)\s*[:\s]*(\d{1,3}(?:[.,]\d{3})*|\d{3,6})/i);
   let gtM = lineText.match(/(?:Gross\s*Tonnage|GT)\s*[:\s]*(\d{1,3}(?:[.,]\d{3})*|\d{3,6})/i);
   if (dwtM) res.dwt = dwtM[1].replace(/,/g, '');
   if (gtM) res.gt = gtM[1].replace(/,/g, '');
 
-  // F. SỨC CHỞ THEO LOẠI TÀU (Không nhảy qua dấu '-' để tránh lấy nhầm DWT!)
+  // E. Sức chở theo loại tàu
   let teuStrict = lineText.match(/(?:Capacity\s*\(TEU\)|Container\s*Capacity|TEU)\s*[:\s]*([0-9][0-9.,]*)\b/i)
                || clean.match(/\b(\d{3,5})\s*TEU\b/i);
   let ceuStrict = lineText.match(/(?:Cars|Vehicles\s*Capacity|Car\s*Capacity|CEU|Ro-Ro\s*Capacity)\s*[:\s]*([0-9][0-9.,]*)\b/i)
@@ -6446,7 +6544,7 @@ function parseVesselFinderContent(rawText) {
     res.capacity_unit = 'm³';
   }
 
-  // G. Nếu trên VesselFinder không có sức chứa, tự động tính theo thiết kế & tuổi tàu
+  // F. Nếu VesselFinder không có sức chứa, tự động tính theo thiết kế & tuổi tàu
   if (!res.teu || res.teu <= 0) {
     let est = estimateStandardCapacityByDesign({
       vessel_type: res.type || ($('editVesselType')?.value || 'Container'),
@@ -6463,7 +6561,7 @@ function parseVesselFinderContent(rawText) {
     }
   }
 
-  // H. Số IMO
+  // G. Số IMO
   let imoM = clean.match(/IMO[^\d]{1,15}(\d{7})/i);
   if (imoM) res.imo = imoM[1];
 
@@ -6477,8 +6575,10 @@ function applyParsedSpecsToForm(parsed, imoFallback = '') {
     $('editVesselYearBuilt').value = parsed.year_built;
     updateVesselAgePreview();
   }
-  if (parsed.last_port && $('editVesselLastPort')) $('editVesselLastPort').value = parsed.last_port;
-  if (parsed.destination && $('editVesselDestination')) $('editVesselDestination').value = parsed.destination;
+  // Hiển thị trực tiếp Cảng trước & Cảng tiếp theo tại thời điểm truy vấn
+  if ($('editVesselLastPort')) $('editVesselLastPort').value = parsed.last_port || 'Chưa có trên AIS';
+  if ($('editVesselDestination')) $('editVesselDestination').value = parsed.destination || 'Chưa có trên AIS';
+
   if (parsed.loa && $('editVesselLoa')) $('editVesselLoa').value = parsed.loa;
   if (parsed.beam && $('editVesselBeam')) $('editVesselBeam').value = parsed.beam;
   if (parsed.dwt && $('editVesselDwt')) $('editVesselDwt').value = parsed.dwt;
@@ -6497,7 +6597,6 @@ function applyParsedSpecsToForm(parsed, imoFallback = '') {
     forceCalculateStandardCapacity();
   }
 }
-
 function openVesselFinderPage() {
   let imo = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
   let vName = ($('editVesselName')?.value || '').trim();
