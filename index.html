@@ -7321,7 +7321,9 @@ function diffAndReplaceChangedFields(vesselName, imo, parsedNew) {
   };
 }
 
-// 3. Hàm quét nhanh: CHỈ quét các tàu nằm trong bộ lọc hiện tại (getFilteredCalls) và đã có đúng số IMO trong CSDL
+// Hàm quét thông minh (Chỉ quét tàu trong bộ lọc):
+// - Tàu chưa có IMO / Tàu mới: Tự động tìm IMO, lấy thông số và GHI MỚI vào CSDL
+// - Tàu đã có IMO: So sánh đúng IMO, trường nào thay đổi thì XÓA TRƯỜNG CŨ & THAY THẾ MỚI NHẤT
 async function runEndOfDayVesselAudit(isSilentAuto = false) {
   if (isEodAuditRunning) return;
   isEodAuditRunning = true;
@@ -7330,9 +7332,9 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
   let syncBtn = $('btnDailyImoSync');
   let vfStatus = $('vfLookupStatus');
 
-  // Bước 1: Chỉ lấy danh sách tàu trong bộ lọc ngày hiện tại
+  // Bước 1: Chỉ lấy các tàu đang hiển thị trong bộ lọc ngày hiện tại (Không quét toàn bộ kho)
   let filteredCalls = getFilteredCalls();
-  let vesselsInFilterWithImo = [];
+  let vesselsInFilter = [];
   let seenNames = new Set();
 
   filteredCalls.forEach(c => {
@@ -7340,98 +7342,172 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
     if (!vName || seenNames.has(vName)) return;
     seenNames.add(vName);
 
-    // Đối chiếu trong CSDL (vesselOverridesMap & vesselCatalogMap) xem tàu có số IMO hợp lệ không
     let dbOv = vesselOverridesMap.get(vName) || {};
     let dbCat = vesselCatalogMap.get(vName) || {};
     let dbImo = String(dbOv.imo || dbCat.imo || c.imo || '').trim().replace(/\D/g, '');
+    let isExistingInDb = vesselCatalogMap.has(vName) || vesselOverridesMap.has(vName);
 
-    if (dbImo.length === 7) {
-      vesselsInFilterWithImo.push({
-        name: vName,
-        imo: dbImo,
-        call: c
-      });
-    }
+    vesselsInFilter.push({
+      name: vName,
+      imo: dbImo.length === 7 ? dbImo : '',
+      isNewVessel: !isExistingInDb || dbImo.length !== 7,
+      call: c
+    });
   });
 
-  if (vesselsInFilterWithImo.length === 0) {
-    let emptyMsg = `✓ Bộ lọc hiện tại (${seenNames.size} tàu) chưa có tàu nào gắn mã IMO trong CSDL`;
-    if (badge) { badge.textContent = emptyMsg; badge.style.color = '#059669'; }
-    if (!isSilentAuto) {
-      alert(`Trong ${seenNames.size} tàu thuộc bộ lọc ngày hiện tại, chưa có tàu nào lưu sẵn số IMO (7 chữ số) trong CSDL để đối chiếu!`);
+  if (vesselsInFilter.length === 0) {
+    if (badge) {
+      badge.textContent = `✓ Không có tàu nào trong bộ lọc hiện tại`;
+      badge.style.color = '#059669';
     }
     isEodAuditRunning = false;
     return;
   }
 
-  let checkedCount = 0;
+  let newAddedCount = 0;
   let updatedVesselCount = 0;
+  let checkedCount = 0;
   let detailReport = [];
 
-  // Bước 2: Chỉ quét đúng các tàu trong bộ lọc có IMO
-  for (let i = 0; i < vesselsInFilterWithImo.length; i++) {
-    let item = vesselsInFilterWithImo[i];
-    let progressMsg = `⏳ Đang đối chiếu IMO (${i + 1}/${vesselsInFilterWithImo.length}): ${item.name} (${item.imo})...`;
+  // Bước 2: Duyệt qua từng tàu trong bộ lọc hiện tại
+  for (let i = 0; i < vesselsInFilter.length; i++) {
+    let item = vesselsInFilter[i];
+    let modeLabel = item.isNewVessel ? 'Tàu mới - Đang tìm IMO' : `Đối chiếu IMO ${item.imo}`;
+    let progressMsg = `⏳ (${i + 1}/${vesselsInFilter.length}) ${item.name}: ${modeLabel}...`;
+
     if (badge) { badge.textContent = progressMsg; badge.style.color = '#d97706'; }
     if (syncBtn) syncBtn.textContent = progressMsg;
     if (vfStatus) { vfStatus.textContent = progressMsg; vfStatus.style.color = '#d97706'; }
 
     try {
-      let detailUrl = `https://www.vesselfinder.com/vessels/details/${item.imo}`;
-      let rawHtml = '';
+      let targetImo = item.imo;
+      let searchMatchedType = '';
 
-      let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, {
-        headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
-      });
-      if (rHtml.ok) {
-        rawHtml = await rHtml.text();
-      } else {
-        let rMd = await fetch(`https://r.jina.ai/${detailUrl}`);
-        if (rMd.ok) rawHtml = await rMd.text();
+      // TRƯỜNG HỢP 1: TÀU MỚI CHƯA CÓ IMO TRONG CSDL -> Tự động dò IMO theo tên tàu trên VesselFinder
+      if (!targetImo) {
+        let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(item.name)}`;
+        let sRes = await fetch(searchUrl, {
+          headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
+        });
+        if (!sRes.ok) sRes = await fetch(searchUrl);
+
+        if (sRes.ok) {
+          let sText = await sRes.text();
+          let bestCand = (typeof selectBestVesselFromSearchHtml === 'function')
+            ? selectBestVesselFromSearchHtml(sText, item.name)
+            : null;
+          if (bestCand && bestCand.imo) {
+            targetImo = bestCand.imo;
+            searchMatchedType = mapVesselFinderShipType(bestCand.rawType);
+          } else {
+            let m = sText.match(/\/vessels\/details\/(\d{7})/);
+            if (m) targetImo = m[1];
+          }
+        }
       }
 
-      if (rawHtml && rawHtml.length > 100) {
-        let parsed = parseVesselFinderContent(rawHtml);
-        let returnedImo = String(parsed.imo || item.imo).replace(/\D/g, '');
+      // Truy vấn chi tiết từ VesselFinder khi đã có IMO (từ CSDL hoặc vừa tìm được)
+      if (targetImo && targetImo.length === 7) {
+        let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
+        let rawHtml = '';
 
-        // Kiểm tra khớp đúng số IMO giữa CSDL và trang VesselFinder
-        if (returnedImo === item.imo) {
-          let diffResult = diffAndReplaceChangedFields(item.name, item.imo, parsed);
+        let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, {
+          headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
+        });
+        if (rHtml.ok) {
+          rawHtml = await rHtml.text();
+        } else {
+          let rMd = await fetch(`https://r.jina.ai/${detailUrl}`);
+          if (rMd.ok) rawHtml = await rMd.text();
+        }
+
+        if (rawHtml && rawHtml.length > 100) {
+          let parsed = parseVesselFinderContent(rawHtml);
+          if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
           checkedCount++;
 
-          if (diffResult.hasChanged) {
-            updatedVesselCount++;
-            detailReport.push(`• ${item.name} (IMO ${item.imo}):\n   ${diffResult.changedLogs.join('\n   ')}`);
+          if (item.isNewVessel) {
+            // A. NẾU LÀ TÀU MỚI (CHƯA CÓ IMO TRONG CSDL) -> TỰ ĐỘNG GHI MỚI HOÀN TOÀN VÀO CSDL
+            let finalType = parsed.type || 'Container';
+            let finalLoa = parsed.loa || item.call.loa || 0;
+            let finalBeam = parsed.beam || (finalLoa >= 200 ? 32.2 : (finalLoa >= 170 ? 27.6 : 25.0));
+            let finalDwt = parsed.dwt || item.call.dwt || '';
+            let finalGt = parsed.gt || '';
+            let finalYear = parsed.year_built || '';
+            let finalUnit = parsed.capacity_unit || getDefaultCapacityUnitByType(finalType);
+            let finalTeu = parsed.teu || 0;
 
-            // Nếu bảng vessel_overrides trên Supabase có trường thay đổi (LOA, DWT), chỉ update đúng trường đó
-            if (supabaseClient && vesselOverridesMap.has(item.name) && Object.keys(diffResult.supabaseChangedCols).length > 0) {
-              try {
-                await supabaseClient
-                  .from('vessel_overrides')
-                  .update({
-                    ...diffResult.supabaseChangedCols,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('vessel_name', item.name);
-              } catch (dbErr) {
-                console.warn('Supabase field update warning:', dbErr);
+            if (!finalTeu || finalTeu <= 0) {
+              let est = estimateStandardCapacityByDesign({
+                vessel_type: finalType,
+                loa: finalLoa,
+                beam: finalBeam,
+                dwt: finalDwt,
+                gt: finalGt,
+                year_built: finalYear,
+                capacity_unit: finalUnit
+              });
+              finalTeu = est.capacity;
+              finalUnit = est.unit;
+            }
+
+            let newRecord = {
+              type: finalType,
+              year_built: finalYear,
+              last_port: parsed.last_port || '',
+              destination: parsed.destination || '',
+              loa: finalLoa,
+              beam: finalBeam,
+              teu: finalTeu,
+              capacity_unit: finalUnit,
+              dwt: finalDwt,
+              gt: finalGt,
+              imo: targetImo,
+              agent: item.call.operator || '',
+              updated_at: new Date().toISOString()
+            };
+
+            vesselCatalogMap.set(item.name, newRecord);
+            newAddedCount++;
+            detailReport.push(`🟢 [GHI MỚI] ${item.name} (IMO ${targetImo}): ${finalType}, ${finalLoa}x${finalBeam}m, ${finalTeu} ${finalUnit}, SX ${finalYear || '—'}`);
+
+          } else {
+            // B. NẾU LÀ TÀU ĐÃ CÓ IMO TRONG CSDL -> CHỈ XÓA & THAY THẾ TRƯỜNG DỮ LIỆU NÀO THAY ĐỔI
+            let returnedImo = String(parsed.imo || targetImo).replace(/\D/g, '');
+            if (returnedImo === item.imo) {
+              let diffResult = diffAndReplaceChangedFields(item.name, item.imo, parsed);
+              if (diffResult.hasChanged) {
+                updatedVesselCount++;
+                detailReport.push(`🔄 [CẬP NHẬT] ${item.name} (IMO ${item.imo}):\n   ${diffResult.changedLogs.join('\n   ')}`);
+
+                if (supabaseClient && vesselOverridesMap.has(item.name) && Object.keys(diffResult.supabaseChangedCols).length > 0) {
+                  try {
+                    await supabaseClient
+                      .from('vessel_overrides')
+                      .update({
+                        ...diffResult.supabaseChangedCols,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('vessel_name', item.name);
+                  } catch (dbErr) {}
+                }
               }
             }
           }
         }
       }
     } catch (e) {
-      console.warn('Filtered IMO check skip:', item.name, e);
+      console.warn('Scan vessel in filter skip:', item.name, e);
     }
 
-    // Nghỉ ngắn 0.8 giây giữa các tàu trong bộ lọc
-    if (i < vesselsInFilterWithImo.length - 1) {
+    // Nghỉ 0.8 giây giữa các tàu trong bộ lọc
+    if (i < vesselsInFilter.length - 1) {
       await new Promise(r => setTimeout(r, 800));
     }
   }
 
-  // Bước 3: Nếu có trường thay đổi, lưu lại file vessel_catalog.json lên Supabase Storage & LocalStorage
-  if (updatedVesselCount > 0) {
+  // Bước 3: Lưu bền vững xuống LocalStorage & Supabase Storage Bucket nếu có tàu mới hoặc có trường thay đổi
+  if (newAddedCount > 0 || updatedVesselCount > 0) {
     let catalogObj = Object.fromEntries(vesselCatalogMap);
     localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
     if (supabaseClient) {
@@ -7447,6 +7523,7 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
   localStorage.setItem('hp_last_eod_audit_date', todayStr);
   isEodAuditRunning = false;
 
+  if (typeof updateCatalogBadgeCount === 'function') updateCatalogBadgeCount();
   allCalls = filterAndDeduplicateCalls(allCalls);
   renderAll();
   if (typeof renderOverrideTable === 'function') renderOverrideTable();
@@ -7456,20 +7533,19 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
     populateEditForm(currentEditingName);
   }
 
-  let doneMsg = `✓ Đã quét ${checkedCount} tàu có IMO trong bộ lọc · Cập nhật ${updatedVesselCount} tàu (${new Date().toLocaleTimeString('vi-VN')})`;
+  let doneMsg = `✓ Đã quét ${checkedCount} tàu trong bộ lọc (Ghi mới: ${newAddedCount} · Cập nhật: ${updatedVesselCount})`;
   if (badge) { badge.textContent = doneMsg; badge.style.color = '#059669'; }
   if (syncBtn) syncBtn.innerHTML = '🔄 Quét IMO (Tàu trong bộ lọc)';
   if (vfStatus) { vfStatus.textContent = doneMsg; vfStatus.style.color = '#10b981'; }
 
   if (!isSilentAuto) {
     let msg = detailReport.length > 0
-      ? `\n\nCác trường dữ liệu vừa được xóa cũ & thay thế mới nhất:\n${detailReport.join('\n')}`
-      : `\n\nTất cả các trường dữ liệu của ${checkedCount} tàu có IMO trong bộ lọc đều không có thay đổi.`;
-    alert(`Hoàn tất đối chiếu nhanh tàu trong bộ lọc!\n- Tàu có IMO trong bộ lọc: ${checkedCount} tàu\n- Tàu có trường thay đổi: ${updatedVesselCount} tàu${msg}`);
+      ? `\n\nChi tiết kết quả:\n${detailReport.slice(0, 18).join('\n')}`
+      : `\n\nTất cả các tàu trong bộ lọc đều đã khớp thông số mới nhất.`;
+    alert(`Hoàn tất quét các tàu trong bộ lọc!\n- Tổng tàu kiểm tra: ${checkedCount}/${vesselsInFilter.length} tàu\n- Tàu mới tự động ghi thêm: ${newAddedCount} tàu\n- Tàu cũ có trường thay đổi: ${updatedVesselCount} tàu${msg}`);
   }
 }
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
-  
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
