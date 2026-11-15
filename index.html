@@ -5739,13 +5739,93 @@ function autoFillTideFromSystem() {
 var vesselCatalogMap = window.vesselCatalogMap || new Map();
 window.vesselCatalogMap = vesselCatalogMap;
 
-// 1. Xác định đơn vị sức chứa chuẩn theo Loại tàu
+// 1. Tự động nâng cấp danh sách Loại tàu & Đơn vị tính trên Giao diện
+function ensureVesselTypeSelectOptions() {
+  const sel = $('editVesselType');
+  if (sel && !sel.dataset.upgraded) {
+    sel.innerHTML = `
+      <option value="Tàu mẹ Container">Tàu mẹ Container (Container Ship)</option>
+      <option value="Container Feeder (General Cargo)">Tàu Container Feeder (General Cargo Ship)</option>
+      <option value="Container">Container (Tiêu chuẩn)</option>
+      <option value="Tàu hàng rời (Bulk Carrier)">Tàu hàng rời (Bulk Carrier)</option>
+      <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp</option>
+      <option value="Tàu Ro-Ro (Vehicles Carrier)">Tàu Ro-Ro / Ô tô (Vehicles Carrier / PCTC)</option>
+      <option value="Ô tô (PCTC)">Ô tô (PCTC)</option>
+      <option value="Tàu dầu / FSO / Hóa chất">Tàu dầu / FSO / Hóa chất (Tanker / FSO)</option>
+      <option value="Tàu khí (LPG / LNG)">Tàu khí LPG / LNG (Gas Tanker)</option>
+      <option value="Tàu chở khách (Passenger/Cruise)">Tàu chở khách (Passenger / Cruise Ship)</option>
+      <option value="Tàu thiết bị / Project">Tàu thiết bị / Siêu trường (Heavy Load)</option>
+      <option value="Khác">Khác (Tug / Aux / Unknown)</option>
+    `;
+    sel.dataset.upgraded = '1';
+  }
+  const unitSel = $('editVesselCapUnit');
+  if (unitSel && !unitSel.dataset.upgraded) {
+    unitSel.innerHTML = `
+      <option value="TEU">TEU</option>
+      <option value="Units">Units (Xe)</option>
+      <option value="Tấn">Tấn (MT)</option>
+      <option value="m³">Khối (m³)</option>
+      <option value="Pax">Khách (Pax)</option>
+    `;
+    unitSel.dataset.upgraded = '1';
+  }
+}
+setTimeout(ensureVesselTypeSelectOptions, 100);
+
+// Chuẩn hóa tên loại tàu từ VesselFinder sang Loại tàu chuẩn của Hệ thống
+function mapVesselFinderShipType(rawVfType, loa = 0) {
+  let s = String(rawVfType || '').trim().toLowerCase();
+  if (!s) return '';
+
+  // 1. Container Ship -> Tàu mẹ Container (hoặc Container)
+  if (s.includes('container')) {
+    return 'Tàu mẹ Container';
+  }
+  // 2. General Cargo Ship / General Cargo / Reefer -> Tàu Container Feeder
+  if (s.includes('general cargo') || s.includes('reefer') || s.includes('multi-purpose')) {
+    return 'Container Feeder (General Cargo)';
+  }
+  // 3. Vehicles Carrier / Ro-Ro / Car Carrier -> Tàu Ro-Ro
+  if (s.includes('vehicles carrier') || s.includes('ro-ro') || s.includes('roro') || s.includes('car carrier')) {
+    return 'Tàu Ro-Ro (Vehicles Carrier)';
+  }
+  // 4. Passenger / Cruise Ship -> Tàu chở khách
+  if (s.includes('passenger') || s.includes('cruise')) {
+    return 'Tàu chở khách (Passenger/Cruise)';
+  }
+  // 5. LNG / LPG Tanker -> Tàu khí
+  if (s.includes('lng') || s.includes('lpg') || s.includes('gas carrier') || s.includes('gas tanker')) {
+    return 'Tàu khí (LPG / LNG)';
+  }
+  // 6. FSO / FPSO / Oil / Chemical / Asphalt / Bunkering Tanker -> Tàu dầu FSO
+  if (s.includes('fso') || s.includes('fpso') || s.includes('tanker') || s.includes('crude') || s.includes('chemical') || s.includes('asphalt') || s.includes('bitumen') || s.includes('bunkering')) {
+    return 'Tàu dầu / FSO / Hóa chất';
+  }
+  // 7. Bulk Carrier & các tàu chuyên chở hàng rời (Cement, Wood Chips, Urea, Aggregates, Limestone)
+  if (s.includes('bulk') || s.includes('cement') || s.includes('wood chips') || s.includes('urea') || s.includes('aggregates') || s.includes('limestone') || s.includes('ore carrier')) {
+    return 'Tàu hàng rời (Bulk Carrier)';
+  }
+  // 8. Heavy Load / Landing Craft / Livestock -> Tàu thiết bị
+  if (s.includes('heavy load') || s.includes('landing craft') || s.includes('project') || s.includes('livestock')) {
+    return 'Tàu thiết bị / Project';
+  }
+  // 9. Tugs, Fishing, Yacht, Military, Auxiliary
+  if (s.includes('tug') || s.includes('fishing') || s.includes('yacht') || s.includes('military') || s.includes('auxiliary')) {
+    return 'Khác';
+  }
+  return '';
+}
+
+// Xác định đơn vị sức chứa chuẩn theo Loại tàu
 function getDefaultCapacityUnitByType(vesselType) {
   let t = String(vesselType || 'Container').toUpperCase();
-  if (t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('RO-RO') || t.includes('RORO')) return 'Units';
-  if (t.includes('DẦU') || t.includes('HÓA CHẤT') || t.includes('KHÍ') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) return 'm³';
-  if (t.includes('RỜI') || t.includes('TỔNG HỢP') || t.includes('BULK') || t.includes('GENERAL')) return 'Tấn';
-  if (t.includes('THIẾT BỊ') || t.includes('PROJECT')) return 'Tấn';
+  if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ')) return 'Units';
+  if (t.includes('KHÁCH') || t.includes('PASSENGER') || t.includes('CRUISE')) return 'Pax';
+  if (t.includes('DẦU') || t.includes('FSO') || t.includes('HÓA CHẤT') || t.includes('KHÍ') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) return 'm³';
+  if (t.includes('RỜI') || t.includes('BULK') || t.includes('TỔNG HỢP')) return 'Tấn';
+  if (t.includes('THIẾT BỊ') || t.includes('PROJECT') || t.includes('HEAVY')) return 'Tấn';
+  // Cả Tàu mẹ Container và Tàu Container Feeder (General Cargo) đều ưu tiên tính theo TEU
   return 'TEU';
 }
 
@@ -5757,12 +5837,11 @@ function getVesselAgeAndFactor(yearBuilt) {
     return { yearBuilt: '', age: null, kAge: 1.0 };
   }
   let age = Math.max(0, curYear - y);
-  // Tàu <= 10 tuổi (Eco-design tối ưu hầm/boong): 1.05 | Tàu 11-20 tuổi: 1.00 | Tàu > 20 tuổi: 0.92
   let kAge = age <= 10 ? 1.05 : (age <= 20 ? 1.00 : 0.92);
   return { yearBuilt: y, age: age, kAge: kAge };
 }
 
-// 3. Thuật toán tính toán Sức chứa thông dụng theo Thiết kế & Tuổi tàu (Khi VesselFinder không có)
+// 3. Thuật toán tính toán Sức chứa thông dụng theo Thiết kế & Tuổi tàu (Khi VesselFinder khóa 🔒 hoặc không có)
 function estimateStandardCapacityByDesign(params) {
   let vType = String(params.vessel_type || 'Container').toUpperCase();
   let loa = parseFloat(String(params.loa || 0).replace(',', '.')) || 0;
@@ -5771,11 +5850,10 @@ function estimateStandardCapacityByDesign(params) {
   let gt = parseDwtToMetricTons(params.gt, 0);
   let { kAge } = getVesselAgeAndFactor(params.year_built);
 
-  // A. Tàu Ô tô / Ro-Ro (PCTC) -> Tính theo Units (CEU)
-  if (vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('RO-RO')) {
+  // A. Tàu Ro-Ro / Vehicles Carrier / PCTC -> Units (CEU)
+  if (vType.includes('RO-RO') || vType.includes('VEHICLES') || vType.includes('PCTC') || vType.includes('Ô TÔ')) {
     let units = 0;
     if (gt > 1000) {
-      // Chuẩn thiết kế tàu PCTC: ~8.5 GT cho mỗi 1 CEU (Unit xe tiêu chuẩn)
       units = Math.round((gt / 8.5) * kAge);
     } else if (loa > 0 && beam > 0) {
       let decks = loa >= 180 ? 11 : (loa >= 140 ? 8 : 5);
@@ -5786,20 +5864,26 @@ function estimateStandardCapacityByDesign(params) {
     return { capacity: units, unit: 'Units' };
   }
 
-  // B. Tàu Dầu / Hóa chất -> Tính theo Khối lỏng (m³)
-  if (vType.includes('DẦU') || vType.includes('HÓA CHẤT') || vType.includes('TANKER')) {
+  // B. Tàu chở khách (Passenger / Cruise Ship) -> Số khách (Pax)
+  if (vType.includes('KHÁCH') || vType.includes('PASSENGER') || vType.includes('CRUISE')) {
+    let pax = gt > 500 ? Math.round((gt / 35) * kAge) : Math.round(loa * 12 * kAge);
+    return { capacity: pax, unit: 'Pax' };
+  }
+
+  // C. Tàu Dầu / FSO / FPSO / Hóa chất -> Khối lỏng (m³)
+  if (vType.includes('DẦU') || vType.includes('FSO') || vType.includes('HÓA CHẤT') || vType.includes('TANKER')) {
     let m3 = dwt > 0 ? Math.round(dwt * 1.08 * kAge) : Math.round(loa * beam * 8.5 * kAge);
     return { capacity: m3, unit: 'm³' };
   }
 
-  // C. Tàu Khí hóa lỏng (LPG / LNG) -> Tính theo Khối khí (m³)
+  // D. Tàu Khí hóa lỏng (LPG / LNG) -> Khối khí (m³)
   if (vType.includes('KHÍ') || vType.includes('LPG') || vType.includes('LNG')) {
     let m3 = dwt > 0 ? Math.round(dwt * 1.45 * kAge) : Math.round(loa * beam * 7.5 * kAge);
     return { capacity: m3, unit: 'm³' };
   }
 
-  // D. Tàu Hàng rời / Tổng hợp -> Tính theo Tấn hàng hóa có ích (Cargo MT) hoặc m³
-  if (vType.includes('RỜI') || vType.includes('TỔNG HỢP') || vType.includes('BULK')) {
+  // E. Tàu Hàng rời (Bulk Carrier) -> Tấn hàng hóa (MT) hoặc m³
+  if (vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP')) {
     let preferredUnit = params.capacity_unit === 'm³' ? 'm³' : 'Tấn';
     if (preferredUnit === 'm³') {
       let grainM3 = dwt > 0 ? Math.round(dwt * 1.25 * kAge) : Math.round(loa * beam * 9.0 * kAge);
@@ -5810,24 +5894,34 @@ function estimateStandardCapacityByDesign(params) {
     }
   }
 
-  // E. Tàu Thiết bị / Siêu trường (Project Cargo) -> Tính theo Tấn (MT) hoặc Units
-  if (vType.includes('THIẾT BỊ') || vType.includes('PROJECT')) {
+  // F. Tàu Thiết bị / Siêu trường (Heavy Load / Project) -> Tấn hoặc Units
+  if (vType.includes('THIẾT BỊ') || vType.includes('PROJECT') || vType.includes('HEAVY')) {
     let capMt = dwt > 0 ? Math.round(dwt * 0.90 * kAge) : Math.round(loa * beam * 6.0 * kAge);
     return { capacity: capMt, unit: params.capacity_unit === 'Units' ? 'Units' : 'Tấn' };
   }
 
-  // F. Mặc định: Tàu Container -> Tính theo TEU
+  // G. Tàu mẹ Container (Container Ship) & Tàu Container Feeder (General Cargo Ship) -> TEU
+  if (params.capacity_unit === 'Tấn') {
+    let cargoMt = dwt > 0 ? Math.round(dwt * 0.92 * kAge) : Math.round(loa * beam * 6.5 * kAge);
+    return { capacity: cargoMt, unit: 'Tấn' };
+  }
+
   let teu = 0;
-  if (dwt >= 3000) {
-    teu = Math.round((dwt / 13.2) * kAge);
+  let isFeederGenCargo = vType.includes('FEEDER') || vType.includes('GENERAL CARGO');
+  if (dwt >= 1500) {
+    // Tỷ lệ DWT/TEU chuẩn theo phân khúc kích thước:
+    // Tàu mẹ siêu lớn ULCS (>= 350m như MSC FEBE): ~11.2 T/TEU | Tàu mẹ lớn (290-349m): ~12.0 T/TEU
+    // Tàu trung (200-289m): ~13.0 T/TEU | Tàu Feeder Cont: ~13.5 T/TEU | General Cargo Feeder: ~14.5 T/TEU
+    let tonPerTeu = loa >= 350 ? 11.2 : (loa >= 290 ? 12.0 : (loa >= 200 ? 13.0 : (isFeederGenCargo ? 14.5 : 13.5)));
+    teu = Math.round((dwt / tonPerTeu) * kAge);
   } else if (loa > 0) {
-    let baseTeu = loa >= 250 ? 4200 : (loa >= 200 ? 2750 : (loa >= 170 ? 1800 : (loa >= 140 ? 1100 : (loa >= 100 ? 650 : 350))));
+    let baseTeu = loa >= 350 ? 22000 : (loa >= 290 ? 10000 : (loa >= 250 ? 4500 : (loa >= 200 ? 2750 : (loa >= 170 ? 1800 : (loa >= 140 ? 1100 : (loa >= 100 ? 650 : 350))))));
     teu = Math.round(baseTeu * kAge);
   }
   return { capacity: teu, unit: 'TEU' };
 }
 
-// 4. Lấy thông số đầy đủ của tàu (kết hợp Override, Catalog & Tự động sửa lỗi TEU = DWT)
+// 4. Lấy thông số đầy đủ của tàu (kết hợp Override, Catalog & Tự động sửa lỗi)
 function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let vKey = String(vesselName || '').trim().toUpperCase();
   let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vKey)) || {};
@@ -5836,7 +5930,7 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let loa = Number(ov.loa || rawCall.loa || cat.loa || 0);
   let beam = Number(ov.beam || rawCall.beam || cat.beam || 0);
   if (!beam && loa > 0) {
-    beam = loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0));
+    beam = loa >= 350 ? 59.0 : (loa >= 290 ? 48.2 : (loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0))));
   }
 
   let dwt = ov.dwt || rawCall.dwt || cat.dwt || '';
@@ -5851,9 +5945,8 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let capUnit = ov.capacity_unit || rawCall.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(vType);
   let rawCap = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
 
-  // Tự động phát hiện và sửa lỗi cũ khi Sức chở bị gán nhầm bằng đúng số DWT (VD: 17212 của KARIYUSHI LEADER)
   let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
-  let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && (vType !== 'Hàng rời / tổng hợp' || capUnit === 'TEU'));
+  let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && capUnit === 'TEU');
 
   if (rawCap <= 0 || isBuggyDwtCopy) {
     let est = estimateStandardCapacityByDesign({
@@ -5889,7 +5982,7 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
 }
 window.getVesselEnrichedSpecs = getVesselEnrichedSpecs;
 
-// 5. Ghi đè hàm filterAndDeduplicateCalls (Xóa bỏ lỗi khai báo trùng biến vesselCatalogMap cục bộ)
+// 5. Ghi đè hàm filterAndDeduplicateCalls
 function filterAndDeduplicateCalls(rawList) {
   if (!Array.isArray(rawList)) return [];
 
@@ -6048,16 +6141,18 @@ function filterAndDeduplicateCalls(rawList) {
   });
 }
 
-// 6. Chuẩn hóa hàm tính TEU cho trang Thống kê (Chỉ cộng TEU của tàu Container)
+// 6. Tính TEU cho trang Thống kê (Tính cho cả Tàu mẹ Container và Tàu Container Feeder)
 function getEffectiveTeu(callObj) {
   let vType = String(callObj.vessel_type || 'Container').toUpperCase();
   let unit = String(callObj.capacity_unit || 'TEU').toUpperCase();
-  if (vType.includes('RỜI') || vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('DẦU') || vType.includes('KHÍ') || unit !== 'TEU') {
+  if (vType.includes('RỜI') || vType.includes('BULK') || vType.includes('RO-RO') || vType.includes('VEHICLES') || vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('DẦU') || vType.includes('FSO') || vType.includes('KHÍ') || vType.includes('KHÁCH') || unit !== 'TEU') {
     return 0;
   }
   let teu = Number(callObj.teu || 0);
   if (teu > 0) return teu;
   let loa = Number(callObj.loa || 0);
+  if (loa >= 350) return 22000;
+  if (loa >= 290) return 10000;
   if (loa >= 250) return 4200;
   if (loa >= 200) return 2800;
   if (loa >= 170) return 1850;
@@ -6076,6 +6171,7 @@ function updateVesselAgePreview() {
 }
 
 function onVesselTypeChangeUpdateCapacity() {
+  ensureVesselTypeSelectOptions();
   let vType = $('editVesselType')?.value || 'Container';
   let defaultUnit = getDefaultCapacityUnitByType(vType);
   if ($('editVesselCapUnit')) $('editVesselCapUnit').value = defaultUnit;
@@ -6083,6 +6179,7 @@ function onVesselTypeChangeUpdateCapacity() {
 }
 
 function forceCalculateStandardCapacity() {
+  ensureVesselTypeSelectOptions();
   let est = estimateStandardCapacityByDesign({
     vessel_type: $('editVesselType')?.value || 'Container',
     loa: $('editVesselLoa')?.value || 0,
@@ -6110,6 +6207,7 @@ function recalculateDesignCapacityIfNeeded() {
 
 // 8. Nạp danh mục tàu từ LocalStorage & Supabase Bucket
 async function loadVesselCatalog() {
+  ensureVesselTypeSelectOptions();
   try {
     let saved = localStorage.getItem('hp_vessel_catalog');
     if (saved) {
@@ -6240,6 +6338,7 @@ async function handleImportVesselCatalogExcel(e) {
 
 // 10. Tự động điền thông số khi gõ tên tàu
 function autoFillFromCatalogOnType(val) {
+  ensureVesselTypeSelectOptions();
   let vName = String(val || '').trim().toUpperCase();
   if (!vName) return;
   let specs = getVesselEnrichedSpecs(vName);
@@ -6264,14 +6363,88 @@ function autoFillFromCatalogOnType(val) {
   }
 }
 
-// 11. Quét trực tiếp HTML gốc từ VesselFinder qua Jina HTML Mode (Không lỗi CORS, lấy đủ Last Port & Destination)
+// 10.5. Thuật toán chọn IMO ưu tiên khi tra cứu Tên tàu có nhiều kết quả trùng tên:
+// Ưu tiên 1: Container Ship (100đ) -> Ưu tiên 2: General Cargo Ship (90đ) -> Ưu tiên 3: Ro-Ro/Bulk/Tanker/Passenger (70đ)
+function selectBestVesselFromSearchHtml(searchContent, targetName) {
+  let cleanTarget = String(targetName || '').trim().toUpperCase();
+  let candidates = [];
+
+  const getPriorityScore = (typeStr, candName) => {
+    let t = String(typeStr || '').toLowerCase();
+    let score = 50;
+    if (t.includes('container')) score = 100;
+    else if (t.includes('general cargo') || t.includes('reefer') || t.includes('multi-purpose')) score = 90;
+    else if (t.includes('vehicles') || t.includes('ro-ro') || t.includes('car carrier') || t.includes('bulk') || t.includes('heavy load')) score = 75;
+    else if (t.includes('tanker') || t.includes('fso') || t.includes('fpso') || t.includes('lng') || t.includes('lpg') || t.includes('passenger') || t.includes('cruise')) score = 65;
+    else if (t.includes('fishing') || t.includes('tug') || t.includes('yacht') || t.includes('sailing') || t.includes('military') || t.includes('unknown') || t.includes('auxiliary')) score = 10;
+
+    let cName = String(candName || '').trim().toUpperCase();
+    if (cName && cleanTarget) {
+      if (cName === cleanTarget) score += 20;
+      else if (cName.startsWith(cleanTarget) || cleanTarget.startsWith(cName)) score += 10;
+    }
+    return score;
+  };
+
+  // Cách 1: Quét trực tiếp từ cây DOM HTML của bảng kết quả tìm kiếm VesselFinder
+  if (searchContent.includes('<tr') || searchContent.includes('ship-link') || searchContent.includes('slty')) {
+    try {
+      const doc = new DOMParser().parseFromString(searchContent, 'text/html');
+      doc.querySelectorAll('tr').forEach(tr => {
+        const link = tr.querySelector('a[href*="/vessels/details/"]');
+        if (!link) return;
+        const mImo = link.getAttribute('href').match(/\/vessels\/details\/(\d{7})/);
+        if (!mImo) return;
+        const imo = mImo[1];
+        const nameEl = tr.querySelector('.slna') || link;
+        const typeEl = tr.querySelector('.slty');
+        const cName = nameEl ? nameEl.textContent.trim() : '';
+        const cType = typeEl ? typeEl.textContent.trim() : tr.textContent.trim();
+        candidates.push({
+          imo,
+          name: cName,
+          rawType: cType,
+          score: getPriorityScore(cType, cName)
+        });
+      });
+    } catch (e) {}
+  }
+
+  // Cách 2: Dự phòng quét trên văn bản Markdown của Jina nếu không có thẻ <tr>
+  if (candidates.length === 0) {
+    let lines = searchContent.split(/[\r\n]+/);
+    lines.forEach(line => {
+      let m = line.match(/\/vessels\/details\/(\d{7})/);
+      if (m) {
+        let imo = m[1];
+        let nameMatch = line.match(/\[([^\]]+)\]/);
+        let cName = nameMatch ? nameMatch[1] : cleanTarget;
+        candidates.push({
+          imo,
+          name: cName,
+          rawType: line,
+          score: getPriorityScore(line, cName)
+        });
+      }
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  // Sắp xếp giảm dần theo điểm ưu tiên (Container Ship -> General Cargo Ship lên đầu)
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0];
+}
+
+// 11. Quét trực tiếp HTML gốc từ VesselFinder qua Jina HTML Mode
 async function fetchShipSpecsFromVesselFinder() {
+  ensureVesselTypeSelectOptions();
   let imo = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
   let vName = ($('editVesselName')?.value || '').trim().toUpperCase();
   let statusEl = $('vfLookupStatus');
+  let searchMatchedType = '';
 
   if (!imo && !vName) {
-    alert('Vui lòng nhập Số IMO (ví dụ: 9215892) hoặc Tên tàu trước khi tra cứu!');
+    alert('Vui lòng nhập Số IMO (ví dụ: 9839478) hoặc Tên tàu trước khi tra cứu!');
     return;
   }
 
@@ -6280,20 +6453,25 @@ async function fetchShipSpecsFromVesselFinder() {
     statusEl.style.color = '#f59e0b';
   }
 
-  // Xóa trắng Cảng trước & Cảng đến trước khi truy vấn để chỉ hiển thị dữ liệu thời điểm hiện tại
   if ($('editVesselLastPort')) $('editVesselLastPort').value = '';
   if ($('editVesselDestination')) $('editVesselDestination').value = '';
 
   try {
-    // Bước 1: Tự động tìm IMO nếu chỉ nhập Tên tàu
+    // Bước 1: Nếu chỉ nhập Tên tàu, tìm danh sách kết quả và ưu tiên chọn Container Ship / General Cargo Ship
     if (!imo && vName) {
       let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(vName)}`;
-      let sRes = await fetch(searchUrl);
+      let sRes = await fetch(searchUrl, {
+        headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
+      });
+      if (!sRes.ok) {
+        sRes = await fetch(searchUrl);
+      }
       if (sRes.ok) {
         let sText = await sRes.text();
-        let imoMatch = sText.match(/\/vessels\/details\/(\d{7})/);
-        if (imoMatch) {
-          imo = imoMatch[1];
+        let bestCand = selectBestVesselFromSearchHtml(sText, vName);
+        if (bestCand && bestCand.imo) {
+          imo = bestCand.imo;
+          searchMatchedType = mapVesselFinderShipType(bestCand.rawType);
           if ($('editVesselImo')) $('editVesselImo').value = imo;
         }
       }
@@ -6315,7 +6493,6 @@ async function fetchShipSpecsFromVesselFinder() {
     let jinaText = '';
 
     // Cổng 1 (Chính): Lấy nguyên bản HTML DOM qua Jina Reader với X-Return-Format: html
-    // Giữ nguyên 100% thẻ .vi__stp (Last Port) và .vi__sbt (Destination), không bao giờ bị lỗi CORS!
     try {
       let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, {
         headers: {
@@ -6344,7 +6521,7 @@ async function fetchShipSpecsFromVesselFinder() {
     let parsedJina = jinaText ? parseVesselFinderContent(jinaText) : {};
     let parsed = { ...parsedJina, ...parsedHtml };
 
-    // Ưu tiên kết quả bóc tách trực tiếp từ cây DOM HTML
+    parsed.type = parsedHtml.type || parsedJina.type || searchMatchedType || 'Container';
     parsed.destination = parsedHtml.destination || parsedJina.destination || '';
     parsed.last_port = parsedHtml.last_port || parsedJina.last_port || '';
     parsed.year_built = parsedHtml.year_built || parsedJina.year_built || '';
@@ -6353,12 +6530,12 @@ async function fetchShipSpecsFromVesselFinder() {
     parsed.dwt = parsedHtml.dwt || parsedJina.dwt || '';
     parsed.gt = parsedHtml.gt || parsedJina.gt || '';
     parsed.teu = parsedHtml.teu || parsedJina.teu || 0;
-    parsed.capacity_unit = parsedHtml.capacity_unit || parsedJina.capacity_unit || '';
+    parsed.capacity_unit = parsedHtml.capacity_unit || parsedJina.capacity_unit || getDefaultCapacityUnitByType(parsed.type);
 
     applyParsedSpecsToForm(parsed, imo);
 
     if (statusEl) {
-      let routeNote = (parsed.last_port || parsed.destination) ? ` · Đã lấy Cảng đi/đến hiện tại` : '';
+      let routeNote = (parsed.last_port || parsed.destination) ? ` · ${parsed.type}` : '';
       statusEl.textContent = `✓ Đã nạp trực tiếp IMO ${imo}${routeNote}`;
       statusEl.style.color = '#10b981';
     }
@@ -6373,16 +6550,27 @@ async function fetchShipSpecsFromVesselFinder() {
   }
 }
 
-// 12. Bóc tách chính xác DOM (.vi__sbt, .vi__stp, ._npNa, ._3-Yih) & Bảng thông số kỹ thuật
+// 12. Bóc tách chính xác DOM (.tpc1/.tpc2 Ship Type, h2.vst, .vi__sbt, .vi__stp) & Bảng thông số kỹ thuật
 function parseVesselFinderContent(rawText) {
   let res = {};
 
-  // PHẦN 1: BÓC TÁCH TRỰC TIẾP TỪ CÂY DOM HTML CỦA VESSELFINDER (Khớp 100% với DevTools F12)
+  // PHẦN 1: BÓC TÁCH TRỰC TIẾP TỪ CÂY DOM HTML CỦA VESSELFINDER
   if (rawText.includes('<div') || rawText.includes('_npNa') || rawText.includes('vilabel') || rawText.includes('<table')) {
     try {
       const doc = new DOMParser().parseFromString(rawText, 'text/html');
 
-      // 1. Lấy Destination từ .vi__sbt (Bắt cả thẻ <a class="_npNa"> và <div class="_3-Yih"> như PHMNN)
+      // 0. Lấy Tên tàu từ <h1 class="title"> và Loại tàu từ <h2 class="vst"> (VD: Container Ship, IMO 9839478)
+      const h1Title = doc.querySelector('h1.title')?.textContent.trim();
+      if (h1Title) res.name = h1Title.toUpperCase();
+
+      const h2Vst = doc.querySelector('h2.vst')?.textContent.trim() || '';
+      if (h2Vst) {
+        let vstTypePart = h2Vst.split(',')[0].trim();
+        let mappedVst = mapVesselFinderShipType(vstTypePart);
+        if (mappedVst) res.type = mappedVst;
+      }
+
+      // 1. Lấy Destination từ .vi__sbt
       const sbt = doc.querySelector('.vi__sbt');
       if (sbt) {
         const portEl = sbt.querySelector('._npNa, ._3-Yih') || sbt.querySelector('.vilabel')?.nextElementSibling;
@@ -6394,7 +6582,7 @@ function parseVesselFinderContent(rawText) {
         }
       }
 
-      // 2. Lấy Last Port từ .vi__stp (VD: Ho Chi Minh City, Vietnam + ATD: Nov 14, 17:07 UTC)
+      // 2. Lấy Last Port từ .vi__stp
       const stp = doc.querySelector('.vi__stp');
       if (stp) {
         const portEl = stp.querySelector('._npNa, ._3-Yih') || stp.querySelector('.vilabel')?.nextElementSibling;
@@ -6405,7 +6593,7 @@ function parseVesselFinderContent(rawText) {
         }
       }
 
-      // 3. Dự phòng quét tất cả các nhãn .vilabel nếu cấu trúc khối bọc thay đổi
+      // 3. Dự phòng quét tất cả các nhãn .vilabel
       if (!res.destination || !res.last_port) {
         doc.querySelectorAll('.vilabel').forEach(lbl => {
           const labelTxt = lbl.textContent.trim().toLowerCase();
@@ -6423,7 +6611,7 @@ function parseVesselFinderContent(rawText) {
         });
       }
 
-      // 4. Đọc trực tiếp từng dòng <tr> trong bảng thông số của VesselFinder (Tránh nhảy dòng 100%)
+      // 4. Đọc trực tiếp từng dòng <tr> trong bảng VESSEL PARTICULARS (.tpt1 -> .tpc1 / .tpc2)
       doc.querySelectorAll('tr').forEach(tr => {
         const cells = tr.querySelectorAll('td, th');
         if (cells.length >= 2) {
@@ -6431,6 +6619,11 @@ function parseVesselFinderContent(rawText) {
           const v = cells[1].textContent.trim();
           if (!v || v === '-' || v.toLowerCase() === 'n/a') return;
 
+          // Bắt chính xác dòng Ship Type trong VESSEL PARTICULARS (Ưu tiên cao nhất!)
+          if (k === 'ship type' || k === 'vessel type') {
+            let mapped = mapVesselFinderShipType(v);
+            if (mapped) res.type = mapped;
+          }
           if ((k.includes('deadweight') || k === 'dwt') && !res.dwt) {
             let m = v.match(/(\d{1,3}(?:[.,]\d{3})+|\d{3,7})/);
             if (m) res.dwt = m[1].replace(/[.,]/g, '');
@@ -6439,11 +6632,12 @@ function parseVesselFinderContent(rawText) {
             let m = v.match(/(\d{1,3}(?:[.,]\d{3})+|\d{3,7})/);
             if (m) res.gt = m[1].replace(/[.,]/g, '');
           }
-          if ((k.includes('year of built') || k.includes('year built')) && !res.year_built) {
+          // Chấp nhận cả "Year of Build" (chữ d) và "Year of Built" (chữ t)
+          if ((k.includes('year of build') || k.includes('year of built') || k.includes('year built')) && !res.year_built) {
             let m = v.match(/\b(19\d{2}|20\d{2})\b/);
             if (m) res.year_built = parseInt(m[1], 10);
           }
-          if ((k.includes('teu') || k.includes('container capacity')) && !res.teu) {
+          if ((k === 'teu' || k.includes('capacity (teu)') || k.includes('container capacity')) && !res.teu) {
             let m = v.match(/\b(\d{2,5})\b/);
             if (m) {
               res.teu = parseInt(m[1], 10);
@@ -6488,7 +6682,27 @@ function parseVesselFinderContent(rawText) {
   for (let i = 0; i < rawLines.length; i++) {
     let line = rawLines[i];
 
-    // Bắt Destination (Hỗ trợ cả cùng dòng lẫn khác dòng)
+    // Bắt dòng Ship Type trong văn bản copy-paste (VD: "Ship Type Container Ship" hoặc dòng kế tiếp)
+    if (!res.type && /^Ship\s*Type\b/i.test(line)) {
+      let sameLineVal = line.replace(/^Ship\s*Type\s*[:\-]?\s*/i, '').trim();
+      let typeCandidate = sameLineVal || rawLines[i + 1] || '';
+      let mapped = mapVesselFinderShipType(typeCandidate);
+      if (mapped) res.type = mapped;
+    }
+
+    // Bắt dòng phụ đề "<Ship Type>, IMO 1234567" (VD: "Container Ship, IMO 9839478")
+    if (!res.type && /,\s*IMO\s*\d{7}\b/i.test(line)) {
+      let beforeImo = line.split(/,\s*IMO/i)[0].trim();
+      let mapped = mapVesselFinderShipType(beforeImo);
+      if (mapped) {
+        res.type = mapped;
+        if (!res.name && i > 0 && /^[A-Z0-9\s\-]{3,35}$/.test(rawLines[i - 1])) {
+          res.name = rawLines[i - 1].trim().toUpperCase();
+        }
+      }
+    }
+
+    // Bắt Destination
     if (!res.destination && /^Destination\b/i.test(line)) {
       let sameLinePort = line.replace(/^Destination\s*[:\-]?\s*/i, '').trim();
       let pName = sameLinePort || rawLines[i + 1] || '';
@@ -6502,7 +6716,7 @@ function parseVesselFinderContent(rawText) {
       }
     }
 
-    // Bắt Last Port (Hỗ trợ cả cùng dòng lẫn khác dòng)
+    // Bắt Last Port
     if (!res.last_port && /^Last\s*Port\b/i.test(line)) {
       let sameLinePort = line.replace(/^Last\s*Port\s*[:\-]?\s*/i, '').trim();
       let pName = sameLinePort || rawLines[i + 1] || '';
@@ -6517,26 +6731,21 @@ function parseVesselFinderContent(rawText) {
     }
   }
 
-  // PHẦN 3: BÓC TÁCH BỔ SUNG TỪ VĂN BẢN (NẾU DÁN TEXT THUẦN)
+  // PHẦN 3: BÓC TÁCH BỔ SUNG TỪ ĐOẠN VĂN MÔ TẢ ("... is a Container Ship built in 2019")
   let lineText = rawLines.join('\n');
   let clean = rawLines.join(' ');
 
-  let titleMatch = clean.match(/([A-Z0-9\s\-]{3,35}),\s*(Container Ship|Bulk Carrier|General Cargo|Vehicles Carrier|Ro-Ro Cargo|Car Carrier|Chemical|Oil Products Tanker|Crude Oil Tanker|LPG Tanker|LNG Tanker|Heavy Load Carrier|Cargo Ship)/i);
-  if (titleMatch) {
-    res.name = titleMatch[1].trim().toUpperCase();
-    let rawType = titleMatch[2].toLowerCase();
-    if (rawType.includes('container')) res.type = 'Container';
-    else if (rawType.includes('vehicles') || rawType.includes('ro-ro') || rawType.includes('car')) res.type = 'Ô tô (PCTC)';
-    else if (rawType.includes('lpg') || rawType.includes('lng')) res.type = 'Tàu khí (LPG / LNG)';
-    else if (rawType.includes('tanker') || rawType.includes('chemical')) res.type = 'Tàu dầu / Hóa chất';
-    else if (rawType.includes('heavy')) res.type = 'Tàu thiết bị / Project';
-    else res.type = 'Hàng rời / tổng hợp';
+  if (!res.type) {
+    let descMatch = clean.match(/\bis\s+a(?:n)?\s+(Container Ship|General Cargo Ship|General Cargo|Vehicles Carrier|Ro-Ro Cargo Ship|Ro-Ro|Car Carrier|Bulk Carrier|Cement Carrier|Wood Chips Carrier|Urea Carrier|Aggregates Carrier|Limestone Carrier|Heavy Load Carrier|Landing Craft|Livestock Carrier|Crude Oil Tanker|Oil Products Tanker|Chemical\/Oil Tanker|Chemical Tanker|LNG Tanker|LPG Tanker|Asphalt\/Bitumen|Bunkering Tanker|FSO\/FPSO|FSO|FPSO|Passenger\s*\(Cruise\)\s*Ship|Cruise Ship|Passenger\/Cargo Ship|Passenger\/Ro-Ro Ship|Passenger Ship)\b/i);
+    if (descMatch) {
+      res.type = mapVesselFinderShipType(descMatch[1]);
+    }
   }
 
   if (!res.year_built) {
-    let ybMatch = lineText.match(/Year\s*of\s*Built[ \t:]*([12]\d{3})/i)
+    let ybMatch = lineText.match(/Year\s*of\s*Buil[dt][ \t:]*([12]\d{3})/i)
                || clean.match(/built\s*in\s*([12]\d{3})/i)
-               || clean.match(/Year\s*Built[ \t:]*([12]\d{3})/i);
+               || clean.match(/Year\s*Buil[dt][ \t:]*([12]\d{3})/i);
     if (ybMatch) res.year_built = parseInt(ybMatch[1], 10);
   }
 
@@ -6548,8 +6757,6 @@ function parseVesselFinderContent(rawText) {
     }
   }
 
-  // Sửa lỗi cắt 3 số đầu của DWT (38691 -> 386) và GT (26718 -> 267):
-  // Đổi * thành + ở nhánh có dấu chấm/phẩy để số liền 5 chữ số đi vào nhánh \d{3,7}
   if (!res.dwt) {
     let dwtM = lineText.match(/(?:Deadweight\s*\(t\)|Summer\s*Deadweight\s*\(t\)|Deadweight|DWT)[ \t:]*(\d{1,3}(?:[.,]\d{3})+|\d{3,7})/i);
     if (dwtM) res.dwt = dwtM[1].replace(/[.,]/g, '');
@@ -6559,7 +6766,6 @@ function parseVesselFinderContent(rawText) {
     if (gtM) res.gt = gtM[1].replace(/[.,]/g, '');
   }
 
-  // Chỉ quét TEU trên cùng 1 dòng ([ \t:]* thay vì \s* để tuyệt đối không nhảy xuống dòng DWT)
   if (!res.teu) {
     let teuStrict = lineText.match(/(?:Capacity\s*\(TEU\)|Container\s*Capacity|TEU\s*\(max\))[ \t:]+([1-9]\d{1,4})\b/i)
                  || clean.match(/\b(\d{3,5})\s*TEU\b/i);
@@ -6573,7 +6779,12 @@ function parseVesselFinderContent(rawText) {
     }
   }
 
-  // Nếu trên VesselFinder không có TEU/Sức chứa (hoặc bằng '-'), tự động tính theo thiết kế & tuổi tàu
+  // Nếu Tàu Container nhỏ (< 200m) được ghi là Container Ship, vẫn cho phép phân biệt rõ hoặc giữ Tàu mẹ Container theo đúng chuẩn
+  if (res.type === 'Tàu mẹ Container' && res.loa > 0 && res.loa < 180) {
+    res.type = 'Container';
+  }
+
+  // Nếu trên VesselFinder khóa TEU (🔒 như MSC FEBE) hoặc bằng '-', tự động tính theo thiết kế & tuổi tàu
   let dwtCheck = parseInt(String(res.dwt || '').replace(/\D/g, ''), 10) || 0;
   if (!res.teu || res.teu <= 0 || (dwtCheck > 0 && res.teu === dwtCheck)) {
     let est = estimateStandardCapacityByDesign({
@@ -6598,14 +6809,16 @@ function parseVesselFinderContent(rawText) {
 }
 
 function applyParsedSpecsToForm(parsed, imoFallback = '') {
+  ensureVesselTypeSelectOptions();
   if (parsed.name && !$('editVesselName').value) $('editVesselName').value = parsed.name;
-  if (parsed.type && $('editVesselType')) $('editVesselType').value = parsed.type;
+  if (parsed.type && $('editVesselType')) {
+    $('editVesselType').value = parsed.type;
+  }
   if (parsed.year_built && $('editVesselYearBuilt')) {
     $('editVesselYearBuilt').value = parsed.year_built;
     updateVesselAgePreview();
   }
 
-  // Hiển thị trực tiếp Cảng trước (Last Port) & Cảng tiếp theo (Destination) tại thời điểm hiện tại
   if ($('editVesselLastPort')) $('editVesselLastPort').value = parsed.last_port || 'Chưa có trên AIS';
   if ($('editVesselDestination')) $('editVesselDestination').value = parsed.destination || 'Chưa có trên AIS';
 
