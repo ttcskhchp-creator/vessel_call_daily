@@ -7546,6 +7546,46 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
   }
 }
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
+
+/* ==================== MODULE PHÂN BỔ CẦU BẾN TỰ ĐỘNG THEO QUY TẮC KHAI THÁC ==================== */
+
+// 1. Chuẩn hóa tên Cảng (Terminal) để nhận diện chính xác nhóm cảng
+function normalizePortGroup(termStr) {
+  let s = String(termStr || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toUpperCase()
+    .trim();
+
+  if (s.includes('TAN VU')) return 'TAN VU';
+  if (s.includes('CHUA VE')) return 'CHUA VE';
+  if (s.includes('HOANG DIEU')) return 'HOANG DIEU';
+  if (s.includes('NAM DINH VU')) return 'NAM DINH VU';
+  if (s.includes('DINH VU')) return 'DINH VU';
+  if (s.includes('HTIT')) return 'HTIT';
+  if (s.includes('HICT')) return 'HICT';
+  if (s.includes('HHIT')) return 'HHIT';
+  return s || 'OTHER';
+}
+
+// 2. Nhận diện nhóm Loại tàu phục vụ phân luồng ưu tiên cầu bến
+function classifyShipForBerthing(ship) {
+  let vType = String(ship.vessel_type || '').toUpperCase();
+  let vName = String(ship.vessel || '').toUpperCase();
+  let unit = String(ship.capacity_unit || '').toUpperCase();
+
+  // Tàu Ro-Ro / Ô tô (PCTC / Vehicles Carrier)
+  if (
+    vType.includes('RO-RO') ||
+    vType.includes('RORO') ||
+    vType.includes('VEHICLES') ||
+    vType.includes('PCTC') ||
+    vType.includes('Ô TÔ') ||
+    vType.includes('O TO') ||
+    (unit === 'UNITS' &&
+
+
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
