@@ -1196,7 +1196,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <div class="kpi-note" id="st_totalTeuSub">TB: 0 TEU/tàu cont</div>
           </div>
           <div class="kpi" style="border-left:4px solid #7c3aed;">
-            <div class="kpi-top"><span>TỔNG CHIỀU DÀI (LOA) & BEAM</span><span>📏</span></div>
+            <div class="kpi-top"><span>TỔNG CHIỀU DÀI (LOA)</span><span>📏</span></div>
             <div class="kpi-value" id="st_totalLoa" style="color:#7c3aed;">0 m</div>
             <div class="kpi-note" id="st_totalLoaSub">LOA TB: 0m · Beam TB: 0m</div>
           </div>
@@ -4700,8 +4700,11 @@ function getDropPerUnit() {
 
 // 3. Định dạng datetime-local (yyyy-MM-ddThh:mm)
 function formatDateTimeLocal(dateObj) {
+  if (!dateObj) return '';
+  let d = (dateObj instanceof Date) ? dateObj : new Date(dateObj);
+  if (isNaN(d.getTime())) return '';
   let pad = (n) => String(n).padStart(2, '0');
-  return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // 4. Hàm tách chính xác Giờ & Phút từ chuỗi "HH:mm" hoặc "HHhMM" (Khắc phục lỗi lệch phút)
@@ -6792,6 +6795,48 @@ window.updateVesselAgePreview = updateVesselAgePreview;
 window.onVesselTypeChangeUpdateCapacity = onVesselTypeChangeUpdateCapacity;
 window.forceCalculateStandardCapacity = forceCalculateStandardCapacity;
 window.recalculateDesignCapacityIfNeeded = recalculateDesignCapacityIfNeeded;
+// 1. Bảo toàn đầy đủ thông số mở rộng (Loại tàu, Đơn vị, Năm SX, Hành trình) khi tải từ Supabase
+async function loadVesselOverrides() {
+  if (!supabaseClient) return;
+  try {
+    let { data, error } = await supabaseClient.from('vessel_overrides').select('*');
+    if (data && !error) {
+      vesselOverridesMap.clear();
+      data.forEach(item => {
+        let key = (item.vessel_name || '').trim().toUpperCase();
+        if (key) {
+          let cat = vesselCatalogMap.get(key) || {};
+          vesselOverridesMap.set(key, {
+            ...item,
+            vessel_type: item.vessel_type || cat.type || 'Container',
+            beam: item.beam || cat.beam || 0,
+            teu: item.teu !== undefined ? item.teu : cat.teu,
+            capacity_unit: item.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(item.vessel_type || cat.type),
+            year_built: item.year_built || cat.year_built || '',
+            last_port: item.last_port || cat.last_port || '',
+            destination: item.destination || cat.destination || '',
+            gt: item.gt || cat.gt || '',
+            imo: item.imo || cat.imo || ''
+          });
+        }
+      });
+      renderOverrideTable();
+    }
+  } catch(e) {}
+}
+window.loadVesselOverrides = loadVesselOverrides;
+
+// 2. Tự động co giãn bảng Danh mục tàu vừa khít khung bên phải (Không bị thanh cuộn ngang che cột)
+const _origRenderOverrideTable = renderOverrideTable;
+renderOverrideTable = function() {
+  let tbody = $('overrideTableRows');
+  if (tbody && tbody.closest('table')) {
+    tbody.closest('table').style.minWidth = '100%';
+    tbody.closest('table').style.width = '100%';
+  }
+  _origRenderOverrideTable();
+};
+window.renderOverrideTable = renderOverrideTable;
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
