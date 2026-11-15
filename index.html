@@ -1136,21 +1136,22 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
           </div>
           <div class="table-wrap">
             <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th id="th_vessel">Tàu</th>
-                  <th>Loại tàu</th>
-                  <th id="th_operator">Hãng / Đại lý</th>
-                  <th>LOA (m)</th>
-                  <th>Beam (m)</th>
-                  <th>Sức chở (TEU)</th>
-                  <th>DWT</th>
-                  <th id="th_berth">Cảng · Bến</th>
-                  <th id="th_etb">Cập (ETB)</th>
-                  <th id="th_etd">Rời (ETD)</th>
-                </tr>
-              </thead>
+             <thead>
+  <tr>
+    <th>#</th>
+    <th id="th_vessel">Tàu</th>
+    <th>Loại tàu</th>
+    <th>Năm SX / Tuổi</th>
+    <th id="th_operator">Hãng / Đại lý</th>
+    <th>LOA × Beam (m)</th>
+    <th>Sức chở (Hàng hóa)</th>
+    <th>DWT (T)</th>
+    <th>Hành trình (Last → Dest)</th>
+    <th id="th_berth">Cảng · Bến</th>
+    <th id="th_etb">Cập (ETB)</th>
+    <th id="th_etd">Rời (ETD)</th>
+  </tr>
+</thead>
               <tbody id="rows">
                 <tr><td colspan="8" class="empty">Đang tải dữ liệu…</td></tr>
               </tbody>
@@ -1289,7 +1290,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         <div class="grid2">
           <div class="panel">
             <div class="panel-head"><h3 id="t_editFormHead">Cập nhật thông số tàu & Tra cứu tự động</h3></div>
-            <div class="panel-body">
+           <div class="panel-body">
               <!-- KHỐI TRA CỨU TỰ ĐỘNG VESSELFINDER -->
               <div style="background:rgba(38,189,200,0.08);border:1px dashed var(--cyan);border-radius:8px;padding:10px;margin-bottom:12px;">
                 <div style="font-weight:800;font-size:11.5px;color:var(--navy2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
@@ -1297,7 +1298,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                   <span id="vfLookupStatus" style="font-size:10px;color:var(--cyan);font-weight:700;">Sẵn sàng</span>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;">
-                  <input id="editVesselImo" class="field" placeholder="Nhập số IMO (VD: 1047108) hoặc để trống dùng Tên tàu...">
+                  <input id="editVesselImo" class="field" placeholder="Nhập số IMO (VD: 9403217) hoặc để trống dùng Tên tàu...">
                   <button type="button" class="primary" style="background:#0284c7;color:#fff;white-space:nowrap;" onclick="fetchShipSpecsFromVesselFinder()">
                     🔍 Tự lấy dữ liệu
                   </button>
@@ -1310,42 +1311,92 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 </div>
               </div>
 
-              <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:8px">
+              <!-- HÀNG 1: TÊN TÀU, LOẠI TÀU & NĂM SX / TUỔI TÀU -->
+              <div style="display:grid;grid-template-columns:1.2fr 0.9fr 0.9fr;gap:8px">
                 <div class="form-group">
                   <label id="lbl_vesselName">Tên tàu (*)</label>
-                  <input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu (VD: MSC NEW JERSEY III)..." oninput="autoFillFromCatalogOnType(this.value)">
+                  <input id="editVesselName" class="field" style="width:100%" placeholder="Nhập tên tàu (VD: KARIYUSHI LEADER)..." oninput="autoFillFromCatalogOnType(this.value)">
                 </div>
                 <div class="form-group">
                   <label>Loại tàu</label>
-                  <select id="editVesselType" class="field" style="width:100%">
-                    <option value="Container">Container</option>
-                    <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp</option>
-                    <option value="Ô tô (PCTC)">Ô tô (PCTC)</option>
-                    <option value="Tàu dầu / Hóa chất">Tàu dầu / Hóa chất</option>
+                  <select id="editVesselType" class="field" style="width:100%" onchange="onVesselTypeChangeUpdateCapacity()">
+                    <option value="Container">Container (TEU)</option>
+                    <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp (Tấn/m³)</option>
+                    <option value="Ô tô (PCTC)">Ô tô / Ro-Ro (PCTC - Units)</option>
+                    <option value="Tàu dầu / Hóa chất">Tàu dầu / Hóa chất (m³)</option>
+                    <option value="Tàu khí (LPG / LNG)">Tàu khí LPG / LNG (m³)</option>
+                    <option value="Tàu thiết bị / Project">Tàu thiết bị / Siêu trường (Units/Tấn)</option>
                     <option value="Khác">Khác</option>
                   </select>
                 </div>
+                <div class="form-group">
+                  <label style="color:#7c3aed;font-weight:800;">Năm SX / Tuổi tàu <span id="lbl_vesselAgeBadge" style="color:var(--cyan);"></span></label>
+                  <input id="editVesselYearBuilt" type="number" min="1950" max="2035" class="field" style="width:100%" placeholder="VD: 2008" oninput="updateVesselAgePreview(); recalculateDesignCapacityIfNeeded();">
+                </div>
               </div>
 
-              <div class="form-group"><label id="lbl_operator">Hãng tàu / Đại lý</label><input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu hoặc đại lý..."></div>
+              <!-- HÀNG 2: HÃNG TÀU & HÀNH TRÌNH (LAST PORT -> DESTINATION) -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div class="form-group">
+                  <label id="lbl_operator">Hãng tàu / Đại lý</label>
+                  <input id="editVesselOperator" class="field" style="width:100%" placeholder="Nhập hãng tàu hoặc đại lý...">
+                </div>
+                <div class="form-group">
+                  <label style="color:#d97706;font-weight:800;">⏮ Cảng trước (Last Port)</label>
+                  <input id="editVesselLastPort" class="field" style="width:100%" placeholder="VD: SINGAPORE / NINGBO">
+                </div>
+                <div class="form-group">
+                  <label style="color:#0284c7;font-weight:800;">⏭ Cảng tiếp theo (Destination)</label>
+                  <input id="editVesselDestination" class="field" style="width:100%" placeholder="VD: VNHPH / HAI PHONG">
+                </div>
+              </div>
               
+              <!-- HÀNG 3: TERMINAL & CẦU BẾN -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group"><label id="lbl_terminal">Terminal (Cảng)</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: Tân Vũ"></div>
-                <div class="form-group"><label id="lbl_berth">Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B1"></div>
+                <div class="form-group"><label id="lbl_terminal">Terminal (Cảng)</label><input id="editVesselTerminal" class="field" style="width:100%" placeholder="Ví dụ: TAN VU"></div>
+                <div class="form-group"><label id="lbl_berth">Bến</label><input id="editVesselBerth" class="field" style="width:100%" placeholder="Ví dụ: B5"></div>
               </div>
 
-              <!-- HÀNG THÔNG SỐ KỸ THUẬT: LOA, BEAM, SỨC CHỞ TEU, DWT, GT -->
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-                <div class="form-group"><label id="lbl_loa">Chiều dài LOA (m)</label><input id="editVesselLoa" type="number" step="0.1" class="field" style="width:100%" placeholder="179.9"></div>
-                <div class="form-group"><label style="color:#0284c7;font-weight:800;">Chiều rộng Beam (m)</label><input id="editVesselBeam" type="number" step="0.1" class="field" style="width:100%" placeholder="30.0"></div>
-                <div class="form-group"><label style="color:#059669;font-weight:800;">Sức chở (TEU)</label><input id="editVesselTeu" type="number" step="1" class="field" style="width:100%" placeholder="2500"></div>
+              <!-- HÀNG 4: THÔNG SỐ KỸ THUẬT: LOA, BEAM, SỨC CHỞ ĐỘNG THEO LOẠI TÀU -->
+              <div style="display:grid;grid-template-columns:0.8fr 0.8fr 1.4fr;gap:8px">
+                <div class="form-group">
+                  <label id="lbl_loa">Chiều dài LOA (m)</label>
+                  <input id="editVesselLoa" type="number" step="0.1" class="field" style="width:100%" placeholder="180.0" oninput="recalculateDesignCapacityIfNeeded()">
+                </div>
+                <div class="form-group">
+                  <label style="color:#0284c7;font-weight:800;">Chiều rộng Beam (m)</label>
+                  <input id="editVesselBeam" type="number" step="0.1" class="field" style="width:100%" placeholder="32.0" oninput="recalculateDesignCapacityIfNeeded()">
+                </div>
+                <div class="form-group">
+                  <label id="lbl_capacityDynamic" style="color:#059669;font-weight:800;display:flex;justify-content:space-between;">
+                    <span>Sức chở hàng hóa</span>
+                    <a href="javascript:void(0)" onclick="forceCalculateStandardCapacity()" style="color:#0284c7;text-decoration:underline;font-size:9.5px;" title="Tính toán lại theo chuẩn thiết kế & tuổi tàu">⚡ Tính theo TK</a>
+                  </label>
+                  <div style="display:flex;gap:4px;">
+                    <input id="editVesselTeu" type="number" step="1" class="field" style="flex:1;min-width:0;" placeholder="VD: 2500">
+                    <select id="editVesselCapUnit" class="field" style="width:92px;padding:4px;font-weight:700;color:#059669;">
+                      <option value="TEU">TEU</option>
+                      <option value="Units">Units (Xe)</option>
+                      <option value="Tấn">Tấn (MT)</option>
+                      <option value="m³">Khối (m³)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
+              <!-- HÀNG 5: DWT & GT -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group"><label id="lbl_dwt">Trọng tải DWT (Tấn)</label><input id="editVesselDwt" class="field" style="width:100%" placeholder="40.313"></div>
-                <div class="form-group"><label>Dung tích GT</label><input id="editVesselGt" class="field" style="width:100%" placeholder="25.163"></div>
+                <div class="form-group">
+                  <label id="lbl_dwt">Trọng tải DWT (Tấn)</label>
+                  <input id="editVesselDwt" class="field" style="width:100%" placeholder="17212" oninput="recalculateDesignCapacityIfNeeded()">
+                </div>
+                <div class="form-group">
+                  <label>Dung tích GT</label>
+                  <input id="editVesselGt" class="field" style="width:100%" placeholder="51888" oninput="recalculateDesignCapacityIfNeeded()">
+                </div>
               </div>
 
+              <!-- HÀNG 6: ETB & ETD -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="form-group"><label id="lbl_etb">ETB (Cập)</label><input id="editVesselEtb" type="datetime-local" class="field" style="width:100%"></div>
                 <div class="form-group"><label id="lbl_etd">ETD (Rời)</label><input id="editVesselEtd" type="datetime-local" class="field" style="width:100%"></div>
@@ -1357,33 +1408,6 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);color:#fff" id="btnDeleteOverride">🗑️ Ẩn chuyến</button>
               </div>
             </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <h3 id="t_overrideListHead">Danh sách tàu đã lưu thông số (Override & Catalog)</h3>
-              <input id="catalogFilterInput" class="field" placeholder="🔍 Lọc tên tàu..." style="max-width:160px;padding:4px 8px;" oninput="renderOverrideTable()">
-            </div>
-            <div class="panel-body table-wrap" style="max-height:480px">
-              <table>
-                <thead>
-                  <tr>
-                    <th id="th_ovVessel">Tên tàu</th>
-                    <th>Loại tàu</th>
-                    <th>LOA x Beam</th>
-                    <th>TEU</th>
-                    <th>DWT</th>
-                    <th id="th_ovAction">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody id="overrideTableRows">
-                  <tr><td colspan="6" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!-- MÀN HÌNH 6: SETUP LUỒNG & BẾN & BẢNG DẢI MỚN -->
       <section id="page-draft-setup" class="page hidden">
@@ -1660,6 +1684,8 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
   <div class="tt-grid">
     <div class="tt-item"><small>LOA × Beam</small><b id="ttLoa">—</b></div>
     <div class="tt-item"><small>Sức chở / DWT</small><b id="ttDwt">—</b></div>
+    <div class="tt-item"><small>Năm SX / Tuổi tàu</small><b id="ttYearAge">—</b></div>
+    <div class="tt-item"><small>Hành trình (Last → Dest)</small><b id="ttRoute" style="color:var(--cyan)">—</b></div>
     <div class="tt-item"><small>ETB</small><b id="ttEtb">—</b></div>
     <div class="tt-item"><small>ETD</small><b id="ttEtd">—</b></div>
     <div class="tt-item"><small id="tt_dockedLabel">Đã ở cầu</small><b id="ttDocked">—</b></div>
@@ -2565,8 +2591,6 @@ async function deleteVesselOverrideProtected() {
 function filterAndDeduplicateCalls(rawList) {
   if (!Array.isArray(rawList)) return [];
 
-  // Kho lưu trữ Danh mục 348+ tàu từ file Tàu_thông_qua_HP.xlsx & Supabase
-let vesselCatalogMap = new Map();
 
 // Hàm tra cứu thông số kỹ thuật của tàu từ Override hoặc Catalog
 function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
@@ -5677,12 +5701,100 @@ function autoFillTideFromSystem() {
     syncTideFromETB();
   }
 }
-/* ==================== MODULE DANH MỤC TÀU EXCEL & TRA CỨU VESSELFINDER ==================== */
+/* ==================== MODULE DANH MỤC TÀU EXCEL & TRA CỨU VESSELFINDER (ĐÃ NÂNG CẤP) ==================== */
 
-// Khai báo toàn cục (hoisted) giúp mọi hàm trong trang đều truy cập được
 var vesselCatalogMap = window.vesselCatalogMap || new Map();
 window.vesselCatalogMap = vesselCatalogMap;
 
+// 1. Xác định đơn vị sức chứa chuẩn theo Loại tàu
+function getDefaultCapacityUnitByType(vesselType) {
+  let t = String(vesselType || 'Container').toUpperCase();
+  if (t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('RO-RO') || t.includes('RORO')) return 'Units';
+  if (t.includes('DẦU') || t.includes('HÓA CHẤT') || t.includes('KHÍ') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) return 'm³';
+  if (t.includes('RỜI') || t.includes('TỔNG HỢP') || t.includes('BULK') || t.includes('GENERAL')) return 'Tấn';
+  if (t.includes('THIẾT BỊ') || t.includes('PROJECT')) return 'Tấn';
+  return 'TEU';
+}
+
+// 2. Tính tuổi tàu và hệ số thiết kế theo tuổi tàu (K_age)
+function getVesselAgeAndFactor(yearBuilt) {
+  let curYear = new Date().getFullYear();
+  let y = parseInt(yearBuilt, 10);
+  if (isNaN(y) || y < 1950 || y > curYear + 2) {
+    return { yearBuilt: '', age: null, kAge: 1.0 };
+  }
+  let age = Math.max(0, curYear - y);
+  // Tàu <= 10 tuổi (Eco-design tối ưu hầm/boong): 1.05 | Tàu 11-20 tuổi: 1.00 | Tàu > 20 tuổi: 0.92
+  let kAge = age <= 10 ? 1.05 : (age <= 20 ? 1.00 : 0.92);
+  return { yearBuilt: y, age: age, kAge: kAge };
+}
+
+// 3. Thuật toán tính toán Sức chứa thông dụng theo Thiết kế & Tuổi tàu (Khi VesselFinder không có)
+function estimateStandardCapacityByDesign(params) {
+  let vType = String(params.vessel_type || 'Container').toUpperCase();
+  let loa = parseFloat(String(params.loa || 0).replace(',', '.')) || 0;
+  let beam = parseFloat(String(params.beam || 0).replace(',', '.')) || 0;
+  let dwt = parseDwtToMetricTons(params.dwt, loa);
+  let gt = parseDwtToMetricTons(params.gt, 0);
+  let { kAge } = getVesselAgeAndFactor(params.year_built);
+
+  // A. Tàu Ô tô / Ro-Ro (PCTC) -> Tính theo Units (CEU)
+  if (vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('RO-RO')) {
+    let units = 0;
+    if (gt > 1000) {
+      // Chuẩn thiết kế tàu PCTC: ~8.5 GT cho mỗi 1 CEU (Unit xe tiêu chuẩn)
+      units = Math.round((gt / 8.5) * kAge);
+    } else if (loa > 0 && beam > 0) {
+      let decks = loa >= 180 ? 11 : (loa >= 140 ? 8 : 5);
+      units = Math.round(((loa * beam * 0.78 * decks) / 10.2) * kAge);
+    } else if (dwt > 0) {
+      units = Math.round((dwt * 0.35) * kAge);
+    }
+    return { capacity: units, unit: 'Units' };
+  }
+
+  // B. Tàu Dầu / Hóa chất -> Tính theo Khối lỏng (m³)
+  if (vType.includes('DẦU') || vType.includes('HÓA CHẤT') || vType.includes('TANKER')) {
+    let m3 = dwt > 0 ? Math.round(dwt * 1.08 * kAge) : Math.round(loa * beam * 8.5 * kAge);
+    return { capacity: m3, unit: 'm³' };
+  }
+
+  // C. Tàu Khí hóa lỏng (LPG / LNG) -> Tính theo Khối khí (m³)
+  if (vType.includes('KHÍ') || vType.includes('LPG') || vType.includes('LNG')) {
+    let m3 = dwt > 0 ? Math.round(dwt * 1.45 * kAge) : Math.round(loa * beam * 7.5 * kAge);
+    return { capacity: m3, unit: 'm³' };
+  }
+
+  // D. Tàu Hàng rời / Tổng hợp -> Tính theo Tấn hàng hóa có ích (Cargo MT) hoặc m³
+  if (vType.includes('RỜI') || vType.includes('TỔNG HỢP') || vType.includes('BULK')) {
+    let preferredUnit = params.capacity_unit === 'm³' ? 'm³' : 'Tấn';
+    if (preferredUnit === 'm³') {
+      let grainM3 = dwt > 0 ? Math.round(dwt * 1.25 * kAge) : Math.round(loa * beam * 9.0 * kAge);
+      return { capacity: grainM3, unit: 'm³' };
+    } else {
+      let cargoMt = dwt > 0 ? Math.round(dwt * 0.94 * kAge) : Math.round(loa * beam * 7.2 * kAge);
+      return { capacity: cargoMt, unit: 'Tấn' };
+    }
+  }
+
+  // E. Tàu Thiết bị / Siêu trường (Project Cargo) -> Tính theo Tấn (MT) hoặc Units
+  if (vType.includes('THIẾT BỊ') || vType.includes('PROJECT')) {
+    let capMt = dwt > 0 ? Math.round(dwt * 0.90 * kAge) : Math.round(loa * beam * 6.0 * kAge);
+    return { capacity: capMt, unit: params.capacity_unit === 'Units' ? 'Units' : 'Tấn' };
+  }
+
+  // F. Mặc định: Tàu Container -> Tính theo TEU
+  let teu = 0;
+  if (dwt >= 3000) {
+    teu = Math.round((dwt / 13.2) * kAge);
+  } else if (loa > 0) {
+    let baseTeu = loa >= 250 ? 4200 : (loa >= 200 ? 2750 : (loa >= 170 ? 1800 : (loa >= 140 ? 1100 : (loa >= 100 ? 650 : 350))));
+    teu = Math.round(baseTeu * kAge);
+  }
+  return { capacity: teu, unit: 'TEU' };
+}
+
+// 4. Lấy thông số đầy đủ của tàu (kết hợp Override, Catalog & Tự động sửa lỗi TEU = DWT)
 function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let vKey = String(vesselName || '').trim().toUpperCase();
   let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vKey)) || {};
@@ -5690,30 +5802,280 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
 
   let loa = Number(ov.loa || rawCall.loa || cat.loa || 0);
   let beam = Number(ov.beam || rawCall.beam || cat.beam || 0);
-  let teu = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
-  let vType = ov.vessel_type || rawCall.vessel_type || cat.type || (teu > 0 ? 'Container' : '');
-
   if (!beam && loa > 0) {
     beam = loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0));
   }
-  if (!vType && loa > 0) {
-    vType = 'Container';
+
+  let dwt = ov.dwt || rawCall.dwt || cat.dwt || '';
+  let gt = ov.gt || rawCall.gt || cat.gt || '';
+  let imo = ov.imo || rawCall.imo || cat.imo || '';
+  let operator = ov.operator || rawCall.operator || cat.agent || '';
+  let yearBuilt = ov.year_built || rawCall.year_built || cat.year_built || '';
+  let lastPort = ov.last_port || rawCall.last_port || cat.last_port || '';
+  let destination = ov.destination || rawCall.destination || cat.destination || '';
+
+  let vType = ov.vessel_type || rawCall.vessel_type || cat.type || 'Container';
+  let capUnit = ov.capacity_unit || rawCall.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(vType);
+  let rawCap = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
+
+  // Tự động phát hiện và sửa lỗi cũ khi Sức chở bị gán nhầm bằng đúng số DWT (VD: 17212 của KARIYUSHI LEADER)
+  let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
+  let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && (vType !== 'Hàng rời / tổng hợp' || capUnit === 'TEU'));
+
+  if (rawCap <= 0 || isBuggyDwtCopy) {
+    let est = estimateStandardCapacityByDesign({
+      vessel_type: vType,
+      loa: loa,
+      beam: beam,
+      dwt: dwt,
+      gt: gt,
+      year_built: yearBuilt,
+      capacity_unit: capUnit
+    });
+    rawCap = est.capacity;
+    capUnit = est.unit;
   }
 
+  let { age } = getVesselAgeAndFactor(yearBuilt);
+
   return {
-    vessel_type: vType || 'Container',
+    vessel_type: vType,
     beam: beam,
-    teu: teu,
+    teu: rawCap,
+    capacity_unit: capUnit,
     loa: loa,
-    dwt: ov.dwt || rawCall.dwt || cat.dwt || '',
-    gt: ov.gt || rawCall.gt || cat.gt || '',
-    imo: ov.imo || rawCall.imo || cat.imo || '',
-    operator: ov.operator || rawCall.operator || cat.agent || ''
+    dwt: dwt,
+    gt: gt,
+    imo: imo,
+    operator: operator,
+    year_built: yearBuilt,
+    vessel_age: age,
+    last_port: lastPort,
+    destination: destination
   };
 }
 window.getVesselEnrichedSpecs = getVesselEnrichedSpecs;
 
-// 1. Nạp danh mục tàu từ LocalStorage & Supabase Bucket (Kiểm tra tồn tại trước để không báo lỗi 400)
+// 5. Ghi đè hàm filterAndDeduplicateCalls (Xóa bỏ lỗi khai báo trùng biến vesselCatalogMap cục bộ)
+function filterAndDeduplicateCalls(rawList) {
+  if (!Array.isArray(rawList)) return [];
+
+  let cleanList = rawList.map(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let ov = vesselOverridesMap.get(vName);
+
+    if (ov && ov.is_hidden === true) {
+      let ovDate = ov.etb ? ov.etb.split('T')[0] : '';
+      let cDate = c.etb ? c.etb.split('T')[0] : '';
+      if (ovDate && cDate && ovDate === cDate) return null;
+      if (!ovDate && !cDate) return null;
+    }
+
+    return {
+      vessel: vName,
+      operator: (ov && !ov.is_hidden && ov.operator) || c.operator || '',
+      terminal: (ov && !ov.is_hidden && ov.terminal) || c.terminal || '',
+      berth: (ov && !ov.is_hidden && ov.berth) || c.berth || '',
+      loa: (ov && !ov.is_hidden && ov.loa !== undefined && ov.loa !== null && ov.loa !== '') ? Number(ov.loa) : (Number(c.loa) || 0),
+      dwt: (ov && !ov.is_hidden && ov.dwt) || c.dwt || '',
+      etb: c.etb || '',
+      etd: c.etd || ''
+    };
+  }).filter(c => c && c.vessel);
+
+  let groups = new Map();
+  cleanList.forEach(c => {
+    if (!groups.has(c.vessel)) groups.set(c.vessel, []);
+    groups.get(c.vessel).push(c);
+  });
+
+  const MAX_PORT_STAY_MS = 5 * 86400000;
+  let pairedCalls = [];
+
+  groups.forEach((recs, vName) => {
+    let defaultMeta = { operator: '', terminal: '', berth: '', loa: 0, dwt: '' };
+    recs.forEach(r => {
+      if (!defaultMeta.operator && r.operator) defaultMeta.operator = r.operator;
+      if (!defaultMeta.terminal && r.terminal) defaultMeta.terminal = r.terminal;
+      if (!defaultMeta.berth && r.berth) defaultMeta.berth = r.berth;
+      if (!defaultMeta.loa && r.loa) defaultMeta.loa = r.loa;
+      if (!defaultMeta.dwt && r.dwt) defaultMeta.dwt = r.dwt;
+    });
+
+    let standaloneCalls = [];
+    let rawEtbs = [];
+    let rawEtds = [];
+
+    recs.forEach(r => {
+      let t1 = r.etb ? new Date(r.etb).getTime() : 0;
+      let t2 = r.etd ? new Date(r.etd).getTime() : 0;
+
+      if (t1 > 0 && t2 > 0 && t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
+        standaloneCalls.push({
+          ...r,
+          operator: r.operator || defaultMeta.operator,
+          terminal: r.terminal || defaultMeta.terminal,
+          berth: r.berth || defaultMeta.berth,
+          loa: r.loa || defaultMeta.loa,
+          dwt: r.dwt || defaultMeta.dwt
+        });
+      } else {
+        if (t1 > 0) rawEtbs.push({ time: t1, str: r.etb, rec: r });
+        if (t2 > 0) rawEtds.push({ time: t2, str: r.etd, rec: r });
+      }
+    });
+
+    let uniqueEtbs = [];
+    let seenEtb = new Set();
+    rawEtbs.forEach(item => {
+      if (!seenEtb.has(item.str)) { seenEtb.add(item.str); uniqueEtbs.push(item); }
+    });
+
+    let uniqueEtds = [];
+    let seenEtd = new Set();
+    rawEtds.forEach(item => {
+      if (!seenEtd.has(item.str)) { seenEtd.add(item.str); uniqueEtds.push(item); }
+    });
+
+    uniqueEtbs.sort((a, b) => a.time - b.time);
+    uniqueEtds.sort((a, b) => a.time - b.time);
+
+    let usedEtdIndices = new Set();
+
+    uniqueEtbs.forEach(eItem => {
+      let t1 = eItem.time;
+      let bestEtd = null;
+      let bestDiff = Infinity;
+      let bestIdx = -1;
+
+      uniqueEtds.forEach((dItem, idx) => {
+        if (usedEtdIndices.has(idx)) return;
+        let t2 = dItem.time;
+        if (t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
+          let diff = t2 - t1;
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestEtd = dItem;
+            bestIdx = idx;
+          }
+        }
+      });
+
+      let srcRec = eItem.rec;
+      pairedCalls.push({
+        vessel: vName,
+        operator: srcRec.operator || (bestEtd && bestEtd.rec.operator) || defaultMeta.operator,
+        terminal: srcRec.terminal || (bestEtd && bestEtd.rec.terminal) || defaultMeta.terminal,
+        berth: srcRec.berth || (bestEtd && bestEtd.rec.berth) || defaultMeta.berth,
+        loa: srcRec.loa || (bestEtd && bestEtd.rec.loa) || defaultMeta.loa,
+        dwt: srcRec.dwt || (bestEtd && bestEtd.rec.dwt) || defaultMeta.dwt,
+        etb: eItem.str,
+        etd: bestEtd ? bestEtd.str : ''
+      });
+
+      if (bestIdx !== -1) usedEtdIndices.add(bestIdx);
+    });
+
+    standaloneCalls.forEach(sc => pairedCalls.push(sc));
+  });
+
+  let dailyDistinctMap = new Map();
+  pairedCalls.forEach(c => {
+    if (!c.etb) return;
+    let etbDateStr = c.etb.split('T')[0];
+    let key = `${c.vessel}_${etbDateStr}`;
+    if (!dailyDistinctMap.has(key)) {
+      dailyDistinctMap.set(key, c);
+    } else {
+      let existingCall = dailyDistinctMap.get(key);
+      if (new Date(c.etb).getTime() > new Date(existingCall.etb).getTime()) {
+        dailyDistinctMap.set(key, c);
+      }
+    }
+  });
+
+  return Array.from(dailyDistinctMap.values()).map(c => {
+    let specs = getVesselEnrichedSpecs(c.vessel, c);
+    return {
+      ...c,
+      operator: c.operator || specs.operator,
+      loa: specs.loa || c.loa,
+      dwt: c.dwt || specs.dwt,
+      gt: specs.gt,
+      imo: specs.imo,
+      vessel_type: specs.vessel_type,
+      beam: specs.beam,
+      teu: specs.teu,
+      capacity_unit: specs.capacity_unit,
+      year_built: specs.year_built,
+      vessel_age: specs.vessel_age,
+      last_port: specs.last_port,
+      destination: specs.destination
+    };
+  });
+}
+
+// 6. Chuẩn hóa hàm tính TEU cho trang Thống kê (Chỉ cộng TEU của tàu Container)
+function getEffectiveTeu(callObj) {
+  let vType = String(callObj.vessel_type || 'Container').toUpperCase();
+  let unit = String(callObj.capacity_unit || 'TEU').toUpperCase();
+  if (vType.includes('RỜI') || vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('DẦU') || vType.includes('KHÍ') || unit !== 'TEU') {
+    return 0;
+  }
+  let teu = Number(callObj.teu || 0);
+  if (teu > 0) return teu;
+  let loa = Number(callObj.loa || 0);
+  if (loa >= 250) return 4200;
+  if (loa >= 200) return 2800;
+  if (loa >= 170) return 1850;
+  if (loa >= 140) return 1100;
+  if (loa >= 100) return 650;
+  return 0;
+}
+
+// 7. Các hàm tương tác trực tiếp trên Form Sửa Tàu
+function updateVesselAgePreview() {
+  let yVal = $('editVesselYearBuilt')?.value || '';
+  let badge = $('lbl_vesselAgeBadge');
+  if (!badge) return;
+  let { age } = getVesselAgeAndFactor(yVal);
+  badge.textContent = age !== null ? `(${age} tuổi)` : '';
+}
+
+function onVesselTypeChangeUpdateCapacity() {
+  let vType = $('editVesselType')?.value || 'Container';
+  let defaultUnit = getDefaultCapacityUnitByType(vType);
+  if ($('editVesselCapUnit')) $('editVesselCapUnit').value = defaultUnit;
+  forceCalculateStandardCapacity();
+}
+
+function forceCalculateStandardCapacity() {
+  let est = estimateStandardCapacityByDesign({
+    vessel_type: $('editVesselType')?.value || 'Container',
+    loa: $('editVesselLoa')?.value || 0,
+    beam: $('editVesselBeam')?.value || 0,
+    dwt: $('editVesselDwt')?.value || '',
+    gt: $('editVesselGt')?.value || '',
+    year_built: $('editVesselYearBuilt')?.value || '',
+    capacity_unit: $('editVesselCapUnit')?.value || ''
+  });
+  if (est.capacity > 0 && $('editVesselTeu')) {
+    $('editVesselTeu').value = est.capacity;
+  }
+  if ($('editVesselCapUnit')) {
+    $('editVesselCapUnit').value = est.unit;
+  }
+}
+
+function recalculateDesignCapacityIfNeeded() {
+  let curCap = Number($('editVesselTeu')?.value || 0);
+  let curDwt = parseInt(String($('editVesselDwt')?.value || '').replace(/\D/g, ''), 10) || 0;
+  if (!curCap || (curDwt > 0 && curCap === curDwt)) {
+    forceCalculateStandardCapacity();
+  }
+}
+
+// 8. Nạp danh mục tàu từ LocalStorage & Supabase Bucket
 async function loadVesselCatalog() {
   try {
     let saved = localStorage.getItem('hp_vessel_catalog');
@@ -5725,7 +6087,6 @@ async function loadVesselCatalog() {
 
   if (supabaseClient) {
     try {
-      // Kiểm tra xem file vessel_catalog.json đã có trên Bucket chưa trước khi tải
       const { data: files, error: listErr } = await supabaseClient.storage
         .from('port-documents')
         .list('', { search: 'vessel_catalog.json' });
@@ -5758,7 +6119,8 @@ function updateCatalogBadgeCount() {
   }
 }
 window.updateCatalogBadgeCount = updateCatalogBadgeCount;
-// 2. Đọc trực tiếp file Tàu_thông_qua_HP.xlsx người dùng chọn và đồng bộ lên Supabase
+
+// 9. Đọc file Excel Tàu_thông_qua_HP.xlsx
 async function handleImportVesselCatalogExcel(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -5777,20 +6139,21 @@ async function handleImportVesselCatalogExcel(e) {
       workbook.SheetNames.forEach(sheetName => {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
         rows.forEach(r => {
-          // Hỗ trợ cả dòng tiêu đề chuẩn và dòng tiêu đề ở hàng 2 của sheet 'lịch tàu'
           let vals = Object.values(r);
           let vName = String(r['Tên tàu'] || vals[0] || '').trim().toUpperCase();
           if (!vName || vName === 'TÊN TÀU' || vName.includes('TỔNG HỢP CÁC TÀU')) return;
 
           let vType = String(r['Loại tàu'] || vals[1] || '').trim();
           let loaRaw = r['LOA(m)'] !== undefined ? r['LOA(m)'] : vals[3];
-          let beamRaw = r['Chiều rộng (m)'] !== undefined ? r['Chiều rộng (m)'] : (r['Chiều rộng (m)'] || vals[4]);
+          let beamRaw = r['Chiều rộng (m)'] !== undefined ? r['Chiều rộng (m)'] : (r['Chiều rộng(m)'] || vals[4]);
           let dwtRaw = r['DWT'] !== undefined ? r['DWT'] : vals[5];
           let gtRaw = r['GT'] !== undefined ? r['GT'] : vals[6];
           let teuRaw = r['Sức chở (TEU)'] !== undefined ? r['Sức chở (TEU)'] : vals[7];
+          let yearRaw = r['Năm SX'] || r['Year Built'] || '';
+          let lastPortRaw = r['Last Port'] || r['Cảng trước'] || '';
+          let destRaw = r['Destination'] || r['Cảng đến'] || '';
           let agentRaw = r['Đại lý'] !== undefined ? r['Đại lý'] : vals[12];
 
-          // Nếu là cấu trúc sheet 'Tàu - Cảng - Chuyến' (Tên tàu, Loại tàu, Chiều rộng, Sức chở TEU)
           if (r['Chiều rộng (m)'] !== undefined && r['LOA(m)'] === undefined) {
             beamRaw = r['Chiều rộng (m)'];
             teuRaw = r['Sức chở (TEU)'];
@@ -5802,12 +6165,17 @@ async function handleImportVesselCatalogExcel(e) {
           let beamNum = parseFloat(String(beamRaw).replace(',', '.')) || existing.beam || 0;
           let teuNum = parseInt(parseFloat(String(teuRaw).replace(',', '.')), 10);
           if (isNaN(teuNum)) teuNum = existing.teu || 0;
+          let finalType = vType || existing.type || 'Container';
 
           vesselCatalogMap.set(vName, {
-            type: vType || existing.type || 'Container',
+            type: finalType,
+            year_built: parseInt(yearRaw, 10) || existing.year_built || '',
+            last_port: String(lastPortRaw || existing.last_port || '').trim().toUpperCase(),
+            destination: String(destRaw || existing.destination || '').trim().toUpperCase(),
             loa: loaNum,
             beam: beamNum,
             teu: teuNum,
+            capacity_unit: existing.capacity_unit || getDefaultCapacityUnitByType(finalType),
             dwt: String(dwtRaw || existing.dwt || '').trim(),
             gt: String(gtRaw || existing.gt || '').trim(),
             agent: String(agentRaw || existing.agent || '').trim(),
@@ -5817,7 +6185,6 @@ async function handleImportVesselCatalogExcel(e) {
         });
       });
 
-      // Lưu vào LocalStorage & Supabase Storage Bucket
       let catalogObj = Object.fromEntries(vesselCatalogMap);
       localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
 
@@ -5838,15 +6205,22 @@ async function handleImportVesselCatalogExcel(e) {
   reader.readAsArrayBuffer(file);
 }
 
-// 3. Tự động điền thông số khi gõ tên tàu trong form Sửa tàu
+// 10. Tự động điền thông số khi gõ tên tàu
 function autoFillFromCatalogOnType(val) {
   let vName = String(val || '').trim().toUpperCase();
   if (!vName) return;
   let specs = getVesselEnrichedSpecs(vName);
   if (specs.loa || specs.beam || specs.teu) {
     if ($('editVesselType') && specs.vessel_type) $('editVesselType').value = specs.vessel_type;
+    if ($('editVesselYearBuilt') && specs.year_built) {
+      $('editVesselYearBuilt').value = specs.year_built;
+      updateVesselAgePreview();
+    }
+    if ($('editVesselLastPort') && specs.last_port) $('editVesselLastPort').value = specs.last_port;
+    if ($('editVesselDestination') && specs.destination) $('editVesselDestination').value = specs.destination;
     if ($('editVesselLoa') && specs.loa) $('editVesselLoa').value = specs.loa;
     if ($('editVesselBeam') && specs.beam) $('editVesselBeam').value = specs.beam;
+    if ($('editVesselCapUnit') && specs.capacity_unit) $('editVesselCapUnit').value = specs.capacity_unit;
     if ($('editVesselTeu') && specs.teu !== undefined) $('editVesselTeu').value = specs.teu;
     if ($('editVesselDwt') && specs.dwt) $('editVesselDwt').value = specs.dwt;
     if ($('editVesselGt') && specs.gt) $('editVesselGt').value = specs.gt;
@@ -5857,14 +6231,14 @@ function autoFillFromCatalogOnType(val) {
   }
 }
 
-// 4. Hàm tự động quét thông số tàu từ VesselFinder (qua Jina Reader Proxy & AllOrigins)
+// 11. Quét tự động thông số từ VesselFinder
 async function fetchShipSpecsFromVesselFinder() {
   let imo = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
   let vName = ($('editVesselName')?.value || '').trim().toUpperCase();
   let statusEl = $('vfLookupStatus');
 
   if (!imo && !vName) {
-    alert('Vui lòng nhập Số IMO (ví dụ: 1047108) hoặc Tên tàu trước khi tra cứu!');
+    alert('Vui lòng nhập Số IMO (ví dụ: 9403217) hoặc Tên tàu trước khi tra cứu!');
     return;
   }
 
@@ -5874,7 +6248,6 @@ async function fetchShipSpecsFromVesselFinder() {
   }
 
   try {
-    // Bước 1: Nếu chưa có IMO, tự động tìm số IMO theo Tên tàu trên VesselFinder
     if (!imo && vName) {
       let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(vName)}`;
       let sRes = await fetch(searchUrl);
@@ -5899,17 +6272,14 @@ async function fetchShipSpecsFromVesselFinder() {
       return;
     }
 
-    // Bước 2: Tải nội dung trang chi tiết https://www.vesselfinder.com/vessels/details/{IMO}
     let detailUrl = `https://www.vesselfinder.com/vessels/details/${imo}`;
     let pageText = '';
 
-    // Thử cổng 1: Jina Reader API (vượt Cloudflare & trả về text sạch)
     try {
       let r1 = await fetch(`https://r.jina.ai/${detailUrl}`);
       if (r1.ok) pageText = await r1.text();
     } catch (e1) {}
 
-    // Thử cổng 2: AllOrigins CORS Proxy nếu cổng 1 bận
     if (!pageText || pageText.length < 200) {
       try {
         let r2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(detailUrl)}`);
@@ -5928,7 +6298,8 @@ async function fetchShipSpecsFromVesselFinder() {
     applyParsedSpecsToForm(parsed, imo);
 
     if (statusEl) {
-      statusEl.textContent = `✓ Đã nạp từ IMO ${imo}`;
+      let capNote = parsed.is_estimated ? ` (Sức chở tính theo TK & Tuổi tàu)` : '';
+      statusEl.textContent = `✓ Đã nạp từ IMO ${imo}${capNote}`;
       statusEl.style.color = '#10b981';
     }
   } catch (err) {
@@ -5936,52 +6307,130 @@ async function fetchShipSpecsFromVesselFinder() {
       statusEl.textContent = '⚠️ Dùng nút Mở Web + Dán nhanh';
       statusEl.style.color = '#ef4444';
     }
-    if (confirm(`Không thể quét ngầm do tường lửa chống bot của VesselFinder.\n\nBạn có muốn mở trực tiếp trang VesselFinder (IMO: ${imo}) trên tab mới? (Sau đó chỉ cần Ctrl+A, Ctrl+C rồi bấm nút "📋 Dán nhanh" là xong)`)) {
+    if (confirm(`Không thể quét ngầm do tường lửa của VesselFinder.\n\nBạn có muốn mở trực tiếp trang VesselFinder (IMO: ${imo}) trên tab mới? (Sau đó chỉ cần Ctrl+A, Ctrl+C rồi bấm nút "📋 Dán nhanh" là xong)`)) {
       openVesselFinderPage();
     }
   }
 }
 
-// 5. Hàm bóc tách thông minh văn bản/HTML từ VesselFinder
+// 12. Bóc tách chuẩn xác nội dung VesselFinder (Không nhảy qua dấu '-' lấy nhầm DWT & Lấy Năm SX, Last Port, Destination)
 function parseVesselFinderContent(rawText) {
+  let lineText = rawText
+    .replace(/<\/(tr|td|th|p|div|li|h1|h2|h3)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[ \t]+/g, ' ');
   let clean = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   let res = {};
 
-  // Tên tàu
-  let titleMatch = clean.match(/([A-Z0-9\s\-]{3,35}),\s*(Container Ship|Bulk Carrier|General Cargo|Vehicles Carrier|Chemical|Oil Products Tanker|Cargo Ship)/i);
+  // A. Tên tàu & Loại tàu
+  let titleMatch = clean.match(/([A-Z0-9\s\-]{3,35}),\s*(Container Ship|Bulk Carrier|General Cargo|Vehicles Carrier|Ro-Ro Cargo|Car Carrier|Chemical|Oil Products Tanker|Crude Oil Tanker|LPG Tanker|LNG Tanker|Heavy Load Carrier|Cargo Ship)/i);
   if (titleMatch) {
     res.name = titleMatch[1].trim().toUpperCase();
     let rawType = titleMatch[2].toLowerCase();
     if (rawType.includes('container')) res.type = 'Container';
-    else if (rawType.includes('vehicles') || rawType.includes('ro-ro')) res.type = 'Ô tô (PCTC)';
+    else if (rawType.includes('vehicles') || rawType.includes('ro-ro') || rawType.includes('car')) res.type = 'Ô tô (PCTC)';
+    else if (rawType.includes('lpg') || rawType.includes('lng')) res.type = 'Tàu khí (LPG / LNG)';
     else if (rawType.includes('tanker') || rawType.includes('chemical')) res.type = 'Tàu dầu / Hóa chất';
+    else if (rawType.includes('heavy')) res.type = 'Tàu thiết bị / Project';
     else res.type = 'Hàng rời / tổng hợp';
   }
 
-  // LOA & Beam dạng "Length Overall (m) 179.9" hoặc "Length / Beam 179.9 / 30 m"
-  let lbCombo = clean.match(/(?:Length\s*\/\s*Beam|Length\s*Overall)[^\d]{1,30}(\d{2,3}(?:[.,]\d+)?)\s*\/\s*(\d{2}(?:[.,]\d+)?)\s*m/i)
+  // B. Năm sản xuất (Year of Built)
+  let ybMatch = lineText.match(/Year\s*of\s*Built\s*[:\s]*([12]\d{3})/i)
+             || clean.match(/built\s*in\s*([12]\d{3})/i)
+             || clean.match(/Year\s*Built\s*[:\s]*([12]\d{3})/i);
+  if (ybMatch) {
+    res.year_built = parseInt(ybMatch[1], 10);
+  }
+
+  // C. Cảng tiếp theo (Destination) & Cảng trước (Last Port)
+  let destMatch = lineText.match(/Destination\s+([A-Z0-9\s,\-\(\)\/]{2,35}?)(?:\n|ETA|Predicted|Distance|Current|$)/i)
+               || clean.match(/en\s*route\s*to\s*(?:the\s*port\s*of\s*)?([A-Za-z0-9\s\-\(\)]{2,30}?)(?:,\s*sailing|\.\s*|$)/i);
+  if (destMatch) {
+    let dVal = destMatch[1].trim().replace(/\s+/g, ' ');
+    if (dVal && !/^(n\/a|none|-|unknown|ais)$/i.test(dVal)) {
+      res.destination = dVal.toUpperCase();
+    }
+  }
+
+  let lastPortMatch = lineText.match(/(?:Last\s*Port|Departure\s*Port|Previous\s*Port)\s+([A-Z0-9\s,\-\(\)\/]{2,35}?)(?:\n|ATD|ATA|Arrival|Departed|$)/i)
+                   || clean.match(/departed\s*from\s*([A-Za-z0-9\s\-\(\)]{2,30}?)(?:\s*on\s*|\.\s*|$)/i);
+  if (lastPortMatch) {
+    let lpVal = lastPortMatch[1].trim().replace(/\s+/g, ' ');
+    if (lpVal && !/^(n\/a|none|-|unknown)$/i.test(lpVal)) {
+      res.last_port = lpVal.toUpperCase();
+    }
+  }
+
+  // D. LOA & Beam
+  let lbCombo = clean.match(/(?:Length\s*\/\s*Beam|Length\s*Overall)[^\d]{1,25}(\d{2,3}(?:[.,]\d+)?)\s*\/\s*(\d{2}(?:[.,]\d+)?)\s*m/i)
              || clean.match(/(\d{2,3}(?:[.,]\d+)?)\s*m\s*[×x\/]\s*(\d{2}(?:[.,]\d+)?)\s*m/i);
   if (lbCombo) {
     res.loa = parseFloat(lbCombo[1].replace(',', '.'));
     res.beam = parseFloat(lbCombo[2].replace(',', '.'));
   } else {
-    let loaM = clean.match(/Length\s*Overall[^\d]{1,25}(\d{2,3}(?:[.,]\d+)?)/i) || clean.match(/length\s*overall\s*\(LOA\)\s*is\s*(\d{2,3}(?:[.,]\d+)?)\s*m/i);
-    let beamM = clean.match(/(?:Beam|Breadth)[^\d]{1,25}(\d{2}(?:[.,]\d+)?)/i) || clean.match(/(?:width|beam)\s*is\s*(\d{2}(?:[.,]\d+)?)\s*m/i);
+    let loaM = lineText.match(/Length\s*Overall\s*\(m\)\s*[:\s]*(\d{2,3}(?:[.,]\d+)?)/i)
+            || clean.match(/length\s*overall\s*\(LOA\)\s*is\s*(\d{2,3}(?:[.,]\d+)?)\s*m/i);
+    let beamM = lineText.match(/Beam\s*\(m\)\s*[:\s]*(\d{2}(?:[.,]\d+)?)/i)
+             || clean.match(/(?:width|beam)\s*is\s*(\d{2}(?:[.,]\d+)?)\s*m/i);
     if (loaM) res.loa = parseFloat(loaM[1].replace(',', '.'));
     if (beamM) res.beam = parseFloat(beamM[1].replace(',', '.'));
   }
 
-  // Sức chở TEU
-  let teuM = clean.match(/(?:TEU|Container\s*Capacity)[^\d]{1,25}(\d{3,5})/i) || clean.match(/(\d{3,5})\s*TEU/i);
-  if (teuM) res.teu = parseInt(teuM[1], 10);
+  // E. DWT & GT
+  let dwtM = lineText.match(/(?:Deadweight\s*\(t\)|Deadweight|DWT)\s*[:\s]*(\d{1,3}(?:[.,]\d{3})*|\d{3,6})/i);
+  let gtM = lineText.match(/(?:Gross\s*Tonnage|GT)\s*[:\s]*(\d{1,3}(?:[.,]\d{3})*|\d{3,6})/i);
+  if (dwtM) res.dwt = dwtM[1].replace(/,/g, '');
+  if (gtM) res.gt = gtM[1].replace(/,/g, '');
 
-  // DWT & GT
-  let dwtM = clean.match(/(?:Deadweight|DWT)[^\d]{1,25}(\d{1,3}[.,]?\d{3})/i);
-  let gtM = clean.match(/(?:Gross\s*Tonnage|GT)[^\d]{1,25}(\d{1,3}[.,]?\d{3})/i);
-  if (dwtM) res.dwt = dwtM[1].replace(/,/g, '.');
-  if (gtM) res.gt = gtM[1].replace(/,/g, '.');
+  // F. SỨC CHỞ THEO LOẠI TÀU (Không nhảy qua dấu '-' để tránh lấy nhầm DWT!)
+  let teuStrict = lineText.match(/(?:Capacity\s*\(TEU\)|Container\s*Capacity|TEU)\s*[:\s]*([0-9][0-9.,]*)\b/i)
+               || clean.match(/\b(\d{3,5})\s*TEU\b/i);
+  let ceuStrict = lineText.match(/(?:Cars|Vehicles\s*Capacity|Car\s*Capacity|CEU|Ro-Ro\s*Capacity)\s*[:\s]*([0-9][0-9.,]*)\b/i)
+               || clean.match(/\b(\d{3,5})\s*(?:CEU|cars|vehicles|units)\b/i);
+  let m3Strict = lineText.match(/(?:Liquid\s*Capacity|Gas\s*Capacity|Grain|Bale|Cargo\s*Capacity\s*\(m3\))\s*[:\s]*([0-9][0-9.,]*)\b/i)
+              || clean.match(/\b(\d{3,6})\s*(?:cbm|m3|m³)\b/i);
 
-  // IMO
+  let dwtNumeric = parseInt(String(res.dwt || '').replace(/\D/g, ''), 10) || 0;
+
+  if (res.type === 'Ô tô (PCTC)' && ceuStrict) {
+    res.teu = parseInt(ceuStrict[1].replace(/\D/g, ''), 10);
+    res.capacity_unit = 'Units';
+  } else if ((res.type === 'Tàu dầu / Hóa chất' || res.type === 'Tàu khí (LPG / LNG)') && m3Strict) {
+    res.teu = parseInt(m3Strict[1].replace(/\D/g, ''), 10);
+    res.capacity_unit = 'm³';
+  } else if (teuStrict) {
+    let parsedTeu = parseInt(teuStrict[1].replace(/\D/g, ''), 10);
+    if (parsedTeu > 0 && parsedTeu !== dwtNumeric) {
+      res.teu = parsedTeu;
+      res.capacity_unit = 'TEU';
+    }
+  } else if (ceuStrict) {
+    res.teu = parseInt(ceuStrict[1].replace(/\D/g, ''), 10);
+    res.capacity_unit = 'Units';
+  } else if (m3Strict) {
+    res.teu = parseInt(m3Strict[1].replace(/\D/g, ''), 10);
+    res.capacity_unit = 'm³';
+  }
+
+  // G. Nếu trên VesselFinder không có sức chứa, tự động tính theo thiết kế & tuổi tàu
+  if (!res.teu || res.teu <= 0) {
+    let est = estimateStandardCapacityByDesign({
+      vessel_type: res.type || ($('editVesselType')?.value || 'Container'),
+      loa: res.loa || ($('editVesselLoa')?.value || 0),
+      beam: res.beam || ($('editVesselBeam')?.value || 0),
+      dwt: res.dwt || ($('editVesselDwt')?.value || ''),
+      gt: res.gt || ($('editVesselGt')?.value || ''),
+      year_built: res.year_built || ($('editVesselYearBuilt')?.value || '')
+    });
+    if (est.capacity > 0) {
+      res.teu = est.capacity;
+      res.capacity_unit = est.unit;
+      res.is_estimated = true;
+    }
+  }
+
+  // H. Số IMO
   let imoM = clean.match(/IMO[^\d]{1,15}(\d{7})/i);
   if (imoM) res.imo = imoM[1];
 
@@ -5991,15 +6440,31 @@ function parseVesselFinderContent(rawText) {
 function applyParsedSpecsToForm(parsed, imoFallback = '') {
   if (parsed.name && !$('editVesselName').value) $('editVesselName').value = parsed.name;
   if (parsed.type && $('editVesselType')) $('editVesselType').value = parsed.type;
+  if (parsed.year_built && $('editVesselYearBuilt')) {
+    $('editVesselYearBuilt').value = parsed.year_built;
+    updateVesselAgePreview();
+  }
+  if (parsed.last_port && $('editVesselLastPort')) $('editVesselLastPort').value = parsed.last_port;
+  if (parsed.destination && $('editVesselDestination')) $('editVesselDestination').value = parsed.destination;
   if (parsed.loa && $('editVesselLoa')) $('editVesselLoa').value = parsed.loa;
   if (parsed.beam && $('editVesselBeam')) $('editVesselBeam').value = parsed.beam;
-  if (parsed.teu !== undefined && $('editVesselTeu')) $('editVesselTeu').value = parsed.teu;
   if (parsed.dwt && $('editVesselDwt')) $('editVesselDwt').value = parsed.dwt;
   if (parsed.gt && $('editVesselGt')) $('editVesselGt').value = parsed.gt;
   if ((parsed.imo || imoFallback) && $('editVesselImo')) $('editVesselImo').value = parsed.imo || imoFallback;
+
+  if (parsed.capacity_unit && $('editVesselCapUnit')) {
+    $('editVesselCapUnit').value = parsed.capacity_unit;
+  } else if (parsed.type && $('editVesselCapUnit')) {
+    $('editVesselCapUnit').value = getDefaultCapacityUnitByType(parsed.type);
+  }
+
+  if (parsed.teu !== undefined && $('editVesselTeu')) {
+    $('editVesselTeu').value = parsed.teu;
+  } else {
+    forceCalculateStandardCapacity();
+  }
 }
 
-// 6. Mở trực tiếp trang VesselFinder trên tab mới
 function openVesselFinderPage() {
   let imo = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
   let vName = ($('editVesselName')?.value || '').trim();
@@ -6012,7 +6477,6 @@ function openVesselFinderPage() {
   }
 }
 
-// 7. Công cụ "Dán nhanh 1 giây" từ Clipboard hoặc hộp thoại
 async function smartPasteVesselFinderSpecs() {
   let text = '';
   try {
@@ -6032,7 +6496,6 @@ async function smartPasteVesselFinderSpecs() {
   }
 }
 
-// 8. Đẩy thẳng tàu sang Tab Lập Phương Án An Toàn (Điền sẵn LOA / Beam, DWT / GT, IMO...)
 function pushEditedVesselToSafetyPlan() {
   let vName = ($('editVesselName')?.value || '').trim().toUpperCase();
   if (!vName) { alert('Vui lòng chọn hoặc nhập tên tàu trước!'); return; }
@@ -6070,6 +6533,235 @@ function openSafetyPlanFromTooltip() {
   hideTooltip();
   pushEditedVesselToSafetyPlan();
 }
+
+// 13. Ghi đè các hàm Hiển thị & Lưu trữ (populateEditForm, saveVesselOverrideProtected, renderOverrideTable, renderTable, showTooltip)
+function populateEditForm(vesselOrName) {
+  let item = null;
+  let vName = '';
+
+  if (typeof vesselOrName === 'string') {
+    vName = vesselOrName.trim().toUpperCase();
+    item = allCalls.find(c => (c.vessel || '').trim().toUpperCase() === vName) || {};
+  } else if (vesselOrName && typeof vesselOrName === 'object') {
+    item = vesselOrName;
+    vName = (item.vessel || item.vessel_name || '').trim().toUpperCase();
+  }
+
+  if (!vName) return;
+  let specs = getVesselEnrichedSpecs(vName, item);
+  let ov = vesselOverridesMap.get(vName) || {};
+
+  if ($('editVesselName')) $('editVesselName').value = vName;
+  if ($('editVesselImo')) $('editVesselImo').value = specs.imo || '';
+  if ($('editVesselType')) $('editVesselType').value = specs.vessel_type || 'Container';
+  if ($('editVesselYearBuilt')) $('editVesselYearBuilt').value = specs.year_built || '';
+  updateVesselAgePreview();
+
+  if ($('editVesselOperator')) $('editVesselOperator').value = specs.operator || '';
+  if ($('editVesselLastPort')) $('editVesselLastPort').value = specs.last_port || '';
+  if ($('editVesselDestination')) $('editVesselDestination').value = specs.destination || '';
+  if ($('editVesselTerminal')) $('editVesselTerminal').value = ov.terminal || item.terminal || '';
+  if ($('editVesselBerth')) $('editVesselBerth').value = ov.berth || item.berth || '';
+  if ($('editVesselLoa')) $('editVesselLoa').value = specs.loa || '';
+  if ($('editVesselBeam')) $('editVesselBeam').value = specs.beam || '';
+  if ($('editVesselCapUnit')) $('editVesselCapUnit').value = specs.capacity_unit || getDefaultCapacityUnitByType(specs.vessel_type);
+  if ($('editVesselTeu')) $('editVesselTeu').value = specs.teu !== undefined ? specs.teu : '';
+  if ($('editVesselDwt')) $('editVesselDwt').value = specs.dwt || '';
+  if ($('editVesselGt')) $('editVesselGt').value = specs.gt || '';
+  if ($('editVesselEtb')) $('editVesselEtb').value = formatDateTimeLocal(ov.etb || item.etb);
+  if ($('editVesselEtd')) $('editVesselEtd').value = formatDateTimeLocal(ov.etd || item.etd);
+
+  nav('edit-vessel', true);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveVesselOverrideProtected() {
+  let pwd = prompt(dict[currentLang].promptPwd);
+  if (pwd !== '6868') {
+    if (pwd !== null) alert(dict[currentLang].pwdWrong);
+    return;
+  }
+
+  let vName = ($('editVesselName').value || '').trim().toUpperCase();
+  if (!vName) {
+    alert('Vui lòng nhập tên tàu cần lưu!');
+    return;
+  }
+
+  let vType = $('editVesselType')?.value || 'Container';
+  let capUnit = $('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType);
+  let yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
+
+  let payload = {
+    vessel_name: vName,
+    imo: ($('editVesselImo')?.value || '').trim(),
+    vessel_type: vType,
+    year_built: yearBuilt,
+    operator: $('editVesselOperator').value.trim(),
+    last_port: ($('editVesselLastPort')?.value || '').trim().toUpperCase(),
+    destination: ($('editVesselDestination')?.value || '').trim().toUpperCase(),
+    terminal: $('editVesselTerminal').value.trim(),
+    berth: $('editVesselBerth').value.trim(),
+    loa: Number($('editVesselLoa').value) || 0,
+    beam: Number($('editVesselBeam')?.value) || 0,
+    teu: Number($('editVesselTeu')?.value) || 0,
+    capacity_unit: capUnit,
+    dwt: $('editVesselDwt').value.trim(),
+    gt: ($('editVesselGt')?.value || '').trim(),
+    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
+    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  vesselOverridesMap.set(vName, payload);
+  vesselCatalogMap.set(vName, {
+    type: payload.vessel_type,
+    year_built: payload.year_built,
+    last_port: payload.last_port,
+    destination: payload.destination,
+    loa: payload.loa,
+    beam: payload.beam,
+    teu: payload.teu,
+    capacity_unit: payload.capacity_unit,
+    dwt: payload.dwt,
+    gt: payload.gt,
+    imo: payload.imo,
+    agent: payload.operator
+  });
+
+  let catalogObj = Object.fromEntries(vesselCatalogMap);
+  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
+
+  try {
+    if (supabaseClient) {
+      await supabaseClient.from('vessel_overrides').upsert({
+        vessel_name: payload.vessel_name,
+        operator: payload.operator,
+        terminal: payload.terminal,
+        berth: payload.berth,
+        loa: payload.loa,
+        dwt: payload.dwt,
+        etb: payload.etb,
+        etd: payload.etd,
+        updated_at: payload.updated_at
+      }, { onConflict: 'vessel_name' });
+
+      const blob = new Blob([JSON.stringify(catalogObj, null, 2)], { type: 'application/json' });
+      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
+    }
+    updateCatalogBadgeCount();
+    renderOverrideTable();
+    loadData();
+    alert(`Đã lưu tàu "${vName}" (Sức chở: ${payload.teu.toLocaleString('vi-VN')} ${payload.capacity_unit}, Năm SX: ${payload.year_built || '—'}) thành công!`);
+  } catch (err) {
+    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
+  }
+}
+
+function renderOverrideTable() {
+  let tbody = $('overrideTableRows');
+  if (!tbody) return;
+  let q = ($('catalogFilterInput')?.value || '').trim().toUpperCase();
+
+  let combinedKeys = Array.from(new Set([...vesselOverridesMap.keys(), ...vesselCatalogMap.keys()])).sort();
+  if (q) combinedKeys = combinedKeys.filter(k => k.includes(q));
+
+  if (combinedKeys.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Chưa có dữ liệu. Hãy bấm "📂 Nạp file Tàu_thông_qua_HP.xlsx" ở góc trên!</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = combinedKeys.slice(0, 150).map(key => {
+    let specs = getVesselEnrichedSpecs(key);
+    let ageTxt = specs.year_built ? `${specs.year_built} (${specs.vessel_age}t)` : '—';
+    let routeTxt = (specs.last_port || specs.destination) ? `<br><small style="color:#0284c7">${esc(specs.last_port || '?')} ➔ ${esc(specs.destination || '?')}</small>` : '';
+    let capTxt = specs.teu > 0 ? `${specs.teu.toLocaleString('vi-VN')} ${esc(specs.capacity_unit || 'TEU')}` : '—';
+    return `<tr>
+      <td><b>${esc(key)}</b> ${specs.imo ? `<small class="muted">(IMO: ${esc(specs.imo)})</small>` : ''}${routeTxt}</td>
+      <td><span class="badge">${esc(specs.vessel_type || 'Container')}</span><br><small class="muted">SX: ${ageTxt}</small></td>
+      <td><b>${specs.loa || '—'}m</b> × <b style="color:#0284c7">${specs.beam || '—'}m</b></td>
+      <td style="color:#059669;font-weight:700">${capTxt}</td>
+      <td>${esc(specs.dwt || '—')}</td>
+      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa / Chọn</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTable(list) {
+  let q = ($('search')?.value || '').toLowerCase();
+  let filtered = list.filter(c => !q || [c.vessel, c.vessel_type, c.operator, c.terminal, c.berth, c.imo, c.last_port, c.destination].join(' ').toLowerCase().includes(q));
+  if ($('rows')) {
+    $('rows').innerHTML = filtered.length ? filtered.map((c, i) => {
+      let typeBadgeColor = (c.vessel_type || '').includes('Hàng rời') ? 'background:#dcfce7;color:#166534' : ((c.vessel_type || '').includes('PCTC') ? 'background:#fef3c7;color:#92400e' : 'background:#e0f2fe;color:#0369a1');
+      let dimStr = `${c.loa || '—'}m × <span style="color:#0284c7">${c.beam ? Number(c.beam).toFixed(1) + 'm' : '—'}</span>`;
+      let capStr = c.teu > 0 ? `${Number(c.teu).toLocaleString('vi-VN')} <small>${esc(c.capacity_unit || 'TEU')}</small>` : '—';
+      let yearAgeStr = c.year_built ? `<b>${c.year_built}</b> <small class="muted">(${c.vessel_age}t)</small>` : '—';
+      let routeStr = (c.last_port || c.destination) ? `<span style="color:#d97706">${esc(c.last_port || '—')}</span> ➔ <b style="color:#0284c7">${esc(c.destination || '—')}</b>` : '—';
+      return `
+      <tr onclick="populateEditForm('${esc(c.vessel)}')" style="cursor:pointer" title="Nhấp để xem/sửa hoặc tra cứu VesselFinder">
+        <td>${i+1}</td>
+        <td class="vessel">${esc(c.vessel)} ${c.imo ? `<small class="muted">(${esc(c.imo)})</small>` : ''}</td>
+        <td><span class="badge" style="${typeBadgeColor}">${esc(c.vessel_type || 'Container')}</span></td>
+        <td>${yearAgeStr}</td>
+        <td><span class="badge">${esc(c.operator || '—')}</span></td>
+        <td><b>${dimStr}</b></td>
+        <td style="color:#059669;font-weight:700">${capStr}</td>
+        <td>${esc(c.dwt || '—')}</td>
+        <td style="font-size:10px">${routeStr}</td>
+        <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
+        <td>${dt(c.etb)}</td>
+        <td>${dt(c.etd)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="12" class="empty">Không tìm thấy bản ghi.</td></tr>`;
+  }
+}
+
+function showTooltip(e, s) {
+  if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+  let specs = getVesselEnrichedSpecs(s.vessel, s);
+  selectedShipForReport = { ...s, ...specs };
+  let tt = $('shipTooltip');
+  $('ttName').textContent = s.vessel;
+  $('ttOperator').textContent = specs.operator || s.operator || '—';
+  if ($('ttVesselType')) $('ttVesselType').textContent = specs.vessel_type || 'Container';
+  $('ttLoa').textContent = `${specs.loa || '—'}m × ${specs.beam ? Number(specs.beam).toFixed(1) + 'm' : '—'}`;
+  
+  let capPart = specs.teu > 0 ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'} · ` : '';
+  $('ttDwt').textContent = capPart + (specs.dwt ? `${specs.dwt} T` : '—');
+  
+  if ($('ttYearAge')) {
+    $('ttYearAge').textContent = specs.year_built ? `${specs.year_built} (${specs.vessel_age} tuổi)` : 'Chưa rõ';
+  }
+  if ($('ttRoute')) {
+    $('ttRoute').textContent = (specs.last_port || specs.destination) ? `${specs.last_port || '—'} ➔ ${specs.destination || '—'}` : '—';
+  }
+
+  $('ttEtb').textContent = dt(s.etb);
+  $('ttEtd').textContent = dt(s.etd);
+
+  let now = Date.now();
+  let t1 = s.etb ? new Date(s.etb).getTime() : 0;
+  let t2 = s.etd ? new Date(s.etd).getTime() : 0;
+  if (t1 > 0 && now >= t1) {
+    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
+    $('ttDocked').textContent = formatDuration(dockedMs);
+  } else {
+    $('ttDocked').textContent = 'Chưa cập';
+  }
+
+  if (t2 > 0 && t2 > now) $('ttRemaining').textContent = formatDuration(t2 - now);
+  else if (t2 > 0 && now >= t2) $('ttRemaining').textContent = 'Đã rời bến';
+  else $('ttRemaining').textContent = '—';
+
+  tt.style.display = 'block';
+  tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
+  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 250) + 'px';
+}
+
+window.updateVesselAgePreview = updateVesselAgePreview;
+window.onVesselTypeChangeUpdateCapacity = onVesselTypeChangeUpdateCapacity;
+window.forceCalculateStandardCapacity = forceCalculateStandardCapacity;
+window.recalculateDesignCapacityIfNeeded = recalculateDesignCapacityIfNeeded;
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
