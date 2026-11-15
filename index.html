@@ -1272,12 +1272,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
         </div>
       </section>
 
-     <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU (TÍCH HỢP VESSELFINDER & EXCEL CATALOG) -->
+   <!-- MÀN HÌNH 5: BỔ SUNG & SỬA TÀU (TÍCH HỢP VESSELFINDER & EXCEL CATALOG) -->
       <section id="page-edit-vessel" class="page hidden">
         <div class="page-head">
           <div>
             <h2 id="t_editVesselHead">Bổ sung, Sửa tàu & Tra cứu VesselFinder</h2>
-            <div class="muted" id="t_editVesselSub">Quản lý Loại tàu, Chiều rộng (Beam), Sức chở (TEU) từ Excel hoặc tự động quét từ VesselFinder</div>
+            <div class="muted" id="t_editVesselSub">Quản lý Loại tàu, Năm SX, Chiều rộng (Beam), Sức chở từ Excel hoặc tự động quét từ VesselFinder</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <span class="badge" id="catalogCountBadge" style="padding:6px 10px;font-size:11px;">Danh mục: 0 tàu</span>
@@ -1287,10 +1287,12 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
             <input type="file" id="excelCatalogInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportVesselCatalogExcel(event)">
           </div>
         </div>
+
         <div class="grid2">
+          <!-- CỘT TRÁI: FORM CẬP NHẬT & TRA CỨU VESSELFINDER -->
           <div class="panel">
             <div class="panel-head"><h3 id="t_editFormHead">Cập nhật thông số tàu & Tra cứu tự động</h3></div>
-           <div class="panel-body">
+            <div class="panel-body">
               <!-- KHỐI TRA CỨU TỰ ĐỘNG VESSELFINDER -->
               <div style="background:rgba(38,189,200,0.08);border:1px dashed var(--cyan);border-radius:8px;padding:10px;margin-bottom:12px;">
                 <div style="font-weight:800;font-size:11.5px;color:var(--navy2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
@@ -1408,6 +1410,34 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
                 <button class="darkbtn" onclick="deleteVesselOverrideProtected()" style="background:var(--red);color:#fff" id="btnDeleteOverride">🗑️ Ẩn chuyến</button>
               </div>
             </div>
+          </div>
+
+          <!-- CỘT PHẢI: BẢNG DANH SÁCH TÀU ĐÃ LƯU THÔNG SỐ (OVERRIDE & CATALOG) -->
+          <div class="panel">
+            <div class="panel-head">
+              <h3 id="t_overrideListHead">Danh sách tàu đã lưu thông số (Override & Catalog)</h3>
+              <input id="catalogFilterInput" class="field" placeholder="🔍 Lọc tên tàu..." style="max-width:160px;padding:4px 8px;" oninput="renderOverrideTable()">
+            </div>
+            <div class="panel-body table-wrap" style="max-height:540px">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="th_ovVessel">Tên tàu / Hành trình</th>
+                    <th>Loại tàu / Năm SX</th>
+                    <th>LOA × Beam</th>
+                    <th>Sức chở</th>
+                    <th>DWT</th>
+                    <th id="th_ovAction">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="overrideTableRows">
+                  <tr><td colspan="6" class="empty">Chưa có bản ghi chỉnh sửa nào.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- MÀN HÌNH 6: SETUP LUỒNG & BẾN & BẢNG DẢI MỚN -->
       <section id="page-draft-setup" class="page hidden">
