@@ -5679,7 +5679,41 @@ function autoFillTideFromSystem() {
 }
 /* ==================== MODULE DANH MỤC TÀU EXCEL & TRA CỨU VESSELFINDER ==================== */
 
-// 1. Nạp danh mục tàu đã lưu từ LocalStorage & Supabase Bucket khi khởi động
+// Khai báo toàn cục (hoisted) giúp mọi hàm trong trang đều truy cập được
+var vesselCatalogMap = window.vesselCatalogMap || new Map();
+window.vesselCatalogMap = vesselCatalogMap;
+
+function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
+  let vKey = String(vesselName || '').trim().toUpperCase();
+  let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vKey)) || {};
+  let cat = (vesselCatalogMap && vesselCatalogMap.get(vKey)) || {};
+
+  let loa = Number(ov.loa || rawCall.loa || cat.loa || 0);
+  let beam = Number(ov.beam || rawCall.beam || cat.beam || 0);
+  let teu = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
+  let vType = ov.vessel_type || rawCall.vessel_type || cat.type || (teu > 0 ? 'Container' : '');
+
+  if (!beam && loa > 0) {
+    beam = loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0));
+  }
+  if (!vType && loa > 0) {
+    vType = 'Container';
+  }
+
+  return {
+    vessel_type: vType || 'Container',
+    beam: beam,
+    teu: teu,
+    loa: loa,
+    dwt: ov.dwt || rawCall.dwt || cat.dwt || '',
+    gt: ov.gt || rawCall.gt || cat.gt || '',
+    imo: ov.imo || rawCall.imo || cat.imo || '',
+    operator: ov.operator || rawCall.operator || cat.agent || ''
+  };
+}
+window.getVesselEnrichedSpecs = getVesselEnrichedSpecs;
+
+// 1. Nạp danh mục tàu từ LocalStorage & Supabase Bucket (Kiểm tra tồn tại trước để không báo lỗi 400)
 async function loadVesselCatalog() {
   try {
     let saved = localStorage.getItem('hp_vessel_catalog');
@@ -5691,28 +5725,39 @@ async function loadVesselCatalog() {
 
   if (supabaseClient) {
     try {
-      const { data, error } = await supabaseClient.storage
+      // Kiểm tra xem file vessel_catalog.json đã có trên Bucket chưa trước khi tải
+      const { data: files, error: listErr } = await supabaseClient.storage
         .from('port-documents')
-        .download('vessel_catalog.json');
-      if (data && !error) {
-        let obj = JSON.parse(await data.text());
-        Object.entries(obj).forEach(([k, v]) => vesselCatalogMap.set(k.toUpperCase(), v));
-        localStorage.setItem('hp_vessel_catalog', JSON.stringify(obj));
+        .list('', { search: 'vessel_catalog.json' });
+
+      const fileExists = Array.isArray(files) && files.some(f => f.name === 'vessel_catalog.json');
+      if (!listErr && fileExists) {
+        const { data, error } = await supabaseClient.storage
+          .from('port-documents')
+          .download('vessel_catalog.json');
+        if (data && !error) {
+          let obj = JSON.parse(await data.text());
+          Object.entries(obj).forEach(([k, v]) => vesselCatalogMap.set(k.toUpperCase(), v));
+          localStorage.setItem('hp_vessel_catalog', JSON.stringify(obj));
+        }
       }
     } catch (e) {}
   }
 
   updateCatalogBadgeCount();
-  renderOverrideTable();
+  if (typeof renderOverrideTable === 'function') renderOverrideTable();
 }
+window.loadVesselCatalog = loadVesselCatalog;
 
 function updateCatalogBadgeCount() {
-  let total = new Set([...vesselCatalogMap.keys(), ...vesselOverridesMap.keys()]).size;
+  let ovKeys = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap) ? [...vesselOverridesMap.keys()] : [];
+  let catKeys = (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap) ? [...vesselCatalogMap.keys()] : [];
+  let total = new Set([...catKeys, ...ovKeys]).size;
   if ($('catalogCountBadge')) {
     $('catalogCountBadge').textContent = `Danh mục: ${total} tàu`;
   }
 }
-
+window.updateCatalogBadgeCount = updateCatalogBadgeCount;
 // 2. Đọc trực tiếp file Tàu_thông_qua_HP.xlsx người dùng chọn và đồng bộ lên Supabase
 async function handleImportVesselCatalogExcel(e) {
   const file = e.target.files[0];
