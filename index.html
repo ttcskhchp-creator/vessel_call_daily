@@ -7545,6 +7545,425 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
     alert(`Hoàn tất quét các tàu trong bộ lọc!\n- Tổng tàu kiểm tra: ${checkedCount}/${vesselsInFilter.length} tàu\n- Tàu mới tự động ghi thêm: ${newAddedCount} tàu\n- Tàu cũ có trường thay đổi: ${updatedVesselCount} tàu${msg}`);
   }
 }
+
+
+/* ==================== MODULE CHỐNG TRÀN MÀN HÌNH, CHỮ CHẠY NGANG & POPUP HƯỚNG DẪN TRUY VẤN ==================== */
+
+function upgradeEditVesselResponsiveAndGuide() {
+  // 1. Tiêm CSS chống tràn màn hình + Hiệu ứng chữ chạy ngang (Marquee) trên nút bấm
+  if (!$('hpResponsiveMarqueeStyle')) {
+    const st = document.createElement('style');
+    st.id = 'hpResponsiveMarqueeStyle';
+    st.textContent = `
+      /* Khóa tràn ngang toàn bộ khung trong tab Bổ sung & Sửa tàu */
+      #page-edit-vessel, #page-edit-vessel .grid2, #page-edit-vessel .panel, #page-edit-vessel .panel-body {
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
+      }
+
+      /* Hiệu ứng chữ chạy ngang (Marquee) khi nút bấm không đủ chỗ hiển thị */
+      .btn-marquee-box {
+        position: relative;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        vertical-align: middle;
+      }
+      .btn-marquee-box .marquee-inner {
+        display: inline-block;
+        white-space: nowrap;
+        padding: 0 2px;
+      }
+      .btn-marquee-box.is-overflowing {
+        justify-content: flex-start;
+      }
+      .btn-marquee-box.is-overflowing .marquee-inner {
+        padding-left: 100%;
+        animation: hpBtnMarquee 7s linear infinite;
+      }
+      .btn-marquee-box.is-overflowing:hover .marquee-inner,
+      .btn-marquee-box.is-overflowing:active .marquee-inner {
+        animation-play-state: paused;
+      }
+      @keyframes hpBtnMarquee {
+        0% { transform: translateX(0%); }
+        100% { transform: translateX(-100%); }
+      }
+
+      /* Nút Tính theo TK độc lập dễ bấm trên cả điện thoại và máy tính */
+      .tk-calc-btn {
+        background: rgba(2, 132, 199, 0.15) !important;
+        color: #38bdf8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.45) !important;
+        border-radius: 6px !important;
+        padding: 3px 8px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 3px;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+        z-index: 5;
+      }
+      .tk-calc-btn:hover, .tk-calc-btn:active {
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        transform: scale(1.03);
+      }
+
+      /* Nút xóa nhanh 1 trường (IMO hoặc Tên tàu) */
+      .input-clear-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+      }
+      .input-clear-wrap input {
+        width: 100% !important;
+        padding-right: 26px !important;
+      }
+      .input-clear-btn {
+        position: absolute;
+        right: 5px;
+        background: rgba(148, 163, 184, 0.25) !important;
+        color: var(--ink) !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 10px !important;
+        line-height: 18px !important;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.75;
+      }
+      .input-clear-btn:hover { opacity: 1; background: var(--red) !important; color: #fff !important; }
+
+      /* Lưới nút bấm tra cứu VesselFinder tự co giãn không bao giờ tràn màn hình */
+      .vf-action-grid {
+        display: grid !important;
+        grid-template-columns: 1.3fr auto auto auto !important;
+        gap: 6px !important;
+        width: 100% !important;
+      }
+
+      /* Tối ưu hiển thị trên màn hình điện thoại (< 768px) */
+      @media (max-width: 768px) {
+        .vf-action-grid {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        .vf-action-grid .input-clear-wrap {
+          grid-column: span 2 !important;
+        }
+        .vf-action-grid button {
+          width: 100% !important;
+          padding: 8px 6px !important;
+          font-size: 11px !important;
+        }
+        /* Chuyển các dòng 3 cột chật hẹp thành lưới linh hoạt không gãy chữ */
+        #page-edit-vessel .panel-body > div[style*="grid-template-columns"] {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        #page-edit-vessel .panel-body > div[style*="grid-template-columns"] > .form-group:first-child {
+          grid-column: span 2 !important;
+        }
+        #page-edit-vessel .page-head > div:last-child {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          width: 100% !important;
+          gap: 6px !important;
+        }
+        #page-edit-vessel .page-head > div:last-child > * {
+          flex: 1 1 auto !important;
+          max-width: 100% !important;
+        }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  // 2. Tạo Modal Popup Hướng dẫn sử dụng truy vấn & Giải thích "Tính theo TK"
+  if (!$('vfGuideModal')) {
+    const modal = document.createElement('div');
+    modal.id = 'vfGuideModal';
+    modal.className = 'modal-shade';
+    modal.innerHTML = `
+      <div class="modal" style="width:min(540px, 94vw); line-height:1.5;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px;">
+          <h3 style="margin:0;font-size:15px;">📖 Hướng Dẫn Truy Vấn Tàu & Tính Sức Chở</h3>
+          <button type="button" onclick="closeVfGuideModal()" style="padding:4px 8px;font-size:11px;">✕ Đóng</button>
+        </div>
+        <div style="font-size:12px;display:grid;gap:10px;">
+          <div style="background:rgba(2,132,199,0.1);border-left:3px solid #0284c7;padding:8px 10px;border-radius:6px;">
+            <b style="color:#38bdf8;display:block;margin-bottom:4px;">⚠️ QUY TẮC QUAN TRỌNG: ĐỂ TRỐNG 1 TRONG 2 TRƯỜNG</b>
+            Khi bấm <b>🔍 Tự lấy dữ liệu</b>, bạn chỉ nhập vào <b>1 trong 2 ô</b> (Số IMO hoặc Tên tàu) và <b>để trống ô còn lại</b>:
+            <ul style="margin:4px 0 0 16px;padding:0;">
+              <li><b>Cách 1 - Tra theo Số IMO (Chính xác 100%):</b> Nhập mã 7 chữ số vào ô <b>Số IMO</b> (VD: <code>9498341</code>), bấm nút <code>✕</code> xóa trống ô <b>Tên tàu (*)</b> rồi bấm <b>🔍 Tự lấy dữ liệu</b>.</li>
+              <li><b>Cách 2 - Tra theo Tên tàu (Khi chưa biết IMO):</b> Nhập tên tàu vào ô <b>Tên tàu (*)</b> (VD: <code>AAL BRISBANE</code>), bấm nút <code>✕</code> xóa trống ô <b>Số IMO</b> rồi bấm <b>🔍 Tự lấy dữ liệu</b>. Hệ thống sẽ tự tìm IMO (ưu tiên <i>Container Ship</i> & <i>General Cargo Ship</i>) và điền toàn bộ thông số.</li>
+            </ul>
+          </div>
+
+          <div style="background:rgba(16,185,129,0.1);border-left:3px solid #10b981;padding:8px 10px;border-radius:6px;">
+            <b style="color:#10b981;display:block;margin-bottom:4px;">⚡ "TÍNH THEO TK" (TÍNH THEO THIẾT KẾ) LÀ GÌ?</b>
+            Trên VesselFinder, nhiều tàu bị khóa (🔒) hoặc ẩn sức chở. Khi bấm nút <b>⚡ Tính theo TK</b>, hệ thống tự động tính sức chở hàng hóa tiêu chuẩn theo <b>Thiết kế đóng tàu & Tuổi tàu</b>:
+            <ul style="margin:4px 0 0 16px;padding:0;">
+              <li><b>Tàu Container / Feeder:</b> Tính số <b>TEU</b> từ DWT, LOA và hệ số thế hệ tuổi tàu.</li>
+              <li><b>Tàu Hàng rời (Bulk):</b> Sức chở hàng thuần = <b>94% DWT × Hệ số tuổi tàu</b> (Tấn).</li>
+              <li><b>Tàu Thiết bị / Siêu trường:</b> Sức chở hàng thuần = <b>90% DWT × Hệ số tuổi tàu</b> (Tấn).</li>
+              <li><b>Tàu Ro-Ro / Ô tô (PCTC):</b> Sức chở xe = <b>(GT / 8.5) × Hệ số tuổi tàu</b> (Units).</li>
+              <li><b>Tàu Dầu / Hóa chất / Khí:</b> Dung tích hầm hàng = <b>DWT × 1.08 (hoặc 1.45)</b> (m³).</li>
+            </ul>
+          </div>
+
+          <div style="background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;padding:8px 10px;border-radius:6px;">
+            <b style="color:#f59e0b;display:block;margin-bottom:4px;">📋 CÁCH DÙNG NÚT "MỞ WEB" + "DÁN NHANH"</b>
+            Nếu mạng chặn truy vấn tự động, bạn bấm <b>↗ Mở Web</b> để mở trang VesselFinder, bấm <code>Ctrl + A</code> rồi <code>Ctrl + C</code> (hoặc Sao chép tất cả trên điện thoại), quay lại đây bấm <b>📋 Dán nhanh</b> là tự động điền đủ 100%.
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:14px;">
+          <button type="button" class="primary" onclick="closeVfGuideModal()" style="width:100%;padding:9px;">Đã hiểu</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  // 3. Nâng cấp khối tra cứu VesselFinder: Thêm nút "❓ Hướng dẫn" & nút xóa nhanh "✕" cho ô IMO và ô Tên tàu
+  const imoInput = $('editVesselImo');
+  const nameInput = $('editVesselName');
+
+  if (imoInput && !imoInput.parentElement.classList.contains('input-clear-wrap')) {
+    const gridBox = imoInput.parentElement;
+    gridBox.classList.add('vf-action-grid');
+
+    // Thêm nút "❓ Hướng dẫn" lên góc phải tiêu đề khối VesselFinder
+    const headerRow = gridBox.previousElementSibling;
+    if (headerRow && !$('btnOpenVfGuide')) {
+      headerRow.style.flexWrap = 'wrap';
+      headerRow.style.gap = '6px';
+      const guideBtn = document.createElement('button');
+      guideBtn.id = 'btnOpenVfGuide';
+      guideBtn.type = 'button';
+      guideBtn.className = 'tk-calc-btn';
+      guideBtn.innerHTML = '❓ Hướng dẫn truy vấn';
+      guideBtn.onclick = openVfGuideModal;
+      headerRow.appendChild(guideBtn);
+    }
+
+    // Bọc ô IMO kèm nút xóa nhanh ✕
+    const imoWrap = document.createElement('div');
+    imoWrap.className = 'input-clear-wrap';
+    imoInput.placeholder = 'Nhập IMO (Để trống Tên tàu)...';
+    imoInput.parentNode.insertBefore(imoWrap, imoInput);
+    imoWrap.appendChild(imoInput);
+
+    const clearImoBtn = document.createElement('button');
+    clearImoBtn.type = 'button';
+    clearImoBtn.className = 'input-clear-btn';
+    clearImoBtn.title = 'Xóa trống số IMO để tra cứu theo Tên tàu';
+    clearImoBtn.textContent = '✕';
+    clearImoBtn.onclick = () => {
+      imoInput.value = '';
+      imoInput.focus();
+    };
+    imoWrap.appendChild(clearImoBtn);
+
+    // Khi người dùng gõ số IMO mới -> tự động nhắc hoặc xóa tên tàu cũ nếu đang khác
+    imoInput.addEventListener('input', () => {
+      if (imoInput.value.trim().length > 0 && nameInput && nameInput.dataset.autoFilled === '1') {
+        nameInput.value = '';
+      }
+    });
+  }
+
+  if (nameInput && !nameInput.parentElement.classList.contains('input-clear-wrap')) {
+    // Thêm nút "❓ Cách tra bằng Tên tàu" trên nhãn Tên tàu (*)
+    const lblName = $('lbl_vesselName');
+    if (lblName && !lblName.querySelector('.tk-calc-btn')) {
+      lblName.style.display = 'flex';
+      lblName.style.justifyContent = 'space-between';
+      lblName.style.alignItems = 'center';
+      lblName.innerHTML = `<span>Tên tàu (*)</span> <button type="button" class="tk-calc-btn" style="padding:1px 6px!important;font-size:9.5px!important;" onclick="openVfGuideModal()">❓ Để trống 1 trong 2 ô</button>`;
+    }
+
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'input-clear-wrap';
+    nameInput.placeholder = 'Nhập Tên tàu (Để trống IMO)...';
+    nameInput.parentNode.insertBefore(nameWrap, nameInput);
+    nameWrap.appendChild(nameInput);
+
+    const clearNameBtn = document.createElement('button');
+    clearNameBtn.type = 'button';
+    clearNameBtn.className = 'input-clear-btn';
+    clearNameBtn.title = 'Xóa trống Tên tàu để tra cứu theo Số IMO';
+    clearNameBtn.textContent = '✕';
+    clearNameBtn.onclick = () => {
+      nameInput.value = '';
+      nameInput.focus();
+    };
+    nameWrap.appendChild(clearNameBtn);
+
+    // QUY TẮC TỰ ĐỘNG: Khi người dùng chủ động gõ Tên tàu mới vào ô Tên tàu (*),
+    // tự động xóa trống số IMO của tàu cũ để khi bấm "Tự lấy dữ liệu" sẽ tra đúng theo Tên tàu mới!
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+        if ($('editVesselImo') && $('editVesselImo').value.trim() !== '') {
+          $('editVesselImo').value = '';
+          if ($('vfLookupStatus')) {
+            $('vfLookupStatus').textContent = 'Đang tra theo Tên tàu (Đã tự để trống IMO)';
+            $('vfLookupStatus').style.color = '#38bdf8';
+          }
+        }
+      }
+    });
+  }
+
+  // 4. Tách chữ "⚡ Tính theo TK" ra khỏi thẻ <label> thành nút bấm <button> độc lập bấm ăn ngay trên điện thoại
+  const capInput = $('editVesselTeu');
+  if (capInput) {
+    const capGroup = capInput.closest('.form-group');
+    const capLabel = capGroup ? capGroup.querySelector('label') : null;
+    if (capLabel && !capGroup.dataset.tkUpgraded) {
+      capGroup.dataset.tkUpgraded = '1';
+      // Đưa nút ra ngoài thẻ <label> để không bị trình duyệt mobile nuốt sự kiện click
+      const headBar = document.createElement('div');
+      headBar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:4px;';
+      capLabel.style.margin = '0';
+      capLabel.innerHTML = `<span style="color:#059669;font-weight:800;">Sức chở hàng hóa</span>`;
+
+      const tkBtn = document.createElement('button');
+      tkBtn.type = 'button';
+      tkBtn.className = 'tk-calc-btn';
+      tkBtn.innerHTML = '⚡ Tính theo TK';
+      tkBtn.title = 'Tính sức chở theo Thiết kế tàu (Loại tàu, DWT, GT, LOA, Beam & Tuổi tàu)';
+      tkBtn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        handleClickCalculateByDesignWithFeedback();
+      };
+
+      capGroup.insertBefore(headBar, capLabel);
+      headBar.appendChild(capLabel);
+      headBar.appendChild(tkBtn);
+    }
+  }
+
+  // 5. Kích hoạt kiểm tra chữ chạy ngang (Marquee) cho các nút bị tràn chữ
+  applyMarqueeToOverflowingButtons();
+}
+
+// Hàm mở / đóng Popup Hướng dẫn sử dụng truy vấn
+function openVfGuideModal() {
+  if ($('vfGuideModal')) $('vfGuideModal').classList.add('open');
+}
+function closeVfGuideModal() {
+  if ($('vfGuideModal')) $('vfGuideModal').classList.remove('open');
+}
+window.openVfGuideModal = openVfGuideModal;
+window.closeVfGuideModal = closeVfGuideModal;
+
+// Hàm xử lý khi bấm nút "⚡ Tính theo TK": Tính toán + Nháy sáng ô kết quả + Báo rõ công thức thiết kế
+function handleClickCalculateByDesignWithFeedback() {
+  let vType = $('editVesselType')?.value || 'Container';
+  let loa = parseFloat($('editVesselLoa')?.value || 0) || 0;
+  let beam = parseFloat($('editVesselBeam')?.value || 0) || 0;
+  let dwtRaw = $('editVesselDwt')?.value || '';
+  let gtRaw = $('editVesselGt')?.value || '';
+  let yearBuilt = $('editVesselYearBuilt')?.value || '';
+  let dwt = parseDwtToMetricTons(dwtRaw, loa);
+  let gt = parseDwtToMetricTons(gtRaw, 0);
+  let { age, kAge } = getVesselAgeAndFactor(yearBuilt);
+
+  let est = estimateStandardCapacityByDesign({
+    vessel_type: vType,
+    loa: loa,
+    beam: beam,
+    dwt: dwtRaw,
+    gt: gtRaw,
+    year_built: yearBuilt,
+    capacity_unit: $('editVesselCapUnit')?.value || ''
+  });
+
+  if ($('editVesselTeu')) {
+    $('editVesselTeu').value = est.capacity || 0;
+    $('editVesselTeu').style.transition = 'all 0.25s';
+    $('editVesselTeu').style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.6)';
+    setTimeout(() => { if ($('editVesselTeu')) $('editVesselTeu').style.boxShadow = 'none'; }, 1200);
+  }
+  if ($('editVesselCapUnit')) {
+    $('editVesselCapUnit').value = est.unit;
+  }
+
+  let ageInfo = age !== null ? `Năm SX ${yearBuilt} (${age} tuổi, hệ số K = ${kAge})` : `Chưa nhập Năm SX (hệ số K = 1.00)`;
+  let formulaDesc = '';
+  let tUpper = vType.toUpperCase();
+
+  if (tUpper.includes('RO-RO') || tUpper.includes('VEHICLES') || tUpper.includes('PCTC') || tUpper.includes('Ô TÔ')) {
+    formulaDesc = `GT (${gt.toLocaleString('vi-VN')}) / 8.5 × ${kAge}`;
+  } else if (tUpper.includes('DẦU') || tUpper.includes('FSO') || tUpper.includes('HÓA CHẤT')) {
+    formulaDesc = `DWT (${dwt.toLocaleString('vi-VN')} T) × 1.08 × ${kAge}`;
+  } else if (tUpper.includes('KHÍ') || tUpper.includes('LPG') || tUpper.includes('LNG')) {
+    formulaDesc = `DWT (${dwt.toLocaleString('vi-VN')} T) × 1.45 × ${kAge}`;
+  } else if (tUpper.includes('RỜI') || tUpper.includes('BULK') || tUpper.includes('TỔNG HỢP')) {
+    formulaDesc = `DWT (${dwt.toLocaleString('vi-VN')} T) × 94% (trừ nhiên liệu/hằng số tàu) × ${kAge}`;
+  } else if (tUpper.includes('THIẾT BỊ') || tUpper.includes('PROJECT')) {
+    formulaDesc = `DWT (${dwt.toLocaleString('vi-VN')} T) × 90% (trừ nhiên liệu/cẩu tàu) × ${kAge}`;
+  } else {
+    let tonPerTeu = loa >= 350 ? 11.2 : (loa >= 290 ? 12.0 : (loa >= 200 ? 13.0 : (tUpper.includes('FEEDER') ? 14.5 : 13.5)));
+    formulaDesc = `DWT (${dwt.toLocaleString('vi-VN')} T) / ${tonPerTeu} (Tấn/TEU) × ${kAge}`;
+  }
+
+  if ($('vfLookupStatus')) {
+    $('vfLookupStatus').textContent = `✓ Đã tính theo TK: ${est.capacity.toLocaleString('vi-VN')} ${est.unit}`;
+    $('vfLookupStatus').style.color = '#10b981';
+  }
+
+  alert(
+    `⚡ KẾT QUẢ TÍNH SỨC CHỞ THEO THIẾT KẾ (TK):\n\n` +
+    `• Tàu: ${$('editVesselName')?.value || 'Đang nhập'} (${vType})\n` +
+    `• Thông số: LOA ${loa}m × Beam ${beam}m | DWT: ${dwt.toLocaleString('vi-VN')} T | GT: ${gt.toLocaleString('vi-VN')}\n` +
+    `• Tuổi tàu: ${ageInfo}\n` +
+    `• Công thức thiết kế: ${formulaDesc}\n` +
+    `➔ Sức chở hàng hóa chuẩn: ${est.capacity.toLocaleString('vi-VN')} ${est.unit}`
+  );
+}
+window.handleClickCalculateByDesignWithFeedback = handleClickCalculateByDesignWithFeedback;
+
+// Tự động quét các nút có chữ dài hơn khung nút và bật hiệu ứng chữ chạy ngang (Marquee)
+function applyMarqueeToOverflowingButtons() {
+  const buttons = document.querySelectorAll('#page-edit-vessel button, .side-system-box button');
+  buttons.forEach(btn => {
+    if (btn.classList.contains('input-clear-btn') || btn.classList.contains('tk-calc-btn')) return;
+    if (!btn.querySelector('.marquee-inner')) {
+      const html = btn.innerHTML;
+      btn.classList.add('btn-marquee-box');
+      btn.innerHTML = `<span class="marquee-inner">${html}</span>`;
+    }
+    const inner = btn.querySelector('.marquee-inner');
+    if (inner && btn.clientWidth > 0) {
+      if (inner.scrollWidth > btn.clientWidth + 4) {
+        btn.classList.add('is-overflowing');
+      } else {
+        btn.classList.remove('is-overflowing');
+      }
+    }
+  });
+}
+
+window.addEventListener('resize', applyMarqueeToOverflowingButtons);
+setTimeout(upgradeEditVesselResponsiveAndGuide, 250);
+setTimeout(applyMarqueeToOverflowingButtons, 800);
+
+
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
 
 
