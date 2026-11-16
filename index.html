@@ -8364,7 +8364,228 @@ setTimeout(() => {
   renderAll();
 }, 200);
   
-// --- ĐƯA CÁC HÀM RA WINDOW ---
+/* ==================== MODULE TỰ ĐỘNG XẾP BẾN THEO QUY TẮC ƯU TIÊN (TÂN VŨ, CHÙA VẼ, ĐÌNH VŨ) ==================== */
+
+// 1. Hàm xác định danh sách Cầu Bến Ưu Tiên theo đúng quy tắc khai thác của từng Cảng
+function getPriorityBerthsByPortRule(callOrSpecs) {
+  let vName = (callOrSpecs.vessel || callOrSpecs.vessel_name || '').trim().toUpperCase();
+  let specs = (typeof getVesselEnrichedSpecs === 'function' && vName)
+    ? getVesselEnrichedSpecs(vName, callOrSpecs)
+    : callOrSpecs;
+
+  let term = String(callOrSpecs.terminal || specs.terminal || '').trim().toUpperCase();
+  let loa = parseFloat(String(specs.loa || callOrSpecs.loa || 0).replace(',', '.')) || 0;
+  let vType = String(specs.vessel_type || callOrSpecs.vessel_type || 'Container').toUpperCase();
+  let capUnit = String(specs.capacity_unit || callOrSpecs.capacity_unit || '').toUpperCase();
+
+  // Nhận diện nhóm tàu: Ro-Ro/Ô tô, Hàng rời, Container
+  let isRoRo = vType.includes('RO-RO') || vType.includes('RORO') || vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('VEHICLES') || capUnit === 'UNITS';
+  let isBulk = !isRoRo && (vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP') || vType.includes('THIẾT BỊ') || capUnit === 'TẤN');
+  let isCont = !isRoRo && !isBulk && (vType.includes('CONTAINER') || vType.includes('FEEDER') || capUnit === 'TEU');
+
+  // QUY TẮC 1: CẢNG TÂN VŨ
+  if (term.includes('TÂN VŨ') || term.includes('TAN VU')) {
+    if (isRoRo) {
+      // Tàu Ro-Ro / Ô tô chỉ ưu tiên vào cầu 5, 4
+      return {
+        preferred: ['B5', 'B4'],
+        strictOnly: true,
+        ruleName: 'Tân Vũ: Tàu Ro-Ro/Ô tô ưu tiên Cầu 5, 4'
+      };
+    }
+    if (loa > 170) {
+      // Tàu > 170m ưu tiên vào cầu 1, 2, 3
+      return {
+        preferred: ['B1', 'B2', 'B3'],
+        fallback: ['B4', 'B5'],
+        strictOnly: false,
+        ruleName: `Tân Vũ: Tàu LOA ${loa}m (>170m) ưu tiên Cầu 1, 2, 3`
+      };
+    }
+    // Tàu <= 170m (không phải Ro-Ro): Ưu tiên B3, B4 để nhường B1, B2 cho tàu >170m và B5 cho tàu Ro-Ro
+    return {
+      preferred: ['B3', 'B4', 'B2', 'B1'],
+      fallback: ['B5'],
+      strictOnly: false,
+      ruleName: `Tân Vũ: Tàu LOA ${loa}m (≤170m) ưu tiên Cầu 3, 4, 2`
+    };
+  }
+
+  // QUY TẮC 2: CẢNG CHÙA VẼ
+  if (term.includes('CHÙA VẼ') || term.includes('CHUA VE')) {
+    if (isBulk) {
+      // Tàu hàng rời ưu tiên bến 1, 2, 3
+      return {
+        preferred: ['B1', 'B2', 'B3'],
+        fallback: ['B4', 'B5'],
+        strictOnly: false,
+        ruleName: 'Chùa Vẽ: Tàu hàng rời ưu tiên Bến 1, 2, 3'
+      };
+    }
+    if (isCont) {
+      // Tàu container ưu tiên bến 4, 5
+      return {
+        preferred: ['B4', 'B5'],
+        fallback: ['B3', 'B2', 'B1'],
+        strictOnly: false,
+        ruleName: 'Chùa Vẽ: Tàu Container ưu tiên Bến 4, 5'
+      };
+    }
+    return {
+      preferred: ['B1', 'B2', 'B3', 'B4', 'B5'],
+      strictOnly: false,
+      ruleName: 'Chùa Vẽ: Phân bổ tiêu chuẩn B1 - B5'
+    };
+  }
+
+  // QUY TẮC 3: CẢNG ĐÌNH VŨ (Không áp cứng sang Nam Đình Vũ nếu khác cảng)
+  if ((term.includes('ĐÌNH VŨ') || term.includes('DINH VU')) && !term.includes('NAM')) {
+    if (isBulk || isRoRo) {
+      // Hàng rời và Ô tô ưu tiên bố trí bến số 1
+      return {
+        preferred: ['B1'],
+        fallback: ['B2', 'B3'],
+        strictOnly: false,
+        ruleName: 'Đình Vũ: Tàu Hàng rời / Ô tô ưu tiên Bến số 1 (B1)'
+      };
+    }
+    return {
+      preferred: ['B2', 'B3', 'B1'],
+      strictOnly: false,
+      ruleName: 'Đình Vũ: Ưu tiên Bến 2, 3 (Nhường B1 cho Hàng rời & Ô tô)'
+    };
+  }
+
+  return null;
+}
+
+// 2. Chuẩn hóa tên bến về dạng chuẩn B1, B2, B3, B4, B5
+function normalizeBerthCode(rawBerth) {
+  let s = String(rawBerth || '').trim().toUpperCase();
+  if (!s) return '';
+  let m = s.match(/([1-9])$/);
+  if (m && (s.startsWith('B') || s.startsWith('TV') || s.startsWith('CV') || s.startsWith('DV') || s.length === 1)) {
+    return 'B' + m[1];
+  }
+  return s;
+}
+
+// 3. Thuật toán chọn bến tối ưu trong danh sách ưu tiên (Kiểm tra chống trùng giờ cập ETB - ETD)
+function pickBestBerthWithoutOverlap(ruleObj, tStart, tEnd, terminalScheduleMap, currentBerth) {
+  if (!ruleObj || !ruleObj.preferred || ruleObj.preferred.length === 0) {
+    return currentBerth || 'B1';
+  }
+
+  const candidateList = ruleObj.strictOnly
+    ? [...ruleObj.preferred]
+    : [...ruleObj.preferred, ...(ruleObj.fallback || [])];
+
+  // Hàm kiểm tra mức độ chồng lấn thời gian trên 1 bến
+  const getOverlapScoreOnBerth = (berthCode) => {
+    let occupiedList = terminalScheduleMap.get(berthCode) || [];
+    let overlapCount = 0;
+    let minGapMs = Infinity;
+
+    for (let slot of occupiedList) {
+      // Cộng thêm 1 giờ đệm chuyển cầu an toàn giữa 2 tàu
+      let bufferMs = 3600000;
+      if (tStart < (slot.t2 + bufferMs) && tEnd > (slot.t1 - bufferMs)) {
+        overlapCount++;
+      } else {
+        let gap = Math.min(Math.abs(tStart - slot.t2), Math.abs(slot.t1 - tEnd));
+        if (gap < minGapMs) minGapMs = gap;
+      }
+    }
+    return { overlapCount, occupiedTotal: occupiedList.length, minGapMs };
+  };
+
+  // Bước 1: Tìm trong nhóm bến ƯU TIÊN CHÍNH (preferred) xem bến nào hoàn toàn trống trong khung giờ tàu nằm
+  for (let bCode of ruleObj.preferred) {
+    let check = getOverlapScoreOnBerth(bCode);
+    if (check.overlapCount === 0) {
+      return bCode;
+    }
+  }
+
+  // Bước 2: Nếu các bến ưu tiên chính đều có tàu trùng giờ:
+  // - Với tàu Ro-Ro Tân Vũ (strictOnly = true): Chỉ chọn giữa B5 và B4 (chọn bến ít trùng nhất)
+  // - Với tàu Hàng rời/Ô tô Đình Vũ (preferred = ['B1']): Vẫn ưu tiên giữ ở B1 nếu chỉ trùng nhẹ, hoặc chọn bến ít xung đột nhất trong nhóm ưu tiên
+  let bestBerth = ruleObj.preferred[0];
+  let bestScore = Infinity;
+
+  // Ưu tiên chọn bến ít xung đột nhất ngay trong tập preferred trước
+  ruleObj.preferred.forEach((bCode, idx) => {
+    let check = getOverlapScoreOnBerth(bCode);
+    // Cộng điểm phạt nhỏ theo thứ tự ưu tiên để giữ đúng thứ tự (VD: B5 trước B4, B1 trước B2, B3)
+    let score = check.overlapCount * 100 + check.occupiedTotal * 5 + idx;
+    if (score < bestScore) {
+      bestScore = score;
+      bestBerth = bCode;
+    }
+  });
+
+  return bestBerth;
+}
+
+// 4. Áp dụng xếp bến tự động cho toàn bộ danh sách lượt tàu
+function applyPortBerthAllocationRules(callsList) {
+  if (!Array.isArray(callsList) || callsList.length === 0) return [];
+
+  // Sắp xếp tàu theo giờ cập (ETB) tăng dần để phân bổ tuần tự hợp lý
+  let indexedCalls = callsList.map((c, idx) => ({ ...c, _origIdx: idx }));
+  indexedCalls.sort((a, b) => {
+    let tA = a.etb ? new Date(a.etb).getTime() : 0;
+    let tB = b.etb ? new Date(b.etb).getTime() : 0;
+    return tA - tB;
+  });
+
+  // Lưu lịch bến theo từng khu vực cảng: Map<TerminalKey, Map<BerthCode, Array<{t1, t2, vessel}>>>
+  let portSchedules = new Map();
+  const DEFAULT_STAY_MS = 18 * 3600000;
+
+  const getTermGroupKey = (termStr) => {
+    let t = String(termStr || '').toUpperCase();
+    if (t.includes('TÂN VŨ') || t.includes('TAN VU')) return 'TAN_VU';
+    if (t.includes('CHÙA VẼ') || t.includes('CHUA VE')) return 'CHUA_VE';
+    if ((t.includes('ĐÌNH VŨ') || t.includes('DINH VU')) && !t.includes('NAM')) return 'DINH_VU';
+    return t || 'OTHER';
+  };
+
+  indexedCalls.forEach(c => {
+    let vName = (c.vessel || '').trim().toUpperCase();
+    let rule = getPriorityBerthRuleWithOverrideCheck(vName, c);
+    let termKey = getTermGroupKey(c.terminal);
+
+    if (!portSchedules.has(termKey)) {
+      portSchedules.set(termKey, new Map());
+    }
+    let termMap = portSchedules.get(termKey);
+
+    let t1 = c.etb ? new Date(c.etb).getTime() : Date.now();
+    let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+    if (!t2 || t2 <= t1 || (t2 - t1) > 7 * 86400000) {
+      t2 = t1 + DEFAULT_STAY_MS;
+    }
+
+    let curBerth = normalizeBerthCode(c.berth);
+    let finalBerth = curBerth || 'B1';
+
+    if (rule) {
+      if (rule.lockedByAdmin && curBerth) {
+        // Nếu quản trị viên đã khóa cứng bến riêng và bến đó vẫn hợp lệ
+        finalBerth = curBerth;
+      } else {
+        // Kiểm tra xem bến hiện tại có nằm trong nhóm bến ưu tiên (preferred) VÀ không bị trùng giờ không
+        let isCurrentInPreferred = curBerth && rule.preferred.includes(curBerth);
+        let curBerthSlots = (isCurrentInPreferred && termMap.get(curBerth)) ? termMap.get(curBerth) : [];
+        let hasConflictOnCurrent = curBerthSlots.some(s => t1 < (s.t2 + 3600000) && t2 > (s.t1 - 3600000));
+
+        if (isCurrentInPreferred && !hasConflictOnCurrent) {
+          finalBerth = curBerth;
+        } else {
+          finalBerth = pickBestBerthWithoutOverlap(rule, t1, t
+  
+  // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
 window.handleImportVesselCatalogExcel = handleImportVesselCatalogExcel;
