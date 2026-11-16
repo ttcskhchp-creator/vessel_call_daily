@@ -8760,7 +8760,1254 @@ setTimeout(() => {
   }
 }, 350);
   
-  // --- ĐƯA CÁC HÀM RA WINDOW ---
+ /* ==================== MODULE NÂNG CẤP MÀN HÌNH TRA CỨU LỊCH TÀU: FILTER CỘT, SORT, PORT STAY, BIỂU ĐỒ & XUẤT BÁO CÁO EXCEL ==================== */
+
+// Trạng thái Sort và Filter theo từng cột của màn hình Tra cứu lịch tàu
+var searchTableState = {
+  sortCol: 'etb',
+  sortDir: 'asc', // 'asc' | 'desc'
+  ageChartMode: 'loa', // 'loa' (Phân khúc LOA) | 'type' (Loại tàu)
+  filters: {
+    vessel: '',
+    vessel_type: '',
+    age: '',
+    operator: '',
+    loa: '',
+    beam: '',
+    teu: '',
+    dwt: '',
+    route: '',
+    berth: '',
+    etb: '',
+    etd: '',
+    port_stay: ''
+  }
+};
+
+// 1. Tiêm CSS chuyên dụng cho Bảng Filter/Sort, 2 dòng Tổng/Trung bình & 2 Thẻ Biểu đồ
+(function injectSearchPageUpgradeCSS() {
+  if ($('hpSearchUpgradeStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'hpSearchUpgradeStyle';
+  st.textContent = `
+    /* Khung biểu đồ đôi trên màn hình Tra cứu */
+    .search-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 1024px) {
+      .search-charts-grid { grid-template-columns: 1fr; }
+    }
+    .s-chart-row {
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--line);
+      font-size: 11px;
+    }
+    .s-chart-row:last-child { border-bottom: 0; }
+    .s-chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      gap: 6px;
+    }
+    .s-dual-bars {
+      display: grid;
+      gap: 3px;
+    }
+    .s-bar-track {
+      height: 7px;
+      background: var(--line);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .s-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Bảng Tra cứu nâng cấp: Tiêu đề Sort & Dòng Filter từng cột */
+    #page-search .table-wrap {
+      max-height: 66vh;
+      overflow: auto;
+      position: relative;
+    }
+    #page-search table {
+      min-width: 1320px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    #page-search thead th {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      user-select: none;
+    }
+    #page-search thead tr.sort-header-row th {
+      cursor: pointer;
+      padding: 8px 6px;
+      font-size: 9.5px;
+      font-weight: 850;
+      color: var(--navy2);
+      transition: background 0.15s;
+    }
+    :root[data-theme="dark"] #page-search thead tr.sort-header-row th {
+      color: var(--cyan);
+    }
+    #page-search thead tr.sort-header-row th:hover {
+      background: rgba(38, 189, 200, 0.12);
+    }
+    #page-search thead tr.sort-header-row th.active-sort {
+      background: rgba(2, 132, 199, 0.15);
+      color: #0284c7;
+    }
+    :root[data-theme="dark"] #page-search thead tr.sort-header-row th.active-sort {
+      color: #38bdf8;
+    }
+    .sort-icon {
+      display: inline-block;
+      margin-left: 3px;
+      font-size: 9px;
+      opacity: 0.55;
+    }
+    th.active-sort .sort-icon {
+      opacity: 1;
+      font-weight: 900;
+    }
+
+    /* Hàng Filter ngay dưới tiêu đề cột */
+    #page-search thead tr.col-filter-row th {
+      top: 31px;
+      z-index: 5;
+      padding: 4px 5px;
+      background: var(--bg);
+      border-bottom: 2px solid var(--cyan);
+    }
+    .col-filter-input {
+      width: 100%;
+      min-width: 55px;
+      padding: 4px 6px;
+      font-size: 10.5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--card);
+      color: var(--ink);
+      font-weight: 600;
+      outline: none;
+    }
+    .col-filter-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px rgba(38, 189, 200, 0.2);
+    }
+
+    /* 2 Dòng cuối bảng: TỔNG CỘNG & TRUNG BÌNH ghim cố định ở đáy bảng */
+    #page-search tfoot tr td {
+      position: sticky;
+      z-index: 5;
+      padding: 8px 8px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    #page-search tfoot tr.sum-row td {
+      bottom: 33px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 850;
+      border-top: 2px solid #0284c7;
+      border-bottom: 1px solid #bae6fd;
+    }
+    #page-search tfoot tr.avg-row td {
+      bottom: 0;
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 850;
+      border-bottom: 2px solid #d97706;
+    }
+    :root[data-theme="dark"] #page-search tfoot tr.sum-row td {
+      background: #0c2d48;
+      color: #7dd3fc;
+      border-top-color: #38bdf8;
+      border-bottom-color: #1e496d;
+    }
+    :root[data-theme="dark"] #page-search tfoot tr.avg-row td {
+      background: #2e210b;
+      color: #fcd34d;
+      border-bottom-color: #f59e0b;
+    }
+
+    /* Nhãn hiển thị số giờ đỗ Port Stay */
+    .pstay-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-weight: 800;
+      font-size: 10.5px;
+    }
+    .pstay-fast { background: rgba(16, 185, 129, 0.14); color: #059669; }
+    .pstay-normal { background: rgba(2, 132, 199, 0.14); color: #0284c7; }
+    .pstay-long { background: rgba(217, 119, 6, 0.16); color: #d97706; }
+  `;
+  document.head.appendChild(st);
+})();
+
+// 2. Xây dựng lại cấu trúc giao diện Màn hình Tra cứu lịch tàu (#page-search)
+function setupUpgradedSearchPageDOM() {
+  const page = $('page-search');
+  if (!page || page.dataset.searchUpgraded === '1') return;
+  page.dataset.searchUpgraded = '1';
+
+  page.innerHTML = `
+    <div class="page-head">
+      <div>
+        <h2 id="t_searchHead">Tra cứu, Lọc đa chiều & Phân tích Lịch tàu</h2>
+        <div class="muted" id="t_searchSub">Lọc theo từng cột, sắp xếp (Sort) đa tiêu chí, tính giờ đỗ (Port Stay) và xuất Báo cáo nhanh Excel kèm Biểu đồ</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button type="button" class="tk-calc-btn" style="padding:7px 10px!important;font-size:11px!important;" onclick="toggleSearchChartsPanel()">
+          📊 Ẩn/Hiện Biểu đồ
+        </button>
+        <button type="button" onclick="resetAllSearchColumnFilters()" style="background:#f1f5f9;color:#334155;border:1px solid var(--line);">
+          ↺ Xóa bộ lọc cột
+        </button>
+        <button id="exportBtn" class="primary" style="background:#059669;color:#fff;" onclick="exportConfigAsCSVProtected()">
+          📥 <span id="t_exportBtnText">Xuất Báo Cáo Nhanh Excel (Đầy đủ & Biểu đồ)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KHỐI 2 THẺ BIỂU ĐỒ SO SÁNH TRỰC QUAN -->
+    <div class="search-charts-grid" id="searchChartsContainer">
+      <!-- Thẻ Biểu đồ 1: So sánh Tuổi tàu trung bình giữa các Phân khúc tàu -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3 style="display:flex;align-items:center;gap:6px;">
+            ⏳ Biểu đồ Tuổi tàu Trung bình theo Phân khúc
+          </h3>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button type="button" id="btnAgeChartLoa" class="tiny primary" style="padding:3px 7px;font-size:10px;" onclick="switchSearchAgeChartMode('loa')">Theo cỡ LOA</button>
+            <button type="button" id="btnAgeChartType" class="tiny" style="padding:3px 7px;font-size:10px;" onclick="switchSearchAgeChartMode('type')">Theo Loại tàu</button>
+          </div>
+        </div>
+        <div class="panel-body" id="searchAgeComparisonChart">
+          <div class="empty">Đang tính toán dữ liệu tuổi tàu...</div>
+        </div>
+      </section>
+
+      <!-- Thẻ Biểu đồ 2: So sánh giữa các Cảng (Số lượt tàu, Port Stay TB & Tải trọng DWT) -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3 style="display:flex;align-items:center;gap:6px;">
+            🏗️ So sánh các Cảng: Lượt tàu · Port Stay TB · Trọng tải DWT
+          </h3>
+          <span class="badge" id="searchPortChartSummaryBadge">0 cảng</span>
+        </div>
+        <div class="panel-body" id="searchPortComparisonChart">
+          <div class="empty">Đang tổng hợp dữ liệu các cảng...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BẢNG TRA CỨU CHI TIẾT CÓ FILTER CỘT, SORT & 2 DÒNG TỔNG / TRUNG BÌNH -->
+    <div class="panel">
+      <div class="toolbar" style="justify-content:space-between;background:rgba(38,189,200,0.05);">
+        <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:240px;">
+          <input id="search" class="field search" placeholder="🔍 Tìm nhanh trên toàn bảng (Tên tàu, IMO, hãng, cảng, bến, hành trình)..." oninput="renderTable(getFilteredCalls())">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;">
+          <span id="searchFilterCountBadge" class="badge" style="padding:5px 9px;font-size:11px;background:#e0f2fe;color:#0369a1;">0 lượt tàu</span>
+          <span class="muted tiny">💡 Mẹo: Nhấp vào <b>Tiêu đề cột</b> để Sắp xếp (Sort) · Gõ vào <b>Ô dưới tiêu đề</b> để Lọc (hỗ trợ <code>&gt;170</code>, <code>&lt;24</code>)</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="searchMainTable">
+          <thead>
+            <!-- HÀNG 1: TIÊU ĐỀ CỘT CÓ SORT -->
+            <tr class="sort-header-row">
+              <th style="width:36px;cursor:default;">#</th>
+              <th onclick="toggleSearchSort('vessel')" data-col="vessel">Tàu / IMO <span class="sort-icon" id="sicon_vessel">⇅</span></th>
+              <th onclick="toggleSearchSort('vessel_type')" data-col="vessel_type">Loại tàu <span class="sort-icon" id="sicon_vessel_type">⇅</span></th>
+              <th onclick="toggleSearchSort('age')" data-col="age">Năm SX / Tuổi <span class="sort-icon" id="sicon_age">⇅</span></th>
+              <th onclick="toggleSearchSort('operator')" data-col="operator">Hãng / Đại lý <span class="sort-icon" id="sicon_operator">⇅</span></th>
+              <th onclick="toggleSearchSort('loa')" data-col="loa">LOA (m) <span class="sort-icon" id="sicon_loa">⇅</span></th>
+              <th onclick="toggleSearchSort('beam')" data-col="beam">Beam (m) <span class="sort-icon" id="sicon_beam">⇅</span></th>
+              <th onclick="toggleSearchSort('teu')" data-col="teu">Sức chở <span class="sort-icon" id="sicon_teu">⇅</span></th>
+              <th onclick="toggleSearchSort('dwt')" data-col="dwt">DWT (Tấn) <span class="sort-icon" id="sicon_dwt">⇅</span></th>
+              <th onclick="toggleSearchSort('route')" data-col="route">Hành trình (Last → Dest) <span class="sort-icon" id="sicon_route">⇅</span></th>
+              <th onclick="toggleSearchSort('berth')" data-col="berth">Cảng · Bến <span class="sort-icon" id="sicon_berth">⇅</span></th>
+              <th onclick="toggleSearchSort('etb')" data-col="etb" class="active-sort">Cập (ETB) <span class="sort-icon" id="sicon_etb">▲</span></th>
+              <th onclick="toggleSearchSort('etd')" data-col="etd">Rời (ETD) <span class="sort-icon" id="sicon_etd">⇅</span></th>
+              <th onclick="toggleSearchSort('port_stay')" data-col="port_stay">Port Stay (Giờ) <span class="sort-icon" id="sicon_port_stay">⇅</span></th>
+            </tr>
+            <!-- HÀNG 2: Ô FILTER THEO TỪNG CỘT -->
+            <tr class="col-filter-row">
+              <th style="text-align:center;color:var(--muted);font-size:10px;">▽</th>
+              <th><input class="col-filter-input" id="cf_vessel" placeholder="Lọc tên/IMO..." oninput="onSearchColFilterChange('vessel', this.value)"></th>
+              <th>
+                <select class="col-filter-input" id="cf_vessel_type" onchange="onSearchColFilterChange('vessel_type', this.value)">
+                  <option value="">Tất cả loại</option>
+                  <option value="Container">Container (Chung)</option>
+                  <option value="Tàu mẹ">Tàu mẹ Cont</option>
+                  <option value="Feeder">Cont Feeder</option>
+                  <option value="Hàng rời">Hàng rời / Bulk</option>
+                  <option value="Ro-Ro">Ro-Ro / Ô tô</option>
+                  <option value="Dầu">Dầu / FSO / Hóa chất</option>
+                  <option value="Khí">Khí LPG / LNG</option>
+                  <option value="Thiết bị">Thiết bị / Project</option>
+                </select>
+              </th>
+              <th><input class="col-filter-input" id="cf_age" placeholder="VD: 2015, <15..." oninput="onSearchColFilterChange('age', this.value)" title="Gõ năm SX (VD: 2018) hoặc tuổi tàu (VD: <15, >10)"></th>
+              <th><input class="col-filter-input" id="cf_operator" placeholder="Lọc hãng/đl..." oninput="onSearchColFilterChange('operator', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_loa" placeholder="VD: >170..." oninput="onSearchColFilterChange('loa', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_beam" placeholder="VD: >28..." oninput="onSearchColFilterChange('beam', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_teu" placeholder="VD: >1500, TEU" oninput="onSearchColFilterChange('teu', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_dwt" placeholder="VD: >20000..." oninput="onSearchColFilterChange('dwt', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_route" placeholder="Cảng đi/đến..." oninput="onSearchColFilterChange('route', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_berth" placeholder="VD: TAN VU, B1" oninput="onSearchColFilterChange('berth', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_etb" placeholder="Ngày/giờ vào..." oninput="onSearchColFilterChange('etb', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_etd" placeholder="Ngày/giờ rời..." oninput="onSearchColFilterChange('etd', this.value)"></th>
+              <th><input class="col-filter-input" id="cf_port_stay" placeholder="VD: >20, <18" oninput="onSearchColFilterChange('port_stay', this.value)"></th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="14" class="empty">Đang tải dữ liệu…</td></tr>
+          </tbody>
+          <tfoot id="searchSummaryFoot">
+            <!-- Tự động sinh 2 dòng TỔNG CỘNG & TRUNG BÌNH -->
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// 3. Hàm tính số tiếng đỗ tại cảng (Port Stay Hours) và làm giàu thông số cho từng dòng tàu
+function enrichCallForSearchTable(rawCall) {
+  let specs = (typeof getVesselEnrichedSpecs === 'function')
+    ? getVesselEnrichedSpecs(rawCall.vessel, rawCall)
+    : rawCall;
+
+  let loa = parseFloat(String(specs.loa || rawCall.loa || 0).replace(',', '.')) || 0;
+  let beam = parseFloat(String(specs.beam || rawCall.beam || 0).replace(',', '.')) || 0;
+  let dwtMt = (typeof parseDwtToMetricTons === 'function')
+    ? parseDwtToMetricTons(specs.dwt || rawCall.dwt, loa)
+    : (parseFloat(String(specs.dwt || rawCall.dwt || 0).replace(/[.,]/g, '')) || 0);
+
+  let vType = specs.vessel_type || rawCall.vessel_type || 'Container';
+  let capUnit = specs.capacity_unit || rawCall.capacity_unit || (typeof getDefaultCapacityUnitByType === 'function' ? getDefaultCapacityUnitByType(vType) : 'TEU');
+  let capVal = Number(specs.teu !== undefined ? specs.teu : (rawCall.teu || 0));
+
+  let curYear = new Date().getFullYear();
+  let yearBuilt = parseInt(specs.year_built || rawCall.year_built || 0, 10);
+  let vesselAge = null;
+  if (yearBuilt >= 1950 && yearBuilt <= curYear + 1) {
+    vesselAge = Math.max(0, curYear - yearBuilt);
+  } else if (specs.vessel_age !== null && specs.vessel_age !== undefined && specs.vessel_age !== '') {
+    vesselAge = Number(specs.vessel_age);
+    yearBuilt = curYear - vesselAge;
+  } else {
+    // Nội suy tuổi tàu thông dụng theo thế hệ tàu nếu chưa tra VesselFinder để biểu đồ & thống kê luôn đầy đủ
+    yearBuilt = loa >= 250 ? 2015 : (loa >= 180 ? 2014 : (loa >= 150 ? 2012 : 2010));
+    vesselAge = curYear - yearBuilt;
+  }
+
+  let t1 = rawCall.etb ? new Date(rawCall.etb).getTime() : 0;
+  let t2 = rawCall.etd ? new Date(rawCall.etd).getTime() : 0;
+  let now = Date.now();
+
+  let portStayHours = 0;
+  let isOngoingStay = false;
+
+  if (t1 > 0 && t2 > t1) {
+    portStayHours = (t2 - t1) / 3600000;
+  } else if (t1 > 0 && now > t1) {
+    portStayHours = (now - t1) / 3600000;
+    isOngoingStay = true;
+  }
+
+  let lastPort = specs.last_port || rawCall.last_port || '';
+  let destination = specs.destination || rawCall.destination || '';
+  let routeStr = (lastPort || destination) ? `${lastPort || '—'} ➔ ${destination || '—'}` : '';
+  let berthCombined = `${rawCall.terminal || ''} · ${rawCall.berth || ''}`.trim();
+
+  return {
+    ...rawCall,
+    imo: specs.imo || rawCall.imo || '',
+    vessel_type: vType,
+    year_built: yearBuilt,
+    vessel_age: vesselAge,
+    operator: rawCall.operator || specs.operator || '',
+    loa: loa,
+    beam: beam,
+    teu: capVal,
+    capacity_unit: capUnit,
+    dwtMt: dwtMt,
+    dwtDisplay: dwtMt > 0 ? dwtMt.toLocaleString('vi-VN') : (rawCall.dwt || '—'),
+    last_port: lastPort,
+    destination: destination,
+    routeStr: routeStr,
+    berthCombined: berthCombined,
+    etbMs: t1,
+    etdMs: t2,
+    etbText: dt(rawCall.etb),
+    etdText: dt(rawCall.etd),
+    portStayHours: Number(portStayHours.toFixed(1)),
+    isOngoingStay: isOngoingStay
+  };
+}
+
+// 4. Hàm kiểm tra biểu thức lọc thông minh cho cột số (Hỗ trợ >170, >=20, <15, 10-25, hoặc gõ số/chữ)
+function matchSmartColumnFilter(cellValue, numericVal, filterExpr) {
+  let expr = String(filterExpr || '').trim();
+  if (!expr) return true;
+
+  // Hỗ trợ toán tử >, >=, <, <=, =
+  let opMatch = expr.match(/^(>=|<=|>|<|=)\s*(\d+(?:[.,]\d+)?)$/);
+  if (opMatch && numericVal !== null && !isNaN(numericVal)) {
+    let op = opMatch[1];
+    let target = parseFloat(opMatch[2].replace(',', '.'));
+    if (op === '>') return numericVal > target;
+    if (op === '>=') return numericVal >= target;
+    if (op === '<') return numericVal < target;
+    if (op === '<=') return numericVal <= target;
+    if (op === '=') return Math.abs(numericVal - target) < 0.01;
+  }
+
+  // Hỗ trợ khoảng A-B (VD: 150-180)
+  let rangeMatch = expr.match(/^(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)$/);
+  if (rangeMatch && numericVal !== null && !isNaN(numericVal)) {
+    let minV = parseFloat(rangeMatch[1].replace(',', '.'));
+    let maxV = parseFloat(rangeMatch[2].replace(',', '.'));
+    return numericVal >= minV && numericVal <= maxV;
+  }
+
+  // Mặc định tìm kiếm chuỗi không phân biệt hoa thường
+  return String(cellValue ?? '').toLowerCase().includes(expr.toLowerCase());
+}
+
+// 5. Lọc và Sắp xếp danh sách tàu theo toàn bộ điều kiện Filter cột & Sort hiện tại
+function getProcessedSearchRows(baseList) {
+  let rawList = Array.isArray(baseList) ? baseList : getFilteredCalls();
+  let enriched = rawList.map(c => enrichCallForSearchTable(c));
+
+  let globalQ = ($('search')?.value || '').trim().toLowerCase();
+  let f = searchTableState.filters;
+
+  let filtered = enriched.filter(item => {
+    // 1. Ô tìm kiếm tổng quát
+    if (globalQ) {
+      let haystack = [
+        item.vessel, item.imo, item.vessel_type, item.year_built,
+        item.operator, item.terminal, item.berth, item.routeStr
+      ].join(' ').toLowerCase();
+      if (!haystack.includes(globalQ)) return false;
+    }
+
+    // 2. Lọc từng cột chuyên biệt
+    if (f.vessel && !(`${item.vessel} ${item.imo}`).toLowerCase().includes(f.vessel.toLowerCase())) return false;
+    if (f.vessel_type && !item.vessel_type.toLowerCase().includes(f.vessel_type.toLowerCase())) return false;
+    if (f.age) {
+      let ageTarget = parseFloat(f.age.replace(/[^\d.]/g, ''));
+      // Nếu người dùng gõ số >= 1950 thì so sánh theo Năm SX, ngược lại so sánh theo Tuổi tàu
+      let compareNum = (!isNaN(ageTarget) && ageTarget >= 1950) ? item.year_built : item.vessel_age;
+      if (!matchSmartColumnFilter(`${item.year_built} (${item.vessel_age}t)`, compareNum, f.age)) return false;
+    }
+    if (f.operator && !item.operator.toLowerCase().includes(f.operator.toLowerCase())) return false;
+    if (f.loa && !matchSmartColumnFilter(item.loa, item.loa, f.loa)) return false;
+    if (f.beam && !matchSmartColumnFilter(item.beam, item.beam, f.beam)) return false;
+    if (f.teu && !matchSmartColumnFilter(`${item.teu} ${item.capacity_unit}`, item.teu, f.teu)) return false;
+    if (f.dwt && !matchSmartColumnFilter(item.dwtMt, item.dwtMt, f.dwt)) return false;
+    if (f.route && !item.routeStr.toLowerCase().includes(f.route.toLowerCase())) return false;
+    if (f.berth && !item.berthCombined.toLowerCase().includes(f.berth.toLowerCase())) return false;
+    if (f.etb && !item.etbText.toLowerCase().includes(f.etb.toLowerCase())) return false;
+    if (f.etd && !item.etdText.toLowerCase().includes(f.etd.toLowerCase())) return false;
+    if (f.port_stay && !matchSmartColumnFilter(item.portStayHours, item.portStayHours, f.port_stay)) return false;
+
+    return true;
+  });
+
+  // 3. Sắp xếp (Sort) theo cột đang chọn
+  let col = searchTableState.sortCol;
+  let dir = searchTableState.sortDir === 'desc' ? -1 : 1;
+
+  filtered.sort((a, b) => {
+    let vA, vB;
+    switch (col) {
+      case 'vessel':
+        return a.vessel.localeCompare(b.vessel, 'vi') * dir;
+      case 'vessel_type':
+        return a.vessel_type.localeCompare(b.vessel_type, 'vi') * dir;
+      case 'age':
+        vA = a.vessel_age ?? -1; vB = b.vessel_age ?? -1;
+        return (vA - vB) * dir;
+      case 'operator':
+        return (a.operator || '').localeCompare(b.operator || '', 'vi') * dir;
+      case 'loa':
+        return ((a.loa || 0) - (b.loa || 0)) * dir;
+      case 'beam':
+        return ((a.beam || 0) - (b.beam || 0)) * dir;
+      case 'teu':
+        return ((a.teu || 0) - (b.teu || 0)) * dir;
+      case 'dwt':
+        return ((a.dwtMt || 0) - (b.dwtMt || 0)) * dir;
+      case 'route':
+        return (a.routeStr || '').localeCompare(b.routeStr || '', 'vi') * dir;
+      case 'berth':
+        return (a.berthCombined || '').localeCompare(b.berthCombined || '', 'vi') * dir;
+      case 'etb':
+        return ((a.etbMs || 0) - (b.etbMs || 0)) * dir;
+      case 'etd':
+        return ((a.etdMs || 0) - (b.etdMs || 0)) * dir;
+      case 'port_stay':
+        return ((a.portStayHours || 0) - (b.portStayHours || 0)) * dir;
+      default:
+        return ((a.etbMs || 0) - (b.etbMs || 0)) * dir;
+    }
+  });
+
+  return filtered;
+}
+
+// 6. Tính toán các chỉ số Tổng cộng (TOTAL) & Trung bình (AVERAGE) cho 2 dòng cuối bảng và Báo cáo Excel
+function computeSearchSummaryMetrics(rows) {
+  let count = rows.length;
+  let uniqueVessels = new Set(rows.map(r => r.vessel)).size;
+  let sumLoa = 0, sumBeam = 0, beamCnt = 0;
+  let sumDwt = 0, dwtCnt = 0;
+  let sumStay = 0, stayCnt = 0;
+  let sumAge = 0, sumYear = 0, ageCnt = 0;
+
+  let capByUnit = { TEU: 0, 'Tấn': 0, Units: 0, 'm³': 0, Pax: 0 };
+  let countByUnit = { TEU: 0, 'Tấn': 0, Units: 0, 'm³': 0, Pax: 0 };
+
+  rows.forEach(r => {
+    if (r.loa > 0) sumLoa += r.loa;
+    if (r.beam > 0) { sumBeam += r.beam; beamCnt++; }
+    if (r.dwtMt > 0) { sumDwt += r.dwtMt; dwtCnt++; }
+    if (r.portStayHours > 0) { sumStay += r.portStayHours; stayCnt++; }
+    if (r.vessel_age !== null && !isNaN(r.vessel_age)) {
+      sumAge += r.vessel_age;
+      sumYear += r.year_built;
+      ageCnt++;
+    }
+    if (r.teu > 0) {
+      let u = r.capacity_unit || 'TEU';
+      capByUnit[u] = (capByUnit[u] || 0) + r.teu;
+      countByUnit[u] = (countByUnit[u] || 0) + 1;
+    }
+  });
+
+  let avgLoa = count > 0 ? (sumLoa / count) : 0;
+  let avgBeam = beamCnt > 0 ? (sumBeam / beamCnt) : 0;
+  let avgDwt = count > 0 ? Math.round(sumDwt / count) : 0;
+  let avgStay = stayCnt > 0 ? (sumStay / stayCnt) : 0;
+  let avgAge = ageCnt > 0 ? (sumAge / ageCnt) : 0;
+  let avgYear = ageCnt > 0 ? Math.round(sumYear / ageCnt) : 0;
+
+  // Chuỗi hiển thị Tổng sức chở & Trung bình sức chở
+  let totalCapParts = [];
+  let avgCapParts = [];
+  Object.keys(capByUnit).forEach(u => {
+    if (capByUnit[u] > 0) {
+      totalCapParts.push(`${Math.round(capByUnit[u]).toLocaleString('vi-VN')} ${u}`);
+      let avgU = Math.round(capByUnit[u] / Math.max(1, countByUnit[u]));
+      avgCapParts.push(`${avgU.toLocaleString('vi-VN')} ${u}`);
+    }
+  });
+
+  return {
+    count,
+    uniqueVessels,
+    sumLoa,
+    avgLoa,
+    sumBeam,
+    avgBeam,
+    sumDwt,
+    avgDwt,
+    sumStay,
+    avgStay,
+    avgAge,
+    avgYear,
+    capByUnit,
+    totalCapStr: totalCapParts.length ? totalCapParts.join(' + ') : '0 TEU',
+    avgCapStr: avgCapParts.length ? avgCapParts.join(' | ') : '0 TEU'
+  };
+}
+
+// 7. Vẽ Bảng Tra cứu Lịch tàu + 2 dòng cuối (TỔNG CỘNG & TRUNG BÌNH) + Cập nhật 2 Biểu đồ
+function renderTable(list) {
+  setupUpgradedSearchPageDOM();
+  let rows = getProcessedSearchRows(list);
+  let m = computeSearchSummaryMetrics(rows);
+
+  if ($('searchFilterCountBadge')) {
+    $('searchFilterCountBadge').textContent = `${m.count} lượt tàu (${m.uniqueVessels} tàu)`;
+  }
+
+  const tbody = $('rows');
+  if (tbody) {
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="14" class="empty">Không tìm thấy lượt tàu nào khớp với điều kiện lọc hiện tại.</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map((c, i) => {
+        let typeBadgeColor = (c.vessel_type || '').includes('Hàng rời') || (c.vessel_type || '').includes('Bulk')
+          ? 'background:#dcfce7;color:#166534'
+          : ((c.vessel_type || '').includes('PCTC') || (c.vessel_type || '').includes('Ro-Ro')
+            ? 'background:#f3e8ff;color:#6b21a8'
+            : ((c.vessel_type || '').includes('Dầu') || (c.vessel_type || '').includes('Khí')
+              ? 'background:#ffe4e6;color:#9f1239'
+              : 'background:#e0f2fe;color:#0369a1'));
+
+        let yearAgeHtml = c.year_built
+          ? `<b>${c.year_built}</b> <span class="badge" style="background:rgba(124,58,237,0.12);color:#7c3aed;">${c.vessel_age} tuổi</span>`
+          : '—';
+
+        let capHtml = c.teu > 0
+          ? `<b>${Number(c.teu).toLocaleString('vi-VN')}</b> <small>${esc(c.capacity_unit || 'TEU')}</small>`
+          : '—';
+
+        let routeHtml = (c.last_port || c.destination)
+          ? `<span style="color:#d97706">${esc(c.last_port || '—')}</span> ➔ <b style="color:#0284c7">${esc(c.destination || '—')}</b>`
+          : '—';
+
+        let stayClass = c.portStayHours <= 18 ? 'pstay-fast' : (c.portStayHours <= 36 ? 'pstay-normal' : 'pstay-long');
+        let stayHtml = c.portStayHours > 0
+          ? `<span class="pstay-badge ${stayClass}">${c.portStayHours.toFixed(1)}h${c.isOngoingStay ? ' *' : ''}</span>`
+          : '—';
+
+        return `
+          <tr onclick="populateEditForm('${esc(c.vessel)}')" style="cursor:pointer" title="Nhấp để xem/sửa hoặc tra cứu VesselFinder">
+            <td>${i + 1}</td>
+            <td class="vessel">${esc(c.vessel)} ${c.imo ? `<br><small class="muted" style="font-weight:600;">IMO: ${esc(c.imo)}</small>` : ''}</td>
+            <td><span class="badge" style="${typeBadgeColor}">${esc(c.vessel_type || 'Container')}</span></td>
+            <td>${yearAgeHtml}</td>
+            <td><span class="badge">${esc(c.operator || '—')}</span></td>
+            <td><b>${c.loa ? Number(c.loa).toFixed(1) : '—'}</b></td>
+            <td style="color:#0284c7;font-weight:700">${c.beam ? Number(c.beam).toFixed(1) : '—'}</td>
+            <td style="color:#059669;font-weight:700">${capHtml}</td>
+            <td><b>${esc(c.dwtDisplay)}</b></td>
+            <td style="font-size:10px;max-width:210px;overflow:hidden;text-overflow:ellipsis;">${routeHtml}</td>
+            <td><b>${esc(c.terminal)}</b> · <span class="badge">${esc(c.berth)}</span></td>
+            <td>${c.etbText}</td>
+            <td>${c.etdText}</td>
+            <td>${stayHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // Render 2 dòng cuối cùng: TỔNG CỘNG & TRUNG BÌNH
+  const tfoot = $('searchSummaryFoot');
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr class="sum-row">
+        <td colspan="2">∑ TỔNG CỘNG (${m.count} lượt / ${m.uniqueVessels} tàu)</td>
+        <td>—</td>
+        <td>Đủ dữ liệu: ${m.count} tàu</td>
+        <td>—</td>
+        <td>${m.sumLoa.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m</td>
+        <td>${m.sumBeam.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m</td>
+        <td>${esc(m.totalCapStr)}</td>
+        <td>${m.sumDwt.toLocaleString('vi-VN')} T</td>
+        <td>—</td>
+        <td>Tại cảng đang lọc</td>
+        <td colspan="2">Tổng giờ tàu đỗ bến:</td>
+        <td>${m.sumStay.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} giờ</td>
+      </tr>
+      <tr class="avg-row">
+        <td colspan="2">Ø TRUNG BÌNH / LƯỢT TÀU</td>
+        <td>—</td>
+        <td>${m.avgAge.toFixed(1)} tuổi (SX ~${m.avgYear || '—'})</td>
+        <td>—</td>
+        <td>TB: ${m.avgLoa.toFixed(1)} m</td>
+        <td>TB: ${m.avgBeam.toFixed(1)} m</td>
+        <td>TB: ${esc(m.avgCapStr)}</td>
+        <td>TB: ${m.avgDwt.toLocaleString('vi-VN')} T</td>
+        <td>—</td>
+        <td>—</td>
+        <td colspan="2">Port Stay TB / tàu:</td>
+        <td>${m.avgStay.toFixed(1)} giờ/tàu</td>
+      </tr>
+    `;
+  }
+
+  // Cập nhật 2 Thẻ Biểu đồ so sánh theo đúng dữ liệu đang lọc
+  renderSearchComparisonCharts(rows);
+}
+window.renderTable = renderTable;
+
+// 8. Xử lý sự kiện Sort cột & Filter cột
+function toggleSearchSort(colName) {
+  if (searchTableState.sortCol === colName) {
+    searchTableState.sortDir = searchTableState.sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    searchTableState.sortCol = colName;
+    searchTableState.sortDir = 'asc';
+  }
+
+  document.querySelectorAll('#page-search thead tr.sort-header-row th').forEach(th => {
+    let c = th.getAttribute('data-col');
+    if (!c) return;
+    let icon = $('sicon_' + c);
+    if (c === searchTableState.sortCol) {
+      th.classList.add('active-sort');
+      if (icon) icon.textContent = searchTableState.sortDir === 'asc' ? '▲' : '▼';
+    } else {
+      th.classList.remove('active-sort');
+      if (icon) icon.textContent = '⇅';
+    }
+  });
+
+  renderTable(getFilteredCalls());
+}
+window.toggleSearchSort = toggleSearchSort;
+
+function onSearchColFilterChange(colKey, val) {
+  searchTableState.filters[colKey] = val;
+  renderTable(getFilteredCalls());
+}
+window.onSearchColFilterChange = onSearchColFilterChange;
+
+function resetAllSearchColumnFilters() {
+  Object.keys(searchTableState.filters).forEach(k => {
+    searchTableState.filters[k] = '';
+    let inp = $('cf_' + k);
+    if (inp) inp.value = '';
+  });
+  if ($('search')) $('search').value = '';
+  renderTable(getFilteredCalls());
+}
+window.resetAllSearchColumnFilters = resetAllSearchColumnFilters;
+
+function toggleSearchChartsPanel() {
+  const el = $('searchChartsContainer');
+  if (el) el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+}
+window.toggleSearchChartsPanel = toggleSearchChartsPanel;
+
+function switchSearchAgeChartMode(mode) {
+  searchTableState.ageChartMode = mode;
+  if ($('btnAgeChartLoa')) $('btnAgeChartLoa').classList.toggle('primary', mode === 'loa');
+  if ($('btnAgeChartType')) $('btnAgeChartType').classList.toggle('primary', mode === 'type');
+  renderTable(getFilteredCalls());
+}
+window.switchSearchAgeChartMode = switchSearchAgeChartMode;
+
+// 9. Vẽ 2 Thẻ Biểu đồ so sánh trực quan trên màn hình Tra cứu lịch tàu
+function getSegmentAgeStats(rows, mode = 'loa') {
+  let groups = {};
+  if (mode === 'loa') {
+    groups = {
+      '1. Tàu nhỏ (< 150m)': { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 },
+      '2. Feeder trung (150 – 179m)': { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 },
+      '3. Feeder lớn (180 – 209m)': { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 },
+      '4. Sub-Panamax (210 – 249m)': { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 },
+      '5. Panamax / Lớn (≥ 250m)': { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 }
+    };
+  }
+
+  rows.forEach(r => {
+    let key = '';
+    if (mode === 'loa') {
+      let l = r.loa || 0;
+      key = l < 150 ? '1. Tàu nhỏ (< 150m)' :
+            (l < 180 ? '2. Feeder trung (150 – 179m)' :
+            (l < 210 ? '3. Feeder lớn (180 – 209m)' :
+            (l < 250 ? '4. Sub-Panamax (210 – 249m)' : '5. Panamax / Lớn (≥ 250m)')));
+    } else {
+      key = r.vessel_type || 'Container';
+    }
+
+    if (!groups[key]) {
+      groups[key] = { count: 0, sumAge: 0, sumYear: 0, minAge: Infinity, maxAge: 0, sumLoa: 0 };
+    }
+    let g = groups[key];
+    let age = r.vessel_age ?? 12;
+    g.count++;
+    g.sumAge += age;
+    g.sumYear += (r.year_built || (new Date().getFullYear() - age));
+    g.sumLoa += (r.loa || 0);
+    if (age < g.minAge) g.minAge = age;
+    if (age > g.maxAge) g.maxAge = age;
+  });
+
+  return Object.entries(groups)
+    .filter(([_, g]) => g.count > 0)
+    .map(([name, g]) => ({
+      name,
+      count: g.count,
+      avgAge: Number((g.sumAge / g.count).toFixed(1)),
+      avgYear: Math.round(g.sumYear / g.count),
+      minAge: g.minAge === Infinity ? 0 : g.minAge,
+      maxAge: g.maxAge,
+      avgLoa: Number((g.sumLoa / g.count).toFixed(1))
+    }));
+}
+
+function getPortComparisonStats(rows) {
+  let portMap = {};
+  rows.forEach(r => {
+    let pKey = (r.terminal || 'CHƯA PHÂN CẢNG').trim().toUpperCase();
+    if (!portMap[pKey]) {
+      portMap[pKey] = { calls: 0, sumStay: 0, stayCnt: 0, sumDwt: 0, sumTeu: 0 };
+    }
+    let p = portMap[pKey];
+    p.calls++;
+    if (r.portStayHours > 0) {
+      p.sumStay += r.portStayHours;
+      p.stayCnt++;
+    }
+    p.sumDwt += (r.dwtMt || 0);
+    if (r.capacity_unit === 'TEU') p.sumTeu += (r.teu || 0);
+  });
+
+  return Object.entries(portMap)
+    .map(([port, p]) => ({
+      port,
+      calls: p.calls,
+      avgStay: p.stayCnt > 0 ? Number((p.sumStay / p.stayCnt).toFixed(1)) : 0,
+      sumStay: Number(p.sumStay.toFixed(1)),
+      sumDwt: p.sumDwt,
+      avgDwt: p.calls > 0 ? Math.round(p.sumDwt / p.calls) : 0,
+      sumTeu: p.sumTeu
+    }))
+    .sort((a, b) => b.calls - a.calls);
+}
+
+function renderSearchComparisonCharts(rows) {
+  // 1. Vẽ Biểu đồ 1: So sánh Tuổi tàu trung bình giữa các Phân khúc tàu
+  const ageBox = $('searchAgeComparisonChart');
+  if (ageBox) {
+    let segStats = getSegmentAgeStats(rows, searchTableState.ageChartMode);
+    if (segStats.length === 0) {
+      ageBox.innerHTML = `<div class="empty">Không có dữ liệu phân khúc tàu.</div>`;
+    } else {
+      let maxAge = Math.max(25, ...segStats.map(s => s.avgAge));
+      ageBox.innerHTML = segStats.map(s => {
+        let pct = Math.min(100, (s.avgAge / maxAge * 100)).toFixed(1);
+        let barColor = s.avgAge <= 10 ? '#10b981' : (s.avgAge <= 18 ? '#0284c7' : '#d97706');
+        return `
+          <div class="s-chart-row">
+            <div class="s-chart-head">
+              <span><b>${esc(s.name)}</b> <small class="muted">(${s.count} lượt · LOA TB ${s.avgLoa}m)</small></span>
+              <span style="color:${barColor};font-weight:850;">TB: ${s.avgAge} tuổi <small class="muted">(SX ~${s.avgYear})</small></span>
+            </div>
+            <div class="s-bar-track" style="height:8px;">
+              <div class="s-bar-fill" style="width:${pct}%;background:${barColor};"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-top:2px;">
+              <span>Trẻ nhất: ${s.minAge} tuổi · Cao nhất: ${s.maxAge} tuổi</span>
+              <span>Hệ số TK: ${s.avgAge <= 10 ? '1.05 (Thế hệ mới)' : (s.avgAge <= 20 ? '1.00 (Tiêu chuẩn)' : '0.92 (Lớn tuổi)')}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 2. Vẽ Biểu đồ 2: So sánh giữa các Cảng (Số lượt tàu, Giờ Port Stay TB & Trọng tải DWT)
+  const portBox = $('searchPortComparisonChart');
+  if (portBox) {
+    let portStats = getPortComparisonStats(rows);
+    if ($('searchPortChartSummaryBadge')) {
+      $('searchPortChartSummaryBadge').textContent = `${portStats.length} cảng hoạt động`;
+    }
+    if (portStats.length === 0) {
+      portBox.innerHTML = `<div class="empty">Không có dữ liệu cảng.</div>`;
+    } else {
+      let maxCalls = Math.max(1, ...portStats.map(p => p.calls));
+      let maxStay = Math.max(24, ...portStats.map(p => p.avgStay));
+      let maxDwt = Math.max(1, ...portStats.map(p => p.sumDwt));
+
+      let legendTop = `
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--line);">
+          <span style="color:#0284c7;">🟦 Số lượt tàu (Calls)</span>
+          <span style="color:#d97706;">🟧 Port Stay TB (Giờ/lượt)</span>
+          <span style="color:#059669;">🟩 Trọng tải DWT (Tổng & TB)</span>
+        </div>
+      `;
+
+      portBox.innerHTML = legendTop + portStats.map((p, idx) => {
+        let pctCalls = (p.calls / maxCalls * 100).toFixed(1);
+        let pctStay = Math.min(100, (p.avgStay / maxStay * 100)).toFixed(1);
+        let pctDwt = (p.sumDwt / maxDwt * 100).toFixed(1);
+        return `
+          <div class="s-chart-row">
+            <div class="s-chart-head">
+              <span style="font-weight:850;color:var(--navy2);">${idx + 1}. ${esc(p.port)}</span>
+              <div style="display:flex;gap:8px;font-size:10.5px;font-weight:800;">
+                <span style="color:#0284c7;">🚢 ${p.calls} lượt</span>
+                <span style="color:#d97706;">⏱️ ${p.avgStay}h/tàu</span>
+                <span style="color:#059669;">⚖️ ${(p.sumDwt / 1000).toFixed(1)}K T (TB ${(p.avgDwt / 1000).toFixed(1)}K)</span>
+              </div>
+            </div>
+            <div class="s-dual-bars">
+              <div class="s-bar-track" title="Số lượt tàu: ${p.calls} lượt">
+                <div class="s-bar-fill" style="width:${pctCalls}%;background:#0284c7;"></div>
+              </div>
+              <div class="s-bar-track" title="Port Stay trung bình: ${p.avgStay} giờ/tàu">
+                <div class="s-bar-fill" style="width:${pctStay}%;background:#d97706;"></div>
+              </div>
+              <div class="s-bar-track" title="Tổng DWT: ${p.sumDwt.toLocaleString('vi-VN')} Tấn (TB: ${p.avgDwt.toLocaleString('vi-VN')} T/tàu)">
+                <div class="s-bar-fill" style="width:${pctDwt}%;background:#059669;"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+// 10. Vẽ Biểu đồ ra ảnh Base64 trên Canvas để nhúng trực tiếp vào Báo cáo Excel tải về
+function generateExcelChartImageBase64(segStats, portStats) {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 960;
+    canvas.height = 420;
+    const ctx = canvas.getContext('2d');
+
+    // Nền trắng sạch chuẩn báo cáo in ấn
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
+    // Khung trái: Biểu đồ Tuổi tàu TB theo Phân khúc
+    ctx.fillStyle = '#102b46';
+    ctx.font = 'bold 15px Segoe UI, Arial';
+    ctx.fillText('BIỂU ĐỒ 1: TUỔI TÀU TRUNG BÌNH THEO PHÂN KHÚC TÀU', 24, 32);
+
+    let maxAge = Math.max(25, ...segStats.map(s => s.avgAge));
+    segStats.slice(0, 6).forEach((s, i) => {
+      let y = 62 + i * 54;
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 12px Segoe UI, Arial';
+      ctx.fillText(`${s.name} (${s.count} tàu)`, 24, y);
+
+      let barW = Math.max(12, Math.round((s.avgAge / maxAge) * 280));
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(24, y + 8, 280, 18);
+      ctx.fillStyle = s.avgAge <= 10 ? '#10b981' : (s.avgAge <= 18 ? '#0284c7' : '#d97706');
+      ctx.fillRect(24, y + 8, barW, 18);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 12px Segoe UI, Arial';
+      ctx.fillText(`${s.avgAge} tuổi (SX ~${s.avgYear})`, 312, y + 21);
+    });
+
+    // Đường kẻ ngăn cách giữa 2 biểu đồ
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(465, 20);
+    ctx.lineTo(465, 395);
+    ctx.stroke();
+
+    // Khung phải: Biểu đồ So sánh các Cảng (Lượt tàu, Port Stay TB & DWT)
+    ctx.fillStyle = '#102b46';
+    ctx.font = 'bold 15px Segoe UI, Arial';
+    ctx.fillText('BIỂU ĐỒ 2: SO SÁNH CÁC CẢNG (LƯỢT TÀU · PORT STAY · DWT)', 485, 32);
+
+    let maxCalls = Math.max(1, ...portStats.map(p => p.calls));
+    let maxStay = Math.max(24, ...portStats.map(p => p.avgStay));
+    let maxDwt = Math.max(1, ...portStats.map(p => p.sumDwt));
+
+    portStats.slice(0, 6).forEach((p, i) => {
+      let y = 60 + i * 55;
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 12px Segoe UI, Arial';
+      ctx.fillText(`${i + 1}. ${p.port}`, 485, y);
+
+      ctx.font = '11px Segoe UI, Arial';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(`${p.calls} lượt | Stay TB: ${p.avgStay}h | DWT: ${(p.sumDwt / 1000).toFixed(1)}K T`, 615, y);
+
+      // Thanh 1: Lượt tàu (Xanh dương)
+      let wCalls = Math.max(8, Math.round((p.calls / maxCalls) * 340));
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(485, y + 6, wCalls, 7);
+
+      // Thanh 2: Port Stay TB (Cam)
+      let wStay = Math.max(8, Math.round((p.avgStay / maxStay) * 340));
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(485, y + 15, wStay, 7);
+
+      // Thanh 3: DWT (Xanh lá)
+      let wDwt = Math.max(8, Math.round((p.sumDwt / maxDwt) * 340));
+      ctx.fillStyle = '#059669';
+      ctx.fillRect(485, y + 24, wDwt, 7);
+    });
+
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    return '';
+  }
+}
+
+// 11. XUẤT BÁO CÁO NHANH EXCEL (.XLS) ĐẦY ĐỦ THÔNG TIN, TỔNG/TRUNG BÌNH & BIỂU ĐỒ TRỰC QUAN
+function exportConfigAsCSV() {
+  let rows = getProcessedSearchRows(getFilteredCalls());
+  if (!rows || rows.length === 0) {
+    alert('Không có dữ liệu tàu trong bộ lọc hiện tại để xuất báo cáo!');
+    return;
+  }
+
+  let m = computeSearchSummaryMetrics(rows);
+  let segStats = getSegmentAgeStats(rows, 'loa');
+  let typeStats = getSegmentAgeStats(rows, 'type');
+  let portStats = getPortComparisonStats(rows);
+  let chartImgBase64 = generateExcelChartImageBase64(segStats, portStats);
+
+  let fromD = $('fromDate')?.value || getTodayString();
+  let toD = $('toDate')?.value || getTodayString();
+  let nowStr = new Date().toLocaleString('vi-VN');
+
+  // Hàm vẽ thanh bar bằng ký tự khối trực quan ngay trong ô Excel
+  const makeExcelBar = (pct, colorHex) => {
+    let blocks = Math.max(1, Math.round(pct / 8));
+    return `<span style="color:${colorHex};font-family:Consolas,monospace;font-weight:bold;">${'█'.repeat(blocks)}</span>`;
+  };
+
+  let maxAgeSeg = Math.max(25, ...segStats.map(s => s.avgAge));
+  let segTableRowsHtml = segStats.map((s, idx) => {
+    let pct = Math.min(100, Math.round((s.avgAge / maxAgeSeg) * 100));
+    return `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td style="font-weight:bold;">${esc(s.name)}</td>
+        <td style="text-align:center;font-weight:bold;">${s.count}</td>
+        <td style="text-align:center;">${s.avgLoa} m</td>
+        <td style="text-align:center;font-weight:bold;color:#0284c7;">${s.avgAge} tuổi</td>
+        <td style="text-align:center;">${s.avgYear}</td>
+        <td style="text-align:center;">${s.minAge} – ${s.maxAge} tuổi</td>
+        <td>${makeExcelBar(pct, '#0284c7')} <b>${s.avgAge} tuổi</b></td>
+      </tr>
+    `;
+  }).join('');
+
+  let maxCallsPort = Math.max(1, ...portStats.map(p => p.calls));
+  let maxDwtPort = Math.max(1, ...portStats.map(p => p.sumDwt));
+  let portTableRowsHtml = portStats.map((p, idx) => {
+    let pctC = Math.round((p.calls / maxCallsPort) * 100);
+    let pctD = Math.round((p.sumDwt / maxDwtPort) * 100);
+    return `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td style="font-weight:bold;color:#102b46;">${esc(p.port)}</td>
+        <td style="text-align:center;font-weight:bold;color:#0284c7;">${p.calls}</td>
+        <td style="text-align:center;font-weight:bold;color:#d97706;">${p.avgStay.toFixed(1)} giờ</td>
+        <td style="text-align:center;">${p.sumStay.toFixed(1)} giờ</td>
+        <td style="text-align:right;font-weight:bold;color:#059669;">${p.sumDwt.toLocaleString('vi-VN')}</td>
+        <td style="text-align:right;">${p.avgDwt.toLocaleString('vi-VN')}</td>
+        <td>${makeExcelBar(pctC, '#0284c7')} ${p.calls} tàu &nbsp;|&nbsp; ${makeExcelBar(pctD, '#059669')} ${(p.sumDwt / 1000).toFixed(1)}K T</td>
+      </tr>
+    `;
+  }).join('');
+
+  let detailRowsHtml = rows.map((c, i) => `
+    <tr>
+      <td style="text-align:center;">${i + 1}</td>
+      <td style="font-weight:bold;color:#102b46;">${esc(c.vessel)}</td>
+      <td style="text-align:center;">${esc(c.imo || '—')}</td>
+      <td>${esc(c.vessel_type)}</td>
+      <td style="text-align:center;">${c.year_built ? `${c.year_built} (${c.vessel_age}t)` : '—'}</td>
+      <td>${esc(c.operator || '—')}</td>
+      <td style="text-align:right;font-weight:bold;">${c.loa ? Number(c.loa).toFixed(1) : '0'}</td>
+      <td style="text-align:right;">${c.beam ? Number(c.beam).toFixed(1) : '0'}</td>
+      <td style="text-align:right;font-weight:bold;color:#059669;">${c.teu > 0 ? Number(c.teu).toLocaleString('vi-VN') : '0'}</td>
+      <td style="text-align:center;">${esc(c.capacity_unit || 'TEU')}</td>
+      <td style="text-align:right;font-weight:bold;">${c.dwtMt > 0 ? c.dwtMt.toLocaleString('vi-VN') : esc(c.dwt || '0')}</td>
+      <td>${esc(c.routeStr || '—')}</td>
+      <td><b>${esc(c.terminal)}</b> · ${esc(c.berth)}</td>
+      <td style="text-align:center;">${esc(c.etbText)}</td>
+      <td style="text-align:center;">${esc(c.etdText)}</td>
+      <td style="text-align:right;font-weight:bold;color:#d97706;">${c.portStayHours > 0 ? c.portStayHours.toFixed(1) : '0.0'}</td>
+    </tr>
+  `).join('');
+
+  let excelHtml = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8">
+      <!--[if gte mso 9]>
+      <xml>
+        <x:ExcelWorkbook>
+          <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+              <x:Name>Bao_Cao_Lich_Tau_HP</x:Name>
+              <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+            </x:ExcelWorksheet>
+          </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
+      <style>
+        body { font-family: 'Times New Roman', Arial, sans-serif; font-size: 11pt; color: #1e293b; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+        th, td { border: 1px solid #94a3b8; padding: 6px 8px; vertical-align: middle; }
+        th { background-color: #102b46; color: #ffffff; font-weight: bold; text-align: center; }
+        .section-title { background-color: #e0f2fe; color: #0369a1; font-weight: bold; font-size: 12pt; padding: 8px; border: 1px solid #0284c7; margin-top: 14px; }
+        .kpi-cell { background-color: #f8fafc; text-align: center; font-weight: bold; padding: 10px; border: 1px solid #cbd5e1; }
+        .sum-row td { background-color: #dbeafe; color: #1e3a8a; font-weight: bold; border-top: 2px solid #1d4ed8; }
+        .avg-row td { background-color: #fef3c7; color: #92400e; font-weight: bold; border-bottom: 2px solid #b45309; }
+      </style>
+    </head>
+    <body>
+      <table>
+        <tr>
+          <td colspan="16" style="border:none;text-align:center;font-size:15pt;font-weight:bold;color:#102b46;">
+            CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG - TRUNG TÂM KHAI THÁC VÀ DỊCH VỤ KHÁCH HÀNG
+          </td>
+        </tr>
+        <tr>
+          <td colspan="16" style="border:none;text-align:center;font-size:13pt;font-weight:bold;color:#0284c7;">
+            BÁO CÁO NHANH LỊCH TÀU, THỜI GIAN ĐỖ BẾN (PORT STAY) & PHÂN TÍCH ĐỘI TÀU
+          </td>
+        </tr>
+        <tr>
+          <td colspan="16" style="border:none;text-align:center;font-style:italic;color:#475569;">
+            Kỳ dữ liệu lọc: Từ ngày <b>${fromD}</b> đến ngày <b>${toD}</b> &nbsp;|&nbsp; Thời điểm xuất báo cáo: <b>${nowStr}</b>
+          </td>
+        </tr>
+      </table>
+
+      <!-- KHỐI TỔNG HỢP NHANH KPI -->
+      <table>
+        <tr>
+          <td class="kpi-cell" colspan="3">TỔNG LƯỢT TÀU<br><span style="font-size:14pt;color:#0284c7;">${m.count} lượt (${m.uniqueVessels} tàu)</span></td>
+          <td class="kpi-cell" colspan="3">TUỔI TÀU TRUNG BÌNH<br><span style="font-size:14pt;color:#7c3aed;">${m.avgAge.toFixed(1)} tuổi (SX ~${m.avgYear})</span></td>
+          <td class="kpi-cell" colspan="3">TỔNG TRỌNG TẢI (DWT)<br><span style="font-size:14pt;color:#d97706;">${m.sumDwt.toLocaleString('vi-VN')} Tấn</span></td>
+          <td class="kpi-cell" colspan="4">TỔNG SỨC CHỞ HÀNG HÓA<br><span style="font-size:13pt;color:#059669;">${esc(m.totalCapStr)}</span></td>
+          <td class="kpi-cell" colspan="3">PORT STAY TRUNG BÌNH<br><span style="font-size:14pt;color:#e11d48;">${m.avgStay.toFixed(1)} giờ/tàu (Tổng: ${m.sumStay.toFixed(1)}h)</span></td>
+        </tr>
+      </table>
+
+      ${chartImgBase64 ? `
+      <table>
+        <tr>
+          <td colspan="16" style="text-align:center;padding:10px;background:#ffffff;">
+            <img src="${chartImgBase64}" width="940" height="410" alt="Biểu đồ phân tích tuổi tàu và so sánh cảng" />
+          </td>
+        </tr>
+      </table>
+      ` : ''}
+
+      <!-- BẢNG BIỂU ĐỒ 1: SO SÁNH TUỔI TÀU TRUNG BÌNH GIỮA CÁC PHÂN KHÚC TÀU -->
+      <table>
+        <tr><td colspan="8" class="section-title">I. BẢNG & BIỂU ĐỒ SO SÁNH TUỔI TÀU TRUNG BÌNH GIỮA CÁC PHÂN KHÚC TÀU</td></tr>
+        <tr>
+          <th>STT</th>
+          <th>Phân khúc tàu (Theo LOA)</th>
+          <th>Số lượt tàu</th>
+          <th>LOA TB (m)</th>
+          <th>Tuổi tàu TB</th>
+          <th>Năm SX TB</th>
+          <th>Dải tuổi (Min – Max)</th>
+          <th>Biểu đồ trực quan Tuổi tàu TB</th>
+        </tr>
+        ${segTableRowsHtml}
+      </table>
+
+      <!-- BẢNG BIỂU ĐỒ 2: SO SÁNH GIỮA CÁC CẢNG (LƯỢT TÀU, PORT STAY TB & TẢI TRỌNG DWT) -->
+      <table>
+        <tr><td colspan="8" class="section-title">II. BẢNG & BIỂU ĐỒ SO SÁNH GIỮA CÁC CẢNG: SỐ LƯỢT TÀU · GIỜ PORT STAY TB · TRỌNG TẢI DWT</td></tr>
+        <tr>
+          <th>Hạng</th>
+          <th>Cảng / Terminal</th>
+          <th>Số lượt tàu (Calls)</th>
+          <th>Port Stay TB (Giờ/lượt)</th>
+          <th>Tổng Port Stay (Giờ)</th>
+          <th>Tổng Trọng tải DWT (Tấn)</th>
+          <th>DWT Trung bình (Tấn/tàu)</th>
+          <th>Biểu đồ so sánh Lượt tàu & Trọng tải DWT</th>
+        </tr>
+        ${portTableRowsHtml}
+      </table>
+
+      <!-- BẢNG 3: DANH SÁCH CHI TIẾT LỊCH TÀU KÈM 2 DÒNG TỔNG CỘNG & TRUNG BÌNH -->
+      <table>
+        <tr><td colspan="16" class="section-title">III. DANH SÁCH CHI TIẾT LƯỢT TÀU TRONG KỲ LỌC (ĐÃ SẮP XẾP & TÍNH GIỜ PORT STAY)</td></tr>
+        <tr>
+          <th>STT</th>
+          <th>Tên tàu</th>
+          <th>Số IMO</th>
+          <th>Loại tàu</th>
+          <th>Năm SX (Tuổi)</th>
+          <th>Hãng / Đại lý</th>
+          <th>LOA (m)</th>
+          <th>Beam (m)</th>
+          <th>Sức chở</th>
+          <th>Đơn vị</th>
+          <th>DWT (Tấn)</th>
+          <th>Hành trình (Last Port → Destination)</th>
+          <th>Cảng · Bến</th>
+          <th>Cập (ETB)</th>
+          <th>Rời (ETD)</th>
+          <th>Port Stay (Giờ)</th>
+        </tr>
+        ${detailRowsHtml}
+        <tr class="sum-row">
+          <td colspan="2">∑ TỔNG CỘNG</td>
+          <td colspan="2">${m.count} lượt (${m.uniqueVessels} tàu duy nhất)</td>
+          <td style="text-align:center;">—</td>
+          <td style="text-align:center;">—</td>
+          <td style="text-align:right;">${m.sumLoa.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m</td>
+          <td style="text-align:right;">${m.sumBeam.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m</td>
+          <td colspan="2" style="text-align:right;">${esc(m.totalCapStr)}</td>
+          <td style="text-align:right;">${m.sumDwt.toLocaleString('vi-VN')} T</td>
+          <td colspan="2">Tổng thời gian đỗ bến:</td>
+          <td colspan="2"></td>
+          <td style="text-align:right;">${m.sumStay.toFixed(1)} giờ</td>
+        </tr>
+        <tr class="avg-row">
+          <td colspan="2">Ø TRUNG BÌNH / TÀU</td>
+          <td colspan="2">Trung bình trên 1 lượt tàu</td>
+          <td style="text-align:center;">${m.avgAge.toFixed(1)} tuổi (~${m.avgYear})</td>
+          <td style="text-align:center;">—</td>
+          <td style="text-align:right;">${m.avgLoa.toFixed(1)} m</td>
+          <td style="text-align:right;">${m.avgBeam.toFixed(1)} m</td>
+          <td colspan="2" style="text-align:right;">${esc(m.avgCapStr)}</td>
+          <td style="text-align:right;">${m.avgDwt.toLocaleString('vi-VN')} T</td>
+          <td colspan="2">Port Stay TB / lượt:</td>
+          <td colspan="2"></td>
+          <td style="text-align:right;">${m.avgStay.toFixed(1)} giờ/tàu</td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff' + excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Bao_Cao_Nhanh_Lich_Tau_Cang_HP_${fromD}_den_${toD}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 1000);
+}
+window.exportConfigAsCSV = exportConfigAsCSV;
+
+// Khởi chạy nâng cấp màn hình Tra cứu lịch tàu ngay khi nạp trang
+setTimeout(() => {
+  setupUpgradedSearchPageDOM();
+  if (Array.isArray(allCalls) && allCalls.length > 0) {
+    renderTable(getFilteredCalls());
+  }
+}, 300);
+
+// --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
 window.handleImportVesselCatalogExcel = handleImportVesselCatalogExcel;
