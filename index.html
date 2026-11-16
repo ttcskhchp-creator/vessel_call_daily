@@ -8583,7 +8583,147 @@ function applyPortBerthAllocationRules(callsList) {
         if (isCurrentInPreferred && !hasConflictOnCurrent) {
           finalBerth = curBerth;
         } else {
-          finalBerth = pickBestBerthWithoutOverlap(rule, t1, t
+          finalBerth = pickBestBerthWithoutOverlap(rule, t1, t2, termMap, curBerth);
+        }
+      }
+      c.berth_rule_note = rule.ruleName;
+    }
+
+    c.berth = finalBerth;
+
+    if (!termMap.has(finalBerth)) termMap.set(finalBerth, []);
+    termMap.get(finalBerth).push({ t1, t2, vessel: vName });
+  });
+
+  // Trả lại thứ tự ban đầu
+  indexedCalls.sort((a, b) => a._origIdx - b._origIdx);
+  return indexedCalls.map(({ _origIdx, ...rest }) => rest);
+}
+
+// Kiểm tra quy tắc kèm quyền ưu tiên: Chỉ giữ nguyên bến thủ công nếu bến đó không vi phạm quy tắc cứng (VD: Ro-Ro Tân Vũ bắt buộc B5, B4)
+function getPriorityBerthRuleWithOverrideCheck(vesselName, callObj) {
+  let rule = getPriorityBerthsByPortRule(callObj);
+  if (!rule) return null;
+
+  let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vesselName)) || null;
+  if (ov && ov.berth) {
+    let ovBerth = normalizeBerthCode(ov.berth);
+    // Nếu bến đã lưu trong Override nằm đúng trong tập ưu tiên của quy tắc mới thì giữ nguyên
+    if (rule.preferred.includes(ovBerth)) {
+      return { ...rule, lockedByAdmin: true };
+    }
+  }
+  return { ...rule, lockedByAdmin: false };
+}
+
+// 5. Tích hợp trực tiếp vào hàm lọc dữ liệu trung tâm để mọi màn hình (Toàn cảnh, Gantt, Tra cứu) tự động xếp đúng bến
+const _baseFilterAndDeduplicateCalls = filterAndDeduplicateCalls;
+filterAndDeduplicateCalls = function(rawList) {
+  let baseResult = _baseFilterAndDeduplicateCalls(rawList);
+  return applyPortBerthAllocationRules(baseResult);
+};
+window.filterAndDeduplicateCalls = filterAndDeduplicateCalls;
+
+// 6. Tự động gợi ý và điền Cầu Bến chuẩn ngay trên Form "Bổ sung & Sửa tàu" khi chọn Cảng, Loại tàu hoặc nhập LOA
+function autoSuggestBerthInEditForm(forceOverwrite = false) {
+  let vName = ($('editVesselName')?.value || '').trim().toUpperCase();
+  let term = ($('editVesselTerminal')?.value || '').trim();
+  let vType = ($('editVesselType')?.value || 'Container').trim();
+  let capUnit = ($('editVesselCapUnit')?.value || 'TEU').trim();
+  let loa = parseFloat($('editVesselLoa')?.value || 0) || 0;
+  let etbVal = $('editVesselEtb')?.value || '';
+  let etdVal = $('editVesselEtd')?.value || '';
+
+  let rule = getPriorityBerthsByPortRule({
+    vessel: vName,
+    terminal: term,
+    vessel_type: vType,
+    capacity_unit: capUnit,
+    loa: loa
+  });
+
+  let badgeEl = $('berthRuleHintBadge');
+  if (!rule) {
+    if (badgeEl) badgeEl.textContent = '';
+    return;
+  }
+
+  // Tính bến trống tốt nhất trong nhóm ưu tiên dựa trên các tàu hiện có ở cảng đó
+  let termMap = new Map();
+  let t1 = etbVal ? new Date(etbVal).getTime() : Date.now();
+  let t2 = etdVal ? new Date(etdVal).getTime() : (t1 + 18 * 3600000);
+
+  allCalls.forEach(c => {
+    if ((c.vessel || '').trim().toUpperCase() === vName) return;
+    if (String(c.terminal || '').toUpperCase() !== term.toUpperCase()) return;
+    let bCode = normalizeBerthCode(c.berth);
+    if (!bCode) return;
+    let c1 = c.etb ? new Date(c.etb).getTime() : 0;
+    let c2 = c.etd ? new Date(c.etd).getTime() : (c1 + 18 * 3600000);
+    if (!termMap.has(bCode)) termMap.set(bCode, []);
+    termMap.get(bCode).push({ t1: c1, t2: c2 });
+  });
+
+  let recommendedBerth = pickBestBerthWithoutOverlap(rule, t1, t2, termMap, $('editVesselBerth')?.value);
+
+  if (badgeEl) {
+    badgeEl.textContent = `⚓ ${rule.ruleName} ➔ Gợi ý: ${recommendedBerth}`;
+  }
+
+  let curBerthInput = $('editVesselBerth');
+  if (curBerthInput) {
+    let curVal = normalizeBerthCode(curBerthInput.value);
+    if (forceOverwrite || !curVal || !rule.preferred.includes(curVal)) {
+      curBerthInput.value = recommendedBerth;
+      curBerthInput.style.transition = 'all 0.25s';
+      curBerthInput.style.boxShadow = '0 0 0 2px rgba(38, 189, 200, 0.6)';
+      setTimeout(() => { if (curBerthInput) curBerthInput.style.boxShadow = 'none'; }, 1000);
+    }
+  }
+}
+window.autoSuggestBerthInEditForm = autoSuggestBerthInEditForm;
+
+// Gắn nút "⚓ Xếp bến chuẩn" cạnh nhãn Bến trong Form Sửa tàu và lắng nghe sự kiện thay đổi Terminal / LOA / Loại tàu
+function setupBerthAutoSuggestUI() {
+  const lblBerth = $('lbl_berth');
+  if (lblBerth && !$('btnAutoSuggestBerth')) {
+    lblBerth.style.display = 'flex';
+    lblBerth.style.justifyContent = 'space-between';
+    lblBerth.style.alignItems = 'center';
+    lblBerth.style.flexWrap = 'wrap';
+    lblBerth.innerHTML = `
+      <span>Bến</span>
+      <button type="button" id="btnAutoSuggestBerth" class="tk-calc-btn" style="padding:1px 6px!important;font-size:9.5px!important;" onclick="autoSuggestBerthInEditForm(true)" title="Tự động xếp bến theo quy tắc ưu tiên Tân Vũ / Chùa Vẽ / Đình Vũ">
+        ⚓ Xếp bến tự động
+      </button>
+    `;
+    const berthInput = $('editVesselBerth');
+    if (berthInput && berthInput.parentElement && !$('berthRuleHintBadge')) {
+      const hint = document.createElement('small');
+      hint.id = 'berthRuleHintBadge';
+      hint.style.cssText = 'display:block;color:var(--cyan);font-size:9.5px;font-weight:700;margin-top:3px;';
+      berthInput.parentElement.appendChild(hint);
+    }
+  }
+
+  ['editVesselTerminal', 'editVesselType', 'editVesselLoa', 'editVesselCapUnit', 'editVesselEtb'].forEach(id => {
+    const el = $(id);
+    if (el && !el.dataset.berthHooked) {
+      el.dataset.berthHooked = '1';
+      el.addEventListener('change', () => autoSuggestBerthInEditForm(false));
+      el.addEventListener('input', () => autoSuggestBerthInEditForm(false));
+    }
+  });
+}
+
+// Kích hoạt xếp bến ngay cho dữ liệu đang hiển thị
+setTimeout(() => {
+  setupBerthAutoSuggestUI();
+  if (Array.isArray(allCalls) && allCalls.length > 0) {
+    allCalls = applyPortBerthAllocationRules(allCalls);
+    renderAll();
+  }
+}, 350);
   
   // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
