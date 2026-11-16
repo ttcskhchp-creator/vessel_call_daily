@@ -5584,6 +5584,7 @@ function exportWordPACang() {
 }
 
 // 18. XUẤT NỘI DUNG THAY THẾ CHO NÚT 3 (PA MỚN NƯỚC UKC - LẤY CHÍNH XÁC SỐ LIỆU ĐÃ SỬA TRÊN BẢNG EXCEL)
+// 18. XUẤT NỘI DUNG THAY THẾ CHO NÚT 3 (PA MỚN NƯỚC UKC - BỔ SUNG MỤC III CAM KẾT BÔI VÀNG CHUẨN WORD)
 function exportWordPAMonNuoc() {
   if (!generatedPlanRows || generatedPlanRows.length === 0) {
     alert("Vui lòng Bấm 'Tính Toán Bảng Mớn Nước' trước khi xuất nội dung!");
@@ -5599,7 +5600,7 @@ function exportWordPAMonNuoc() {
   let ukcReqInit = (initDraft * 0.10).toFixed(2);
   let minDepthReqInit = (initDraft + parseFloat(ukcReqInit)).toFixed(2);
 
-  // Lấy dòng nước kiệt từ bảng (hoặc dòng có triều thấp nhất nếu người dùng tự sửa tên dòng)
+  // Lấy dòng nước kiệt từ bảng (hoặc dòng có triều thấp nhất)
   let lowRow = generatedPlanRows.find(r => r.label.toLowerCase().includes('kiệt'));
   if (!lowRow) {
     lowRow = generatedPlanRows.reduce((minR, curR) => {
@@ -5617,8 +5618,28 @@ function exportWordPAMonNuoc() {
   let minDepthReqLow = (lowDraftVal + parseFloat(ukcReqLow)).toFixed(2);
   let actualLowUkc = (parseFloat(availDepthLow) - lowDraftVal).toFixed(2);
 
+  // Xử lý 3 cụm thông tin BÔI VÀNG tại Mục III.1 (Thiết bị, Cầu cảng, Nhịp độ năng suất)
+  // 1. Thiết bị làm hàng (VD: "03-04 cần trục bờ (TK)" -> bôi vàng chữ "TK" hoặc tên thiết bị)
+  let equipCommitmentHtml = v.equipment;
+  if (/^04\s+/i.test(equipCommitmentHtml)) {
+    equipCommitmentHtml = '03-' + equipCommitmentHtml;
+  }
+  if (/\(([^)]+)\)/.test(equipCommitmentHtml)) {
+    equipCommitmentHtml = equipCommitmentHtml.replace(/\(([^)]+)\)/, '(<span class="hl">$1</span>)');
+  } else {
+    equipCommitmentHtml = `<span class="hl">${equipCommitmentHtml}</span>`;
+  }
+
+  // 2. Cầu cảng (Tách bỏ chữ "cầu cảng" ở đầu nếu trùng để nối mượt vào câu "...tàu cập cầu cảng [số 5 (TV5) – Bến Cảng Tân Vũ]")
+  let berthShort = v.berth.replace(/^cầu\s*cảng\s*/i, '').trim();
+
+  // 3. Nhịp độ năng suất kế hoạch (VD: rate = 250 Tấn -> "200-250 tấn/giờ.")
+  let minRate = Math.max(10, Math.round((v.ratePerHour * 0.8) / 10) * 10);
+  let unitLower = v.cargoUnit.toLowerCase();
+  let rateRangeText = `${minRate}-${v.ratePerHour} ${unitLower}/giờ.`;
+
   let exportExtraNote = v.cargoExportNum > 0
-    ? `<p class="indent">- Sau khi giải phóng xong lượng hàng nhập (${v.cargoImportStr}), Cảng tiếp tục tổ chức xếp lô hàng xuất dự kiến (<b>${v.cargoExportStr}</b>) xuống tàu, đồng thời kiểm soát chặt chẽ tốc độ xếp hàng theo diễn biến thủy triều đảm bảo UKC thực tế tại mọi thời điểm luôn lớn hơn UKC yêu cầu (10% mớn nước) và trên 0,3 m.</p>`
+    ? `<p class="indent">- Sau khi giải phóng xong lượng hàng nhập (<span class="hl">${v.cargoImportStr}</span>), Cảng tiếp tục tổ chức xếp lô hàng xuất dự kiến (<span class="hl">${v.cargoExportStr}</span>) xuống tàu, đồng thời kiểm soát chặt chẽ tốc độ xếp hàng theo diễn biến thủy triều đảm bảo UKC thực tế tại mọi thời điểm luôn lớn hơn UKC yêu cầu (10% mớn nước) và trên 0,3 m.</p>`
     : '';
 
   let colDisHeader = v.cargoExportNum > 0 ? `${v.cargoUnit} dỡ / xếp` : `${v.cargoUnit} đã dỡ`;
@@ -5644,6 +5665,7 @@ function exportWordPAMonNuoc() {
     body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.25; text-align: justify; }
     .center { text-align: center; }
     .indent { text-indent: 10mm; }
+    .hl { background-color: #ffff00; mso-highlight: yellow; }
     table.data-table { width: 100%; border-collapse: collapse; margin: 8pt 0; }
     table.data-table th, table.data-table td { border: 1pt solid windowtext; padding: 4pt 5pt; font-size: 11pt; text-align: center; }
     table.data-table th { background-color: #f2f2f2; font-weight: bold; }
@@ -5651,54 +5673,54 @@ function exportWordPAMonNuoc() {
     .highlight-box { border-left: 3pt solid #d97706; padding-left: 8pt; margin: 4pt 0 10pt 0; }
   </style></head><body><div class="Section1">
   <p class="center"><b><span style="font-size: 14pt; color: #d97706;">CÁC NỘI DUNG THAY THẾ (VÙNG MÀU VÀNG) - PHƯƠNG ÁN MỚN NƯỚC (UKC)</span></b></p>
-  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn - Đã đồng bộ trực tiếp từ bảng tính Excel)</i></p>
+  <p class="center" style="font-size: 11pt; color: #64748b; margin-bottom: 12pt;"><i>(Font Times New Roman 13pt - Khổ giấy A4 chuẩn - Đã bôi vàng sẵn các trường cần thay thế)</i></p>
 
   <div class="section-header">1. TIÊU ĐỀ & ĐOẠN MỞ ĐẦU</div>
   <div class="highlight-box">
     <p class="center" style="font-weight: bold; font-size: 13.5pt;">
-      PHƯƠNG ÁN ĐẢM BẢO AN TOÀN CHO TÀU ${v.vName}<br>cập, rời ${v.berth}
+      PHƯƠNG ÁN ĐẢM BẢO AN TOÀN CHO TÀU <span class="hl">${v.vName}</span><br>cập, rời <span class="hl">${v.berth}</span>
     </p>
     <p class="indent" style="margin-top: 6pt;">
-      Công ty cổ phần Cảng Hải Phòng xây dựng Phương án đảm bảo an toàn cho tàu <b>${v.vName}</b> cập, rời <b>${v.berth}</b> như sau:
+      Công ty cổ phần Cảng Hải Phòng xây dựng Phương án đảm bảo an toàn cho tàu <b><span class="hl">${v.vName}</span></b> cập, rời <b><span class="hl">${v.berth}</span></b> như sau:
     </p>
   </div>
 
   <div class="section-header">2. BẢNG MỤC I. THÔNG TIN TÀU VÀ CẦU CẢNG</div>
   <div class="highlight-box">
     <table class="data-table">
-      <tr><td style="width: 35%; text-align: left; font-weight: bold;">Tên tàu</td><td style="width: 65%; text-align: left; font-weight: bold;">${v.vName}</td></tr>
-      <tr><td style="text-align: left;">IMO / Quốc tịch</td><td style="text-align: left;">${v.imo} / ${v.flag}</td></tr>
-      <tr><td style="text-align: left;">LOA / Chiều rộng (B)</td><td style="text-align: left;">${v.loa} m / ${v.breadth} m</td></tr>
-      <tr><td style="text-align: left;">DWT / GRT</td><td style="text-align: left;">${v.dwt} MT / ${v.grt}</td></tr>
-      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: ${initDraft.toFixed(2)} m</td></tr>
-      <tr><td style="text-align: left;">Thời gian đến cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etbStr}</td></tr>
-      <tr><td style="text-align: left;">Thời gian rời cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;">${v.etdStr}</td></tr>
-      <tr><td style="text-align: left;">Cầu cập dự kiến</td><td style="text-align: left; font-weight: bold;">${v.berth}</td></tr>
-      <tr><td style="text-align: left;">Độ sâu đáy cầu</td><td style="text-align: left;">-${v.berthDepth.toFixed(1)} m (hệ cao độ Hải đồ)</td></tr>
-      <tr><td style="text-align: left;">Hàng hóa dự kiến</td><td style="text-align: left;">${v.cargoTotalStr}</td></tr>
+      <tr><td style="width: 35%; text-align: left; font-weight: bold;">Tên tàu</td><td style="width: 65%; text-align: left; font-weight: bold;"><span class="hl">${v.vName}</span></td></tr>
+      <tr><td style="text-align: left;">IMO / Quốc tịch</td><td style="text-align: left;"><span class="hl">${v.imo} / ${v.flag}</span></td></tr>
+      <tr><td style="text-align: left;">LOA / Chiều rộng (B)</td><td style="text-align: left;"><span class="hl">${v.loa} m / ${v.breadth} m</span></td></tr>
+      <tr><td style="text-align: left;">DWT / GRT</td><td style="text-align: left;"><span class="hl">${v.dwt} MT / ${v.grt}</span></td></tr>
+      <tr><td style="text-align: left;">Mớn nước khi đến cảng</td><td style="text-align: left;">Lớn nhất: <span class="hl">${initDraft.toFixed(2)} m</span></td></tr>
+      <tr><td style="text-align: left;">Thời gian đến cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;"><span class="hl">${v.etbStr}</span></td></tr>
+      <tr><td style="text-align: left;">Thời gian rời cảng (dự kiến)</td><td style="text-align: left; font-weight: bold;"><span class="hl">${v.etdStr}</span></td></tr>
+      <tr><td style="text-align: left;">Cầu cập dự kiến</td><td style="text-align: left; font-weight: bold;"><span class="hl">${v.berth}</span></td></tr>
+      <tr><td style="text-align: left;">Độ sâu đáy cầu</td><td style="text-align: left;"><span class="hl">-${v.berthDepth.toFixed(1)} m</span> (hệ cao độ Hải đồ)</td></tr>
+      <tr><td style="text-align: left;">Hàng hóa dự kiến</td><td style="text-align: left;"><span class="hl">${v.cargoTotalStr}</span></td></tr>
     </table>
   </div>
 
   <div class="section-header">3. MỤC II. TÍNH TOÁN UKC LÚC TIẾP NHẬN & NƯỚC TRIỀU KIỆT</div>
   <div class="highlight-box">
-    <p><b>1. Tại thời điểm tiếp nhận tàu cập cầu (dự kiến ${v.etbStr})</b></p>
-    <p>- Mực nước thủy triều tại thời điểm tiếp nhận: <b>+${initTide.toFixed(2)} m</b> (Hải đồ).</p>
-    <p>- Độ sâu đáy cầu: <b>-${v.berthDepth.toFixed(1)} m</b>.</p>
-    <p>- Độ sâu nước thực tế khả dụng: ${v.berthDepth.toFixed(1)} m + ${initTide.toFixed(2)} m = <b>${availDepthInit} m</b>.</p>
-    <p>- Mớn nước lớn nhất của tàu khi đến: <b>${initDraft.toFixed(2)} m</b> (phía lái).</p>
-    <p class="indent">- UKC yêu cầu 10% mớn nước: ${ukcReqInit} m khi đó độ sâu nước tối thiểu cần thiết: ${initDraft.toFixed(2)} + ${ukcReqInit} = ${minDepthReqInit} m. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
+    <p><b>1. Tại thời điểm tiếp nhận tàu cập cầu (dự kiến <span class="hl">${v.etbStr}</span>)</b></p>
+    <p>- Mực nước thủy triều tại thời điểm tiếp nhận: <b><span class="hl">+${initTide.toFixed(2)} m</span></b> (Hải đồ).</p>
+    <p>- Độ sâu đáy cầu: <b><span class="hl">-${v.berthDepth.toFixed(1)} m</span></b>.</p>
+    <p>- Độ sâu nước thực tế khả dụng: ${v.berthDepth.toFixed(1)} m + ${initTide.toFixed(2)} m = <b><span class="hl">${availDepthInit} m</span></b>.</p>
+    <p>- Mớn nước lớn nhất của tàu khi đến: <b><span class="hl">${initDraft.toFixed(2)} m</span></b> (phía lái).</p>
+    <p class="indent">- UKC yêu cầu 10% mớn nước: <span class="hl">${ukcReqInit} m</span> khi đó độ sâu nước tối thiểu cần thiết: ${initDraft.toFixed(2)} + ${ukcReqInit} = <span class="hl">${minDepthReqInit} m</span>. Độ sâu nước khả dụng (${availDepthInit} m) lớn hơn yêu cầu tối thiểu (${minDepthReqInit} m). Điều kiện an toàn UKC được đảm bảo đầy đủ tại thời điểm tiếp nhận tàu.</p>
     
     <p style="margin-top: 6pt;"><b>2. Trong quá trình làm hàng và tại thời điểm nước triều kiệt</b></p>
-    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b>${v.equipment}</b> với năng suất khai thác trung bình ${v.ratePerHour} ${v.cargoUnit}/giờ để khai thác lô hàng (${v.cargoTotalStr}).</p>
-    <p class="indent">- Theo kế hoạch làm hàng, đến khoảng <b>${lowTimeLabel}</b> (thời điểm nước triều kiệt khoảng <b>+${lowTideVal.toFixed(2)} m</b>), mớn nước tàu ở mức <b>${lowDraftVal.toFixed(2)} m</b>.</p>
-    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(2)} m = <b>${availDepthLow} m</b>.</p>
-    <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b>${actualLowUkc} m</b> (đảm bảo lớn hơn hoặc bằng yêu cầu tối thiểu 10% là ${ukcReqLow} m và thỏa mãn trên 0,3 m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt.</p>
+    <p class="indent">- Ngay khi tàu cập cầu, Cảng bố trí <b><span class="hl">${v.equipment}</span></b> với năng suất khai thác trung bình <span class="hl">${v.ratePerHour} ${v.cargoUnit}/giờ</span> để khai thác lô hàng (<span class="hl">${v.cargoTotalStr}</span>).</p>
+    <p class="indent">- Theo kế hoạch làm hàng, đến khoảng <b><span class="hl">${lowTimeLabel}</span></b> (thời điểm nước triều kiệt khoảng <b><span class="hl">+${lowTideVal.toFixed(2)} m</span></b>), mớn nước tàu ở mức <b><span class="hl">${lowDraftVal.toFixed(2)} m</span></b>.</p>
+    <p>- Độ sâu nước thực tế tại thời điểm nước kiệt: ${v.berthDepth.toFixed(1)} m + ${lowTideVal.toFixed(2)} m = <b><span class="hl">${availDepthLow} m</span></b>.</p>
+    <p class="indent">- UKC thực tế đạt được: ${availDepthLow} m - ${lowDraftVal.toFixed(2)} m = <b><span class="hl">${actualLowUkc} m</span></b> (đảm bảo lớn hơn hoặc bằng yêu cầu tối thiểu 10% là <span class="hl">${ukcReqLow} m</span> và thỏa mãn trên 0,3 m). Điều kiện an toàn UKC vẫn được đảm bảo đầy đủ trong suốt thời gian nước triều kiệt.</p>
     ${exportExtraNote}
   </div>
 
   <div class="section-header">4. BẢNG THỜI GIAN LÀM HÀNG & MỚN NƯỚC (UKC) CỦA TÀU</div>
   <div class="highlight-box">
-    <p class="center" style="font-weight: bold; margin-bottom: 4pt;">BẢNG THỜI GIAN LÀM HÀNG CỦA TÀU ${v.vName}</p>
+    <p class="center" style="font-weight: bold; margin-bottom: 4pt;">BẢNG THỜI GIAN LÀM HÀNG CỦA TÀU <span class="hl">${v.vName}</span></p>
     <table class="data-table">
       <thead>
         <tr>
@@ -5719,15 +5741,26 @@ function exportWordPAMonNuoc() {
     </table>
   </div>
 
-  <div class="section-header">5. ĐOẠN KẾT LUẬN CUỐI VĂN BẢN</div>
+  <div class="section-header">5. MỤC III. CAM KẾT CỦA CẢNG ĐẢM BẢO AN TOÀN (ĐÃ BÔI VÀNG CHỖ CẦN SỬA)</div>
   <div class="highlight-box">
-    <p class="indent">Trên đây là Phương án đảm bảo an toàn mớn nước cho tàu <b>${v.vName}</b> cập, rời <b>${v.berth}</b> thuộc Công ty cổ phần Cảng Hải Phòng.</p>
-    <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét, chấp thuận lên kế hoạch cho tàu <b>${v.vName}</b> cập Cảng để đảm bảo phục vụ tàu theo kế hoạch của Hãng tàu và khách hàng.</p>
+    <p class="indent"><b>III. CAM KẾT CỦA CẢNG ĐẢM BẢO AN TOÀN</b></p>
+    <p class="indent">Cảng Hải Phòng cam kết thực hiện các biện pháp cụ thể sau để đảm bảo mớn nước an toàn cho tàu trong suốt quá trình cập cầu, làm hàng và rời cầu:</p>
+    <p class="indent"><b><i>1. Bố trí nhân lực, phương tiện, thiết bị sẵn sàng ngay khi tàu cập cầu</i></b></p>
+    <p class="indent">- Bố trí đủ ${equipCommitmentHtml} và lực lượng công nhân, điều khiển, giám sát làm hàng ngay tại thời điểm tàu cập cầu cảng <span class="hl">${berthShort}</span>.</p>
+    <p class="indent">- Chuẩn bị đầy đủ phương tiện vận chuyển bãi (xe đầu kéo, xe nâng) và nhân lực bãi để tiếp nhận hàng dỡ liên tục, đảm bảo nhịp độ làm hàng ổn định theo kế hoạch <span class="hl">${rateRangeText}</span></p>
+    <p class="indent">- Phân công lực lượng trực ca theo dõi liên tục tình trạng neo buộc, mớn nước thực tế của tàu và mực nước thủy triều trong suốt quá trình làm hàng.</p>
+  </div>
+
+  <div class="section-header">6. ĐOẠN KẾT LUẬN CUỐI VĂN BẢN</div>
+  <div class="highlight-box">
+    <p class="indent">Trên đây là Phương án đảm bảo an toàn mớn nước cho tàu <b><span class="hl">${v.vName}</span></b> cập, rời <b><span class="hl">${v.berth}</span></b> thuộc Công ty cổ phần Cảng Hải Phòng.</p>
+    <p class="indent">Kính đề nghị Cảng vụ Hàng hải Hải Phòng xem xét, chấp thuận lên kế hoạch cho tàu <b><span class="hl">${v.vName}</span></b> cập Cảng để đảm bảo phục vụ tàu theo kế hoạch của Hãng tàu và khách hàng.</p>
     <p class="indent">Trân trọng cảm ơn./.</p>
   </div>
   </div></body></html>`;
   downloadDocFile(htmlDoc, `3_Noi_Dung_Thay_The_PA_Mon_Nuoc_${v.vName}.doc`);
 }
+
   
 function autoFillTideFromSystem() {
   if (typeof syncTideFromETB === 'function') {
