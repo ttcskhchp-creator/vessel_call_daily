@@ -7966,7 +7966,371 @@ setTimeout(applyMarqueeToOverflowingButtons, 800);
 
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
 
+/* ==================== MODULE SỬA CUỘN BẢNG DANH MỤC & ĐỔI MÀU TÀU THEO ĐƠN VỊ SỨC CHỞ ==================== */
 
+// 1. Tiêm CSS mở khóa kéo ngang bảng Danh mục, ghim nút Sửa cuối dòng & Bảng màu tàu theo đơn vị sức chở
+(function injectTableFixAndBerthColorsCSS() {
+  if ($('hpBerthColorsAndTableStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'hpBerthColorsAndTableStyle';
+  st.textContent = `
+    /* 1. Mở khóa kéo ngang mượt mà cho bảng Danh mục tàu trên cả điện thoại và máy tính */
+    #page-edit-vessel .table-wrap {
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      max-width: 100% !important;
+    }
+    #page-edit-vessel .table-wrap table {
+      min-width: 560px !important;
+      width: 100% !important;
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+    /* Cho phép cột Tên tàu & Hành trình tự xuống dòng gọn gàng để không đẩy nút Sửa đi quá xa */
+    #page-edit-vessel .table-wrap td:first-child {
+      white-space: normal !important;
+      min-width: 175px;
+      max-width: 240px;
+      line-height: 1.35;
+    }
+    /* Ghim cố định cột nút Sửa ở sát mép phải màn hình khi kéo ngang */
+    #page-edit-vessel .table-wrap th:last-child,
+    #page-edit-vessel .table-wrap td:last-child {
+      position: sticky !important;
+      right: 0 !important;
+      background: var(--card) !important;
+      z-index: 4 !important;
+      box-shadow: -3px 0 8px rgba(0, 0, 0, 0.15) !important;
+      text-align: center !important;
+      vertical-align: middle !important;
+    }
+    .btn-row-edit-sticky {
+      background: #0284c7 !important;
+      color: #ffffff !important;
+      border-radius: 6px !important;
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+      font-weight: 800 !important;
+      white-space: nowrap !important;
+      box-shadow: 0 2px 5px rgba(2, 132, 199, 0.35);
+    }
+    .btn-row-edit-sticky:hover, .btn-row-edit-sticky:active {
+      background: #0369a1 !important;
+      transform: scale(1.04);
+    }
+
+    /* 2. Bảng màu tàu trên Sơ đồ cầu bến (Gantt & Tân Vũ) theo Đơn vị tính sức chở */
+    /* Tàu Container (TEU) - Màu Xanh Biển */
+    .shipbar.unit-teu, .ship-chip.unit-teu {
+      background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+      border: 1px solid #7dd3fc !important;
+      color: #ffffff !important;
+    }
+    /* Tàu Hàng rời / Tổng hợp / Thiết bị (Tấn) - Màu Xanh Ngọc Lục Bảo */
+    .shipbar.unit-tan, .ship-chip.unit-tan {
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      border: 1px solid #6ee7b7 !important;
+      color: #ffffff !important;
+    }
+    /* Tàu Ro-Ro / Ô tô PCTC (Units) - Màu Tím Nổi Bật */
+    .shipbar.unit-units, .ship-chip.unit-units {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+      border: 1px solid #c4b5fd !important;
+      color: #ffffff !important;
+    }
+    /* Tàu Dầu / FSO / Hóa chất / Khí (m³) - Màu Đỏ Cam / Hồng Ngọc */
+    .shipbar.unit-m3, .ship-chip.unit-m3 {
+      background: linear-gradient(135deg, #e11d48, #be123c) !important;
+      border: 1px solid #fda4af !important;
+      color: #ffffff !important;
+    }
+    /* Tàu Chở Khách (Pax) - Màu Hồng Cánh Sen */
+    .shipbar.unit-pax, .ship-chip.unit-pax {
+      background: linear-gradient(135deg, #db2777, #9d174d) !important;
+      border: 1px solid #f9a8d4 !important;
+      color: #ffffff !important;
+    }
+    /* TÀU CỠ LỚN >= 300M - GIỮ NGUYÊN MÀU VÀNG HOÀNG KIM NHƯ CŨ (Ưu tiên cao nhất) */
+    .shipbar.large, .ship-chip.large {
+      background: linear-gradient(135deg, #d89a24, #b57a0f) !important;
+      border: 1.5px solid #fef08a !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(216, 154, 36, 0.45) !important;
+    }
+
+    /* Thanh chú thích màu tàu (Legend) trên Sơ đồ cầu bến */
+    .berth-color-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      background: rgba(38, 189, 200, 0.06);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      align-items: center;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+  `;
+  document.head.appendChild(st);
+})();
+
+// 2. Hàm phân loại Class Màu Sắc theo Đơn vị tính sức chở & Tàu >= 300m
+function getVesselUnitColorClass(callObj) {
+  let specs = getVesselEnrichedSpecs(callObj.vessel, callObj);
+  let loa = Number(specs.loa || callObj.loa || 0);
+
+  // Ưu tiên 1: Tàu >= 300m luôn giữ màu vàng (.large)
+  if (loa >= 300) {
+    return { colorClass: 'large', unitLabel: `${specs.teu ? specs.teu.toLocaleString('vi-VN') + ' ' + (specs.capacity_unit || 'TEU') : loa + 'm'}`, specs };
+  }
+
+  let vType = String(specs.vessel_type || callObj.vessel_type || 'Container').toUpperCase();
+  let unit = String(specs.capacity_unit || callObj.capacity_unit || getDefaultCapacityUnitByType(vType)).trim();
+
+  // Ưu tiên 2: Các loại tàu Container hoặc đơn vị TEU -> Màu Xanh Biển (.unit-teu)
+  if (unit === 'TEU' || vType.includes('CONTAINER') || vType.includes('FEEDER')) {
+    return { colorClass: 'unit-teu', unitLabel: 'TEU', specs };
+  }
+  // Đơn vị Units (Tàu Ro-Ro / Ô tô PCTC) -> Màu Tím (.unit-units)
+  if (unit === 'Units' || vType.includes('RO-RO') || vType.includes('VEHICLES') || vType.includes('PCTC') || vType.includes('Ô TÔ')) {
+    return { colorClass: 'unit-units', unitLabel: 'Units', specs };
+  }
+  // Đơn vị m³ (Tàu Dầu / FSO / Hóa chất / Khí) -> Màu Đỏ Cam (.unit-m3)
+  if (unit === 'm³' || vType.includes('DẦU') || vType.includes('FSO') || vType.includes('KHÍ') || vType.includes('TANKER')) {
+    return { colorClass: 'unit-m3', unitLabel: 'm³', specs };
+  }
+  // Đơn vị Pax (Tàu Chở Khách) -> Màu Hồng (.unit-pax)
+  if (unit === 'Pax' || vType.includes('KHÁCH') || vType.includes('PASSENGER') || vType.includes('CRUISE')) {
+    return { colorClass: 'unit-pax', unitLabel: 'Pax', specs };
+  }
+  // Đơn vị Tấn (Tàu Hàng rời / Tổng hợp / Thiết bị) -> Màu Xanh Ngọc Lục Bảo (.unit-tan)
+  return { colorClass: 'unit-tan', unitLabel: 'Tấn', specs };
+}
+
+// Tạo HTML thanh chú thích màu sắc tàu theo đơn vị sức chở
+function buildVesselColorLegendHtml() {
+  return `
+    <div class="berth-color-legend">
+      <span style="color:var(--muted);margin-right:2px;">🎨 Màu theo đơn vị sức chở:</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#d89a24,#b57a0f);border:1px solid #fef08a;"></i> Tàu ≥ 300m (Vàng)</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#0284c7,#0369a1);"></i> Tàu Cont - TEU (Xanh dương)</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#059669,#047857);"></i> Hàng rời/Thiết bị - Tấn (Xanh lá)</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);"></i> Ro-Ro/Ô tô - Units (Tím)</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#e11d48,#be123c);"></i> Dầu/FSO/Khí - m³ (Đỏ hồng)</span>
+      <span class="legend-item"><i class="legend-dot" style="background:linear-gradient(135deg,#db2777,#9d174d);"></i> Tàu khách - Pax (Hồng)</span>
+    </div>
+  `;
+}
+
+// 3. Cập nhật bảng Danh sách tàu đã chỉnh sửa thủ công (Kéo ngang mượt + Nút Sửa ghim cố định ở cuối mỗi dòng)
+function renderOverrideTable() {
+  let tbody = $('overrideTableRows');
+  if (!tbody) return;
+  let q = ($('catalogFilterInput')?.value || '').trim().toUpperCase();
+
+  let combinedKeys = Array.from(new Set([...vesselOverridesMap.keys(), ...vesselCatalogMap.keys()])).sort();
+  if (q) combinedKeys = combinedKeys.filter(k => k.includes(q));
+
+  if (combinedKeys.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Chưa có dữ liệu. Hãy bấm "📂 Nạp file Tàu_thông_qua_HP.xlsx" ở góc trên!</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = combinedKeys.slice(0, 150).map(key => {
+    let specs = getVesselEnrichedSpecs(key);
+    let ageTxt = specs.year_built ? `${specs.year_built} (${specs.vessel_age}t)` : '—';
+    let routeTxt = (specs.last_port || specs.destination)
+      ? `<div style="color:#38bdf8;font-size:10px;margin-top:2px;word-break:break-word;">${esc(specs.last_port || '?')} ➔ ${esc(specs.destination || '?')}</div>`
+      : '';
+    let capTxt = specs.teu > 0 ? `${specs.teu.toLocaleString('vi-VN')} ${esc(specs.capacity_unit || 'TEU')}` : '—';
+    return `<tr onclick="populateEditForm('${esc(key)}')" style="cursor:pointer;" title="Chạm vào dòng này hoặc bấm nút Sửa để nạp thông tin tàu">
+      <td>
+        <div style="font-weight:800;color:var(--ink);">${esc(key)} ${specs.imo ? `<small class="muted" style="font-weight:600;">(IMO: ${esc(specs.imo)})</small>` : ''}</div>
+        ${routeTxt}
+      </td>
+      <td><span class="badge">${esc(specs.vessel_type || 'Container')}</span><br><small class="muted">SX: ${ageTxt}</small></td>
+      <td><b>${specs.loa || '—'}m</b> × <b style="color:#0284c7">${specs.beam || '—'}m</b></td>
+      <td style="color:#059669;font-weight:700">${capTxt}</td>
+      <td>${esc(specs.dwt || '—')}</td>
+      <td>
+        <button type="button" class="btn-row-edit-sticky" onclick="event.stopPropagation(); populateEditForm('${esc(key)}')">✏️ Sửa</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+window.renderOverrideTable = renderOverrideTable;
+
+// 4. Cập nhật Sơ đồ Kế hoạch cầu bến (Gantt Chart) đổi màu theo Đơn vị sức chở & Tàu >= 300m màu vàng
+function renderGantt() {
+  let days = +$('days')?.value || 4;
+  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
+  let end = new Date(start.getTime() + days * 86400000);
+  let list = getFilteredCalls();
+  let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
+
+  let headerHtml = buildVesselColorLegendHtml() + `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
+  for (let d = 0; d < days; d++) {
+    let curDate = new Date(start.getTime() + d * 86400000);
+    let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
+    headerHtml += `
+      <div class="gantt-time-slot">${dateStr} <span>00:00 - 12:00</span></div>
+      <div class="gantt-time-slot">${dateStr} <span>12:00 - 24:00</span></div>
+    `;
+  }
+  headerHtml += `</div></div>`;
+
+  let terms = {};
+  list.forEach(c => {
+    if (!c.etb) return;
+    if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
+    if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
+    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
+    if (!terms[key]) terms[key] = [];
+    terms[key].push(c);
+  });
+
+  const DEFAULT_STAY_MS = 20 * 3600000;
+  let out = headerHtml;
+  let hasData = false;
+
+  for (let [name, ships] of Object.entries(terms)) {
+    hasData = true;
+    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
+
+    ships.forEach((c, idx) => {
+      let t1 = new Date(c.etb).getTime();
+      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+      let a = t1;
+      let b = (t2 > t1 && (t2 - t1) <= 7 * 86400000) ? t2 : (t1 + DEFAULT_STAY_MS);
+
+      if (b >= start.getTime() && a <= end.getTime()) {
+        let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+        let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+        let zIdx = 2 + idx;
+
+        let { colorClass, specs } = getVesselUnitColorClass(c);
+        let unitTag = specs.teu > 0 ? ` (${specs.capacity_unit || 'TEU'})` : '';
+
+        out += `<div class="shipbar ${colorClass}" 
+                     style="left:${left}%;width:${right-left}%;z-index:${zIdx}" 
+                     onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
+                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
+                     onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}${unitTag}</div>`;
+      }
+    });
+    out += `</div></div>`;
+  }
+  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
+  if ($('fullGantt')) $('fullGantt').innerHTML = out;
+  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
+}
+window.renderGantt = renderGantt;
+
+// 5. Cập nhật Sơ đồ cầu bến Cảng Tân Vũ (Màn hình Toàn cảnh) đồng bộ màu theo Đơn vị sức chở & Tàu >= 300m
+function renderTanVuLayout(list) {
+  try {
+    let now = Date.now();
+    let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
+    let todayStr = getTodayString();
+
+    let tanVuShips = list.filter(c => {
+      let term = (c.terminal || '').toUpperCase();
+      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
+      if (!c.etb) return false;
+      let etbDate = c.etb.split('T')[0];
+      let etdDate = c.etd ? c.etd.split('T')[0] : '';
+      let shipEnd = etdDate || '9999-12-31';
+      return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
+    });
+
+    let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
+    if ($('tanvuCount')) {
+      $('tanvuCount').textContent = `${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}`;
+    }
+
+    let berthMap = {};
+    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
+
+    tanVuShips.forEach(c => {
+      let b = (c.berth || 'B1').trim().toUpperCase();
+      if (!berthMap[b]) berthMap[b] = [];
+      berthMap[b].push(c);
+    });
+
+    let html = buildVesselColorLegendHtml() + `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
+
+    Object.keys(berthMap).sort().forEach(bName => {
+      let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
+      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
+      
+      if (ships.length === 0) {
+        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
+      } else {
+        ships.forEach(s => {
+          let t1 = new Date(s.etb).getTime();
+          let t2 = s.etd ? new Date(s.etd).getTime() : 0;
+          let etdDate = s.etd ? s.etd.split('T')[0] : '';
+
+          let statusLabel = "";
+          let extraOpacity = "";
+          if (t2 > 0 && t2 <= now) {
+            statusLabel = "✔️ Đã rời";
+            extraOpacity = "opacity: 0.72;";
+          } else if (etdDate === todayStr && t2 > now) {
+            statusLabel = "🚩 Rời trong ngày";
+          } else if (t1 <= now && (t2 === 0 || t2 > now)) {
+            statusLabel = "🏗️ Đang làm hàng";
+          } else {
+            statusLabel = "⏳ Sắp cập";
+          }
+
+          let { colorClass, specs } = getVesselUnitColorClass(s);
+          let capBadge = specs.teu > 0 ? `${specs.teu.toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'}` : `${specs.loa || ''}m`;
+
+          html += `
+            <div class="ship-chip ${colorClass}" 
+                 style="${extraOpacity}"
+                 onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
+                 onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
+                 onmouseleave="scheduleHideTooltip()">
+              <span style="font-size: 10.5px; font-weight: 800;">${esc(s.vessel)}</span>
+              <span style="font-size: 9px; padding: 1px 4px; background: rgba(255,255,255,0.22); border-radius: 3px; font-weight: 700;">${esc(capBadge)}</span>
+              <span class="chip-time" style="font-size: 9px; padding: 2px 5px; background: rgba(0,0,0,0.32); border-radius: 4px; font-weight: 700; white-space: nowrap;">${statusLabel}</span>
+            </div>`;
+        });
+      }
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+
+    if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
+  } catch (err) {
+    console.error("Lỗi tại renderTanVuLayout:", err);
+  }
+}
+window.renderTanVuLayout = renderTanVuLayout;
+
+// Khởi chạy cập nhật ngay khi nạp script
+setTimeout(() => {
+  renderOverrideTable();
+  renderAll();
+}, 200);
+  
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
