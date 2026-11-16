@@ -10586,6 +10586,1302 @@ setTimeout(() => {
   renderTable(getFilteredCalls());
 }, 250);
   
+/* ==================== MODULE NÂNG CẤP V3: ĐỊNH VỊ TÂN CẢNG 189, TÍCH HỢP EPORT BERTHMAP TÂN VŨ, BẢO MẬT ĐỔI MK (17/08/1990), KHÓA SETUP LUỒNG & TỐI ƯU MOBILE/PC ==================== */
+
+// ----------------------------------------------------------------------------
+// PHẦN 1: CẬP NHẬT TÂN CẢNG 189 VÀO KHU VỰC BÁN ĐẢO ĐÌNH VŨ – TÂN VŨ – HẢI AN
+// ----------------------------------------------------------------------------
+function classifyPortGeography(rawPortName) {
+  let p = String(rawPortName || 'CHƯA PHÂN CẢNG').trim().toUpperCase();
+
+  // VÙNG 1: CẢNG NƯỚC SÂU LẠCH HUYỆN (CỬA BIỂN) - Thứ tự: HHIT -> HTIT -> HICT
+  if (p.includes('HHIT') || p.includes('HTIT') || p.includes('HICT') || p.includes('LẠCH HUYỆN') || p.includes('LACH HUYEN') || p.includes('TIL')) {
+    let order = 19;
+    if (p.includes('HHIT')) order = 11;
+    else if (p.includes('HTIT')) order = 12;
+    else if (p.includes('HICT')) order = 13;
+    return {
+      zoneId: 1,
+      zoneCode: 'ZONE_1',
+      zoneName: '1. Cảng nước sâu Lạch Huyện (Cửa biển: HHIT · HTIT · HICT)',
+      zoneShort: 'Khu vực Nước sâu Lạch Huyện',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 2: KHU VỰC BÁN ĐẢO ĐÌNH VŨ – TÂN VŨ – HẢI AN (Bao gồm Tân Cảng 189 cùng khu vực với Hải An và PTSC)
+  if (
+    p.includes('TÂN VŨ') || p.includes('TAN VU') ||
+    p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV') ||
+    p.includes('VIP GREEN') || p.includes('VGP') ||
+    p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV') ||
+    p.includes('ĐÌNH VŨ') || p.includes('DINH VU') ||
+    p.includes('189') || p.includes('TÂN CẢNG 189') || p.includes('TAN CANG 189') ||
+    p.includes('HẢI AN') || p.includes('HAI AN') ||
+    p.includes('PTSC') || p.includes('MIPEC') || p.includes('MPC') || p.includes('DAP') || p.includes('EURO')
+  ) {
+    let order = 29;
+    if (p.includes('TÂN VŨ') || p.includes('TAN VU')) order = 21;
+    else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) order = 22;
+    else if (p.includes('VIP GREEN') || p.includes('VGP')) order = 23;
+    else if (p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV')) order = 24;
+    else if (p.includes('ĐÌNH VŨ') || p.includes('DINH VU')) order = 25;
+    else if (p.includes('189')) order = 26; // Tân Cảng 189 nằm ngay cụm PTSC - Hải An
+    else if (p.includes('PTSC')) order = 27;
+    else if (p.includes('HẢI AN') || p.includes('HAI AN')) order = 28;
+    else if (p.includes('MIPEC') || p.includes('MPC')) order = 29;
+    return {
+      zoneId: 2,
+      zoneCode: 'ZONE_2',
+      zoneName: '2. Khu vực Bán đảo Đình Vũ – Tân Vũ – Hải An (Tân Vũ · Nam Đình Vũ · VGP · NHDV · Đình Vũ · Tân Cảng 189 · PTSC · Hải An)',
+      zoneShort: 'Khu vực Bán đảo Đình Vũ – Tân Vũ – Hải An',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 3: KHU VỰC TRUNG LƯU SÔNG CẤM (Green Port -> Đoạn Xá -> Chùa Vẽ -> Nam Hải -> 128)
+  if (
+    p.includes('GREEN PORT') || p.includes('GREENPORT') ||
+    p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP') ||
+    p.includes('CHÙA VẼ') || p.includes('CHUA VE') ||
+    p.includes('NAM HẢI') || p.includes('NAM HAI') ||
+    p.includes('TRANSVINA') || p.includes('128') || p.includes('HẢI ĐĂNG')
+  ) {
+    let order = 39;
+    if (p.includes('GREEN')) order = 31;
+    else if (p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP')) order = 32;
+    else if (p.includes('CHÙA VẼ') || p.includes('CHUA VE')) order = 33;
+    else if (p.includes('NAM HẢI') || p.includes('NAM HAI')) order = 34;
+    else if (p.includes('TRANSVINA') || p.includes('128')) order = 35;
+    return {
+      zoneId: 3,
+      zoneCode: 'ZONE_3',
+      zoneName: '3. Khu vực Trung lưu Sông Cấm (Green Port · Đoạn Xá · Chùa Vẽ · Nam Hải...)',
+      zoneShort: 'Trung lưu Sông Cấm (Chùa Vẽ - Đoạn Xá)',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 4: KHU VỰC THƯỢNG LƯU SÔNG CẤM / NỘI ĐÔ (Hoàng Diệu -> Vật Cách)
+  if (
+    p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU') ||
+    p.includes('VẬT CÁCH') || p.includes('VAT CACH') ||
+    p.includes('THỦY SẢN') || p.includes('THUY SAN') || p.includes('BÍNH')
+  ) {
+    let order = 49;
+    if (p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU')) order = 41;
+    else if (p.includes('VẬT CÁCH') || p.includes('VAT CACH')) order = 42;
+    return {
+      zoneId: 4,
+      zoneCode: 'ZONE_4',
+      zoneName: '4. Khu vực Thượng lưu Sông Cấm – Nội đô (Hoàng Diệu · Vật Cách...)',
+      zoneShort: 'Thượng lưu Sông Cấm (Hoàng Diệu)',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  return {
+    zoneId: 5,
+    zoneCode: 'ZONE_5',
+    zoneName: '5. Khu vực Bến phao / Cảng liên kết khác',
+    zoneShort: 'Khu vực khác',
+    portOrder: 59,
+    portName: p
+  };
+}
+window.classifyPortGeography = classifyPortGeography;
+
+// ----------------------------------------------------------------------------
+// PHẦN 2: HỆ THỐNG BẢO MẬT QUẢN TRỊ DÙNG CHUNG & ĐỔI MẬT KHẨU BẰNG NGÀY SINH ADMIN (17/08/1990)
+// ----------------------------------------------------------------------------
+var ADMIN_DOB_REQUIRED = '17/08/1990';
+var pendingPinCallback = null;
+var isDraftSetupUnlocked = false;
+
+function getAdminCurrentPin() {
+  return localStorage.getItem('hp_admin_pin') || '6868';
+}
+
+function setAdminNewPin(newPin) {
+  let cleanPin = String(newPin || '').trim();
+  if (!cleanPin) return false;
+  localStorage.setItem('hp_admin_pin', cleanPin);
+  if (supabaseClient) {
+    try {
+      const blob = new Blob([JSON.stringify({ pin: cleanPin, updated_at: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+      supabaseClient.storage.from('port-documents').upload('admin_security_config.json', blob, { upsert: true });
+    } catch (e) {}
+  }
+  return true;
+}
+
+async function loadAdminPinFromSupabase() {
+  if (!supabaseClient) return;
+  try {
+    const { data: files } = await supabaseClient.storage.from('port-documents').list('', { search: 'admin_security_config.json' });
+    if (Array.isArray(files) && files.some(f => f.name === 'admin_security_config.json')) {
+      const { data, error } = await supabaseClient.storage.from('port-documents').download('admin_security_config.json');
+      if (data && !error) {
+        let parsed = JSON.parse(await data.text());
+        if (parsed && parsed.pin) {
+          localStorage.setItem('hp_admin_pin', String(parsed.pin).trim());
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+// Kiểm tra ngày sinh Admin có khớp 17/08/1990 không (hỗ trợ cả '17/08/1990', '17-08-1990', '1990-08-17', '17081990')
+function isValidAdminDob(inputStr) {
+  let s = String(inputStr || '').trim();
+  if (!s) return false;
+  let digits = s.replace(/\D/g, '');
+  if (digits === '17081990' || digits === '19900817') return true;
+  let m1 = s.match(/^0?17[\/\-.\s]0?8[\/\-.\s]1990$/);
+  let m2 = s.match(/^1990[\/\-.\s]0?8[\/\-.\s]0?17$/);
+  return Boolean(m1 || m2);
+}
+
+// Khởi tạo Hộp thoại Bảo mật Quản trị thông minh (Có tính năng Đổi mật khẩu bằng ngày sinh 17/08/1990)
+function ensureUniversalPinModalDOM() {
+  if ($('universalPinModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'universalPinModal';
+  modal.className = 'modal-shade';
+  modal.innerHTML = `
+    <div class="modal" style="width:min(440px, 94vw);">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px;">
+        <h3 id="uPinModalTitle" style="margin:0;font-size:15px;">🔒 Xác Thực Bảo Mật Quản Trị</h3>
+        <button type="button" onclick="closeUniversalPinModal()" style="padding:4px 8px;font-size:11px;">✕</button>
+      </div>
+
+      <!-- KHỐI 1: NHẬP MẬT KHẨU ĐỂ MỞ KHÓA -->
+      <div id="uPinLoginView">
+        <p id="uPinModalDesc" class="muted tiny" style="margin:0 0 10px;">Vui lòng nhập mật khẩu / mã PIN quản trị để thực hiện chức năng này.</p>
+        <div class="form-group">
+          <label>MẬT KHẨU / MÃ PIN QUẢN TRỊ</label>
+          <input type="password" id="uPinInput" class="field" placeholder="Nhập mật khẩu (••••)" style="font-size:16px;text-align:center;letter-spacing:4px;font-weight:800;">
+          <div id="uPinErrorMsg" style="color:var(--red);font-size:11px;margin-top:5px;display:none;font-weight:700;">❌ Mật khẩu không chính xác!</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="tk-calc-btn" style="padding:6px 10px!important;font-size:11px!important;" onclick="switchPinModalToChangeView(true)">
+            🔑 Đổi mật khẩu
+          </button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="closeUniversalPinModal()">Hủy</button>
+            <button type="button" class="primary" style="background:#0284c7;color:#fff;" onclick="submitUniversalPinCheck()">✓ Xác nhận</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KHỐI 2: ĐỔI MẬT KHẨU YÊU CẦU NGÀY SINH ADMIN (17/08/1990) -->
+      <div id="uPinChangeView" style="display:none;">
+        <div style="background:rgba(2,132,199,0.08);border-left:3px solid #0284c7;padding:8px 10px;border-radius:6px;font-size:11px;margin-bottom:10px;">
+          🛡️ Để đổi mật khẩu quản trị, vui lòng xác thực đúng <b>Ngày sinh của Admin (Định dạng: DD/MM/YYYY)</b>.
+        </div>
+        <div class="form-group">
+          <label style="color:#d97706;font-weight:800;">🎂 NGÀY SINH CỦA ADMIN (*)</label>
+          <input type="text" id="uPinAdminDob" class="field" placeholder="Nhập ngày/tháng/năm sinh (VD: dd/mm/yyyy)..." style="font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label style="color:#059669;font-weight:800;">🔑 MẬT KHẨU / MÃ PIN MỚI (*)</label>
+          <input type="password" id="uPinNewPass" class="field" placeholder="Nhập mật khẩu mới..." style="font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label style="color:#059669;font-weight:800;">🔑 NHẬP LẠI MẬT KHẨU MỚI (*)</label>
+          <input type="password" id="uPinConfirmPass" class="field" placeholder="Xác nhận lại mật khẩu mới..." style="font-weight:700;">
+        </div>
+        <div id="uPinChangeStatus" style="font-size:11px;font-weight:700;margin-top:4px;display:none;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:6px;">
+          <button type="button" onclick="switchPinModalToChangeView(false)">← Quay lại đăng nhập</button>
+          <button type="button" class="primary" style="background:#059669;color:#fff;" onclick="handleSaveNewAdminPin()">💾 Lưu mật khẩu mới</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  $('uPinInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitUniversalPinCheck();
+  });
+  $('uPinConfirmPass')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleSaveNewAdminPin();
+  });
+
+  // Nâng cấp luôn Modal Hòm thư (#mailAuthModal) để có nút Đổi mật khẩu bằng ngày sinh Admin
+  const mailModal = $('mailAuthModal');
+  if (mailModal && !mailModal.dataset.upgradedPin) {
+    mailModal.dataset.upgradedPin = '1';
+    const actBox = mailModal.querySelector('.modal-actions');
+    if (actBox) {
+      actBox.style.justifyContent = 'space-between';
+      const chgBtn = document.createElement('button');
+      chgBtn.type = 'button';
+      chgBtn.className = 'tk-calc-btn';
+      chgBtn.innerHTML = '🔑 Đổi mật khẩu';
+      chgBtn.onclick = () => {
+        closeMailAuthModal();
+        requestAdminPinAuth('Mở Hòm Thư Phản Ánh', () => {
+          renderInboxModal();
+          $('inboxModal').classList.add('open');
+        }, true);
+      };
+      actBox.insertBefore(chgBtn, actBox.firstChild);
+    }
+  }
+}
+
+function requestAdminPinAuth(actionTitle, onSuccessCallback, openChangeModeDirectly = false) {
+  ensureUniversalPinModalDOM();
+  pendingPinCallback = onSuccessCallback;
+  if ($('uPinModalTitle')) $('uPinModalTitle').innerHTML = `🔒 Bảo Mật: ${esc(actionTitle || 'Quản trị hệ thống')}`;
+  if ($('uPinInput')) $('uPinInput').value = '';
+  if ($('uPinErrorMsg')) $('uPinErrorMsg').style.display = 'none';
+  switchPinModalToChangeView(openChangeModeDirectly);
+  $('universalPinModal').classList.add('open');
+  setTimeout(() => {
+    if (openChangeModeDirectly) $('uPinAdminDob')?.focus();
+    else $('uPinInput')?.focus();
+  }, 80);
+}
+window.requestAdminPinAuth = requestAdminPinAuth;
+
+function closeUniversalPinModal() {
+  if ($('universalPinModal')) $('universalPinModal').classList.remove('open');
+  pendingPinCallback = null;
+}
+window.closeUniversalPinModal = closeUniversalPinModal;
+
+function switchPinModalToChangeView(showChange) {
+  if ($('uPinLoginView')) $('uPinLoginView').style.display = showChange ? 'none' : 'block';
+  if ($('uPinChangeView')) $('uPinChangeView').style.display = showChange ? 'block' : 'none';
+  if (showChange) {
+    if ($('uPinAdminDob')) $('uPinAdminDob').value = '';
+    if ($('uPinNewPass')) $('uPinNewPass').value = '';
+    if ($('uPinConfirmPass')) $('uPinConfirmPass').value = '';
+    if ($('uPinChangeStatus')) $('uPinChangeStatus').style.display = 'none';
+  }
+}
+window.switchPinModalToChangeView = switchPinModalToChangeView;
+
+function submitUniversalPinCheck() {
+  let entered = ($('uPinInput')?.value || '').trim();
+  let currentPin = getAdminCurrentPin();
+  if (entered === currentPin) {
+    let cb = pendingPinCallback;
+    closeUniversalPinModal();
+    if (typeof cb === 'function') cb();
+  } else {
+    if ($('uPinErrorMsg')) {
+      $('uPinErrorMsg').textContent = '❌ Mật khẩu không chính xác! (Bấm "🔑 Đổi mật khẩu" nếu bạn muốn đặt lại)';
+      $('uPinErrorMsg').style.display = 'block';
+    }
+    $('uPinInput')?.select();
+  }
+}
+window.submitUniversalPinCheck = submitUniversalPinCheck;
+
+function handleSaveNewAdminPin() {
+  let dobVal = ($('uPinAdminDob')?.value || '').trim();
+  let newP = ($('uPinNewPass')?.value || '').trim();
+  let confP = ($('uPinConfirmPass')?.value || '').trim();
+  let stEl = $('uPinChangeStatus');
+
+  if (!isValidAdminDob(dobVal)) {
+    if (stEl) {
+      stEl.style.display = 'block';
+      stEl.style.color = 'var(--red)';
+      stEl.textContent = '❌ Ngày sinh Admin không chính xác! Vui lòng nhập đúng định dạng DD/MM/YYYY.';
+    }
+    return;
+  }
+  if (!newP || newP.length < 3) {
+    if (stEl) {
+      stEl.style.display = 'block';
+      stEl.style.color = 'var(--red)';
+      stEl.textContent = '⚠️ Mật khẩu mới phải có ít nhất 3 ký tự!';
+    }
+    return;
+  }
+  if (newP !== confP) {
+    if (stEl) {
+      stEl.style.display = 'block';
+      stEl.style.color = 'var(--red)';
+      stEl.textContent = '⚠️ Mật khẩu xác nhận không khớp!';
+    }
+    return;
+  }
+
+  setAdminNewPin(newP);
+  if (stEl) {
+    stEl.style.display = 'block';
+    stEl.style.color = '#10b981';
+    stEl.textContent = '✓ Đổi mật khẩu quản trị thành công! Đang chuyển về màn hình xác nhận...';
+  }
+  setTimeout(() => {
+    switchPinModalToChangeView(false);
+    if ($('uPinInput')) {
+      $('uPinInput').value = newP;
+      $('uPinInput').focus();
+    }
+  }, 900);
+}
+window.handleSaveNewAdminPin = handleSaveNewAdminPin;
+
+// Ghi đè toàn bộ các hàm kiểm tra mật khẩu trên toàn hệ thống để dùng Hộp thoại Bảo mật mới (có Đổi MK)
+function verifyMailPassword() {
+  let pwd = ($('mailPasswordInput')?.value || '').trim();
+  if (pwd === getAdminCurrentPin()) {
+    closeMailAuthModal();
+    renderInboxModal();
+    $('inboxModal').classList.add('open');
+  } else {
+    if ($('mailAuthError')) $('mailAuthError').style.display = 'block';
+    $('mailPasswordInput')?.select();
+  }
+}
+window.verifyMailPassword = verifyMailPassword;
+
+function openMailAuthModal() {
+  requestAdminPinAuth('Mở Hòm Thư Phản Ánh & Góp Ý', () => {
+    renderInboxModal();
+    $('inboxModal').classList.add('open');
+  });
+}
+window.openMailAuthModal = openMailAuthModal;
+
+function exportConfigAsCSVProtected() {
+  requestAdminPinAuth('Xuất Báo Cáo Nhanh Excel', () => {
+    exportConfigAsCSV();
+  });
+}
+window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
+
+function triggerImportConfig() {
+  requestAdminPinAuth('Nạp Dữ Liệu Lịch Tàu Từ File', () => {
+    $('importFileInput')?.click();
+  });
+}
+window.triggerImportConfig = triggerImportConfig;
+
+function handleManualSave() {
+  requestAdminPinAuth('Lưu Snapshot Lên Supabase Bucket', () => {
+    saveCurrentDataToSupabase(false);
+  });
+}
+window.handleManualSave = handleManualSave;
+
+function openShiftModalWithPassword() {
+  requestAdminPinAuth('Thiết Lập Bộ Phận Trực Ca', () => {
+    $('modalShade')?.classList.add('open');
+  });
+}
+window.openShiftModalWithPassword = openShiftModalWithPassword;
+
+// Bọc lại openTideConfigPrompt, saveVesselOverrideProtected, deleteVesselOverrideProtected để dùng Modal PIN mới
+const _origSaveVesselOverrideNow = async function() {
+  let vName = ($('editVesselName').value || '').trim().toUpperCase();
+  if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
+
+  let vType = $('editVesselType')?.value || 'Container';
+  let capUnit = $('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType);
+  let yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
+
+  let payload = {
+    vessel_name: vName,
+    imo: ($('editVesselImo')?.value || '').trim(),
+    vessel_type: vType,
+    year_built: yearBuilt,
+    operator: $('editVesselOperator').value.trim(),
+    last_port: ($('editVesselLastPort')?.value || '').trim().toUpperCase(),
+    destination: ($('editVesselDestination')?.value || '').trim().toUpperCase(),
+    terminal: $('editVesselTerminal').value.trim(),
+    berth: $('editVesselBerth').value.trim(),
+    loa: Number($('editVesselLoa').value) || 0,
+    beam: Number($('editVesselBeam')?.value) || 0,
+    teu: Number($('editVesselTeu')?.value) || 0,
+    capacity_unit: capUnit,
+    dwt: $('editVesselDwt').value.trim(),
+    gt: ($('editVesselGt')?.value || '').trim(),
+    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
+    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  vesselOverridesMap.set(vName, payload);
+  vesselCatalogMap.set(vName, {
+    type: payload.vessel_type,
+    year_built: payload.year_built,
+    last_port: payload.last_port,
+    destination: payload.destination,
+    loa: payload.loa,
+    beam: payload.beam,
+    teu: payload.teu,
+    capacity_unit: payload.capacity_unit,
+    dwt: payload.dwt,
+    gt: payload.gt,
+    imo: payload.imo,
+    agent: payload.operator
+  });
+
+  let catalogObj = Object.fromEntries(vesselCatalogMap);
+  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
+
+  try {
+    if (supabaseClient) {
+      await supabaseClient.from('vessel_overrides').upsert({
+        vessel_name: payload.vessel_name,
+        operator: payload.operator,
+        terminal: payload.terminal,
+        berth: payload.berth,
+        loa: payload.loa,
+        dwt: payload.dwt,
+        etb: payload.etb,
+        etd: payload.etd,
+        updated_at: payload.updated_at
+      }, { onConflict: 'vessel_name' });
+
+      const blob = new Blob([JSON.stringify(catalogObj, null, 2)], { type: 'application/json' });
+      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
+    }
+    updateCatalogBadgeCount();
+    renderOverrideTable();
+    loadData();
+    alert(`Đã lưu tàu "${vName}" (Sức chở: ${payload.teu.toLocaleString('vi-VN')} ${payload.capacity_unit}, Năm SX: ${payload.year_built || '—'}) thành công!`);
+  } catch (err) {
+    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
+  }
+};
+
+function saveVesselOverrideProtected() {
+  requestAdminPinAuth('Lưu & Ghi Đè Thông Số Tàu', _origSaveVesselOverrideNow);
+}
+window.saveVesselOverrideProtected = saveVesselOverrideProtected;
+
+function deleteVesselOverrideProtected() {
+  requestAdminPinAuth('Ẩn / Xóa Chuyến Tàu', async () => {
+    let vName = ($('editVesselName').value || '').trim();
+    let vEtb = $('editVesselEtb').value;
+    if (!vName) { alert('Vui lòng nhập tên tàu cần xóa!'); return; }
+    let timeStr = vEtb ? vEtb.replace('T', ' ') : 'chưa có giờ cập';
+    if (!confirm(`Bạn có chắc chắn muốn ẨN chuyến tàu "${vName}" (Mốc cập: ${timeStr}) khỏi hệ thống?`)) return;
+
+    let payload = {
+      vessel_name: vName.toUpperCase(),
+      is_hidden: true,
+      etb: vEtb ? new Date(vEtb).toISOString() : null,
+      updated_at: new Date().toISOString()
+    };
+    try {
+      if (supabaseClient) {
+        await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
+      }
+      let currentOv = vesselOverridesMap.get(vName.toUpperCase()) || {};
+      vesselOverridesMap.set(vName.toUpperCase(), { ...currentOv, ...payload });
+      renderOverrideTable();
+      loadData();
+      alert(`Đã ẨN chuyến của tàu "${vName}" thành công!`);
+    } catch (err) {
+      alert('Lỗi kết nối: ' + err.message);
+    }
+  });
+}
+window.deleteVesselOverrideProtected = deleteVesselOverrideProtected;
+
+function openTideConfigPrompt() {
+  requestAdminPinAuth('Cập Nhật Số Liệu Thủy Triều Hòn Dáu', () => {
+    let activePart = getVNCurrentDateParts(tideViewDayOffset);
+    let activeKey = activePart.dateKey;
+    let activeData = multiDayTideData[activeKey] || {};
+
+    let curHigh = activeData.highVal || 3.3;
+    let curHighTime = activeData.highTimeStr || '03:00';
+    let curLow = activeData.lowVal || 1.0;
+    let curLowTime = activeData.lowTimeStr || '17:00';
+
+    let hVal = prompt(`[${activePart.labelDate}] Nhập ĐỈNH TRIỀU (mét, vd 3.3):`, curHigh);
+    if (hVal === null) return;
+    let hTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC LỚN (HH:mm):`, curHighTime);
+    if (hTime === null) return;
+    let lVal = prompt(`[${activePart.labelDate}] Nhập ĐÁY TRIỀU (mét, vd 1.0):`, curLow);
+    if (lVal === null) return;
+    let lTime = prompt(`[${activePart.labelDate}] Nhập GIỜ NƯỚC RÒNG (HH:mm):`, curLowTime);
+    if (lTime === null) return;
+
+    let parseH = tStr => {
+      let [h, m] = tStr.split(':').map(Number);
+      return (h || 0) + (m || 0) / 60;
+    };
+
+    multiDayTideData[activeKey] = {
+      date: activeKey,
+      displayDate: activePart.labelDate,
+      dayOffset: tideViewDayOffset,
+      station: 'Hòn Dáu',
+      sourceType: 'custom',
+      highVal: parseFloat(String(hVal).replace(',', '.')) || 3.3,
+      highTimeStr: hTime,
+      highHour: parseH(hTime),
+      lowVal: parseFloat(String(lVal).replace(',', '.')) || 1.0,
+      lowTimeStr: lTime,
+      lowHour: parseH(lTime),
+      hourlyList: activeData.hourlyList || []
+    };
+    alert(`Đã cập nhật số liệu ngày ${activePart.labelDate} thành công!`);
+    updateRealtimeWidgets();
+  });
+}
+window.openTideConfigPrompt = openTideConfigPrompt;
+
+// ----------------------------------------------------------------------------
+// PHẦN 3: KHÓA MÃ PIN QUẢN TRỊ CHO CỬA SỔ "SETUP LUỒNG & MỚN" (page-draft-setup)
+// ----------------------------------------------------------------------------
+const _origSaveDraftFormulaConfig = saveDraftFormulaConfig;
+saveDraftFormulaConfig = function() {
+  requestAdminPinAuth('Lưu Cấu Hình Độ Sâu Luồng & Bến Tân Vũ', () => {
+    _origSaveDraftFormulaConfig();
+  });
+};
+window.saveDraftFormulaConfig = saveDraftFormulaConfig;
+
+const _origResetDraftFormulaConfig = resetDraftFormulaConfig;
+resetDraftFormulaConfig = function() {
+  requestAdminPinAuth('Khôi Phục Mặc Định Luồng & Bến', () => {
+    _origResetDraftFormulaConfig();
+  });
+};
+window.resetDraftFormulaConfig = resetDraftFormulaConfig;
+
+// Thêm nút "🔑 Đổi mật khẩu Admin" & "🔒 Khóa màn hình Setup" vào đầu trang Setup Luồng & Mớn
+function enhanceDraftSetupPageHeader() {
+  const draftPage = $('page-draft-setup');
+  if (!draftPage || $('btnDraftChangePin')) return;
+  const btnGroup = draftPage.querySelector('.page-head > div:last-child');
+  if (btnGroup) {
+    const chgPinBtn = document.createElement('button');
+    chgPinBtn.id = 'btnDraftChangePin';
+    chgPinBtn.type = 'button';
+    chgPinBtn.className = 'tk-calc-btn';
+    chgPinBtn.style.cssText = 'padding:8px 10px!important;font-size:11.5px!important;';
+    chgPinBtn.innerHTML = '🔑 Đổi mật khẩu PIN';
+    chgPinBtn.onclick = () => requestAdminPinAuth('Đổi Mật Khẩu Quản Trị', null, true);
+
+    const lockBtn = document.createElement('button');
+    lockBtn.type = 'button';
+    lockBtn.style.cssText = 'background:var(--red);color:#fff;';
+    lockBtn.innerHTML = '🔒 Khóa lại';
+    lockBtn.onclick = () => {
+      isDraftSetupUnlocked = false;
+      nav('overview');
+    };
+
+    btnGroup.insertBefore(chgPinBtn, btnGroup.firstChild);
+    btnGroup.appendChild(lockBtn);
+  }
+}
+
+// Chặn chuyển tab sang 'draft-setup' nếu chưa nhập mã PIN (6868 hoặc mật khẩu đã đổi)
+const _baseNavBeforeDraftLock = nav;
+nav = function(page, saveState = true) {
+  if (page === 'draft-setup' && !isDraftSetupUnlocked) {
+    requestAdminPinAuth('Truy Cập Cài Đặt Luồng & Mớn Nước', () => {
+      isDraftSetupUnlocked = true;
+      enhanceDraftSetupPageHeader();
+      _baseNavBeforeDraftLock('draft-setup', saveState);
+    });
+    return;
+  }
+  _baseNavBeforeDraftLock(page, saveState);
+  if (page === 'draft-setup') enhanceDraftSetupPageHeader();
+};
+window.nav = nav;
+
+// Gắn lại sự kiện cho nút bấm trên thanh Tooltip (#ttEditBtn) dùng Modal PIN mới
+setTimeout(() => {
+  if ($('ttEditBtn')) {
+    $('ttEditBtn').onclick = () => {
+      if (!selectedShipForReport) return;
+      requestAdminPinAuth('Chỉnh Sửa Thông Tin Tàu', () => {
+        populateEditForm(selectedShipForReport);
+        hideTooltip();
+      });
+    };
+  }
+}, 400);
+
+// ----------------------------------------------------------------------------
+// PHẦN 4: TÍCH HỢP TIẾN ĐỘ LÀM HÀNG TỪ EPORT BERTHMAP CHO CÁC TÀU CẢNG TÂN VŨ
+// Nguồn: https://eportappapi.haiphongport.com.vn:15111/BerthMap (TK: 0566 / MK: 75820200Dung@)
+// ----------------------------------------------------------------------------
+var eportBerthMapConfig = {
+  url: 'https://eportappapi.haiphongport.com.vn:15111/BerthMap',
+  username: '0566',
+  password: '75820200Dung@',
+  autoSyncMinutes: 5
+};
+
+// Map lưu tiến độ làm hàng theo Tên tàu (Viết hoa):
+// { vesselName: { berth: 'Cầu 4', cargoType: 'Container', totalCargo: '42/84', completedCargo: '40/80', progressPct: 95.24, etb: '...', etd: '...', updatedAt: '...' } }
+var eportTanVuCargoMap = new Map();
+
+function loadEportConfigAndCargoFromStorage() {
+  try {
+    let savedCfg = localStorage.getItem('hp_eport_berthmap_cfg');
+    if (savedCfg) {
+      let p = JSON.parse(savedCfg);
+      eportBerthMapConfig = { ...eportBerthMapConfig, ...p };
+    }
+  } catch (e) {}
+
+  try {
+    let savedCargo = localStorage.getItem('hp_eport_berthmap_cargo');
+    if (savedCargo) {
+      let obj = JSON.parse(savedCargo);
+      Object.entries(obj).forEach(([k, v]) => eportTanVuCargoMap.set(k.toUpperCase(), v));
+    }
+  } catch (e) {}
+
+  if (supabaseClient) {
+    (async () => {
+      try {
+        const { data: files } = await supabaseClient.storage.from('port-documents').list('', { search: 'eport_berthmap_cargo.json' });
+        if (Array.isArray(files) && files.some(f => f.name === 'eport_berthmap_cargo.json')) {
+          const { data, error } = await supabaseClient.storage.from('port-documents').download('eport_berthmap_cargo.json');
+          if (data && !error) {
+            let parsed = JSON.parse(await data.text());
+            if (parsed.config) {
+              eportBerthMapConfig = { ...eportBerthMapConfig, ...parsed.config };
+              localStorage.setItem('hp_eport_berthmap_cfg', JSON.stringify(eportBerthMapConfig));
+            }
+            if (parsed.cargo) {
+              Object.entries(parsed.cargo).forEach(([k, v]) => eportTanVuCargoMap.set(k.toUpperCase(), v));
+              localStorage.setItem('hp_eport_berthmap_cargo', JSON.stringify(parsed.cargo));
+              renderTanVuLayout(getFilteredCalls());
+            }
+          }
+        }
+      } catch (e) {}
+    })();
+  }
+}
+
+async function saveEportConfigAndCargoToSupabase() {
+  localStorage.setItem('hp_eport_berthmap_cfg', JSON.stringify(eportBerthMapConfig));
+  let cargoObj = Object.fromEntries(eportTanVuCargoMap);
+  localStorage.setItem('hp_eport_berthmap_cargo', JSON.stringify(cargoObj));
+
+  if (supabaseClient) {
+    try {
+      const payload = {
+        updated_at: new Date().toISOString(),
+        config: eportBerthMapConfig,
+        cargo: cargoObj
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      await supabaseClient.storage.from('port-documents').upload('eport_berthmap_cargo.json', blob, { upsert: true });
+    } catch (e) {}
+  }
+}
+
+// Bóc tách bảng #jobsTable hoặc văn bản copy từ trang https://eportappapi.haiphongport.com.vn:15111/BerthMap
+function parseEportBerthMapHtmlOrText(rawContent) {
+  let count = 0;
+  if (!rawContent) return 0;
+
+  // Cách 1: Bóc tách trực tiếp từ DOM HTML của bảng #jobsTable trên trang BerthMap
+  if (rawContent.includes('<table') || rawContent.includes('jobsTable') || rawContent.includes('<tr')) {
+    try {
+      const doc = new DOMParser().parseFromString(rawContent, 'text/html');
+      const rows = doc.querySelectorAll('#jobsTable tbody tr, table tbody tr');
+      rows.forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        if (tds.length >= 5) {
+          let berth = tds[0]?.textContent.trim() || '';
+          let shipName = (tr.querySelector('td.ship') || tds[1])?.textContent.trim().toUpperCase() || '';
+          let cargoType = tds[2]?.textContent.trim() || 'Container';
+          let totalCargo = tds[3]?.textContent.trim() || '';
+          let completedCargo = tds[4]?.textContent.trim() || '';
+          let etbStr = tds[5]?.textContent.trim() || '';
+          let etdStr = tds[6]?.textContent.trim() || '';
+          let progText = tds[7]?.textContent.trim() || tr.textContent;
+
+          if (shipName && shipName.length >= 2 && !shipName.includes('TÊN TÀU')) {
+            let pctMatch = progText.match(/(\d{1,3}(?:[.,]\d+)?)\s*%/);
+            let pct = pctMatch ? parseFloat(pctMatch[1].replace(',', '.')) : calcProgressFromFraction(completedCargo, totalCargo);
+
+            eportTanVuCargoMap.set(shipName, {
+              berth,
+              cargoType,
+              totalCargo,
+              completedCargo,
+              progressPct: Number(pct.toFixed(2)),
+              etb: etbStr,
+              etd: etdStr,
+              source: 'ePort BerthMap',
+              updatedAt: new Date().toLocaleTimeString('vi-VN')
+            });
+            count++;
+          }
+        }
+      });
+    } catch (e) {}
+  }
+
+  // Cách 2: Bóc tách từ văn bản Copy-Paste (Ctrl+A, Ctrl+C từ bảng "Tiến độ làm hàng (theo tàu)" trên BerthMap)
+  if (count === 0) {
+    let lines = rawContent.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+    lines.forEach(line => {
+      // Nhận diện dòng có dạng: Cầu 4   HNQN...   Container   42/84   40/80   16/11/2026 16:00   16/11/2026 18:00   95.24%
+      let parts = line.split(/\t+|\s{2,}/).map(s => s.trim()).filter(Boolean);
+      if (parts.length >= 5 && /^(Cầu|Bến|B\d|TV\d)/i.test(parts[0])) {
+        let berth = parts[0];
+        let shipName = parts[1].toUpperCase();
+        let cargoType = parts[2] || 'Container';
+        let totalCargo = parts[3] || '';
+        let completedCargo = parts[4] || '';
+        let pctMatch = line.match(/(\d{1,3}(?:[.,]\d+)?)\s*%/);
+        let pct = pctMatch ? parseFloat(pctMatch[1].replace(',', '.')) : calcProgressFromFraction(completedCargo, totalCargo);
+
+        eportTanVuCargoMap.set(shipName, {
+          berth,
+          cargoType,
+          totalCargo,
+          completedCargo,
+          progressPct: Number(pct.toFixed(2)),
+          etb: parts[5] || '',
+          etd: parts[6] || '',
+          source: 'ePort BerthMap',
+          updatedAt: new Date().toLocaleTimeString('vi-VN')
+        });
+        count++;
+      }
+    });
+  }
+
+  return count;
+}
+
+// Tính % tiến độ từ chuỗi dạng "40/80" (Đã thực hiện) và "42/84" (Tổng lượng hàng)
+function calcProgressFromFraction(completedStr, totalStr) {
+  let parseNums = s => String(s || '').split('/').map(x => parseFloat(x.replace(/[^\d.]/g, '')) || 0);
+  let compArr = parseNums(completedStr);
+  let totArr = parseNums(totalStr);
+
+  let compSum = compArr.reduce((a, b) => a + b, 0);
+  let totSum = totArr.reduce((a, b) => a + b, 0);
+  if (totSum > 0 && compSum >= 0) {
+    return Math.min(100, (compSum / totSum) * 100);
+  }
+  return 0;
+}
+
+// Hàm lấy thông tin Tiến độ làm hàng cho tàu tại Cảng Tân Vũ:
+// Ưu tiên 1: Lấy từ dữ liệu thực ePort BerthMap đã đồng bộ
+// Ưu tiên 2: Nếu tàu đang đỗ tại Tân Vũ mà chưa đồng bộ được từ cổng 15111, tự động ước tính theo thời gian làm hàng thực tế & sức chở
+function getTanVuVesselCargoProgress(shipObj) {
+  let vName = String(shipObj.vessel || '').trim().toUpperCase();
+  if (eportTanVuCargoMap.has(vName)) {
+    return eportTanVuCargoMap.get(vName);
+  }
+
+  // Khớp gần đúng tên tàu (nếu trên ePort viết tắt tên tàu)
+  for (let [k, val] of eportTanVuCargoMap.entries()) {
+    if (vName.includes(k) || k.includes(vName)) {
+      return val;
+    }
+  }
+
+  // Nếu chưa có trong Map ePort nhưng là tàu thuộc Cảng Tân Vũ: Tính tiến độ ước lượng theo thời gian thực tại cầu
+  let term = String(shipObj.terminal || '').toUpperCase();
+  if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return null;
+
+  let specs = getVesselEnrichedSpecs(vName, shipObj);
+  let t1 = shipObj.etb ? new Date(shipObj.etb).getTime() : 0;
+  let t2 = shipObj.etd ? new Date(shipObj.etd).getTime() : (t1 ? t1 + 18 * 3600000 : 0);
+  let now = Date.now();
+
+  let pct = 0;
+  if (t1 > 0 && now >= t1) {
+    if (t2 > t1 && now >= t2) pct = 100;
+    else if (t2 > t1) pct = Math.min(98, Math.max(5, ((now - t1) / (t2 - t1)) * 100));
+  }
+
+  let unit = specs.capacity_unit || 'TEU';
+  let cap = Number(specs.teu || 0);
+  if (unit === 'TEU' || (specs.vessel_type || '').includes('Container')) {
+    let totalBox = cap > 0 ? Math.max(40, Math.round(cap * 0.25)) : 180;
+    let totalTeu = totalBox * 2;
+    let doneBox = Math.round(totalBox * (pct / 100));
+    let doneTeu = doneBox * 2;
+    return {
+      berth: shipObj.berth || 'Tân Vũ',
+      cargoType: 'Container',
+      totalCargo: `${totalBox}/${totalTeu}`,
+      completedCargo: `${doneBox}/${doneTeu}`,
+      progressPct: Number(pct.toFixed(2)),
+      source: 'Ước tính theo ETB/ETD (Bấm ⚙️ ePort để nạp thực tế)',
+      isEstimated: true
+    };
+  } else {
+    let totalMeasure = cap > 0 ? cap : 15000;
+    let doneMeasure = Math.round(totalMeasure * (pct / 100));
+    return {
+      berth: shipObj.berth || 'Tân Vũ',
+      cargoType: specs.vessel_type || 'Hàng tổng hợp',
+      totalCargo: `${totalMeasure.toLocaleString('vi-VN')} ${unit}`,
+      completedCargo: `${doneMeasure.toLocaleString('vi-VN')} ${unit}`,
+      progressPct: Number(pct.toFixed(2)),
+      source: 'Ước tính theo ETB/ETD (Bấm ⚙️ ePort để nạp thực tế)',
+      isEstimated: true
+    };
+  }
+}
+
+// Hàm kết nối tự động tới https://eportappapi.haiphongport.com.vn:15111/BerthMap với TK 0566 / MK 75820200Dung@
+async function syncCargoFromEportBerthMap(isSilent = false) {
+  let statusEl = $('eportSyncStatusText');
+  if (statusEl) {
+    statusEl.textContent = `⏳ Đang kết nối ${eportBerthMapConfig.url} (TK: ${eportBerthMapConfig.username})...`;
+    statusEl.style.color = '#f59e0b';
+  }
+
+  let rawHtml = '';
+  let targetUrl = eportBerthMapConfig.url;
+  let basicAuth = btoa(`${eportBerthMapConfig.username}:${eportBerthMapConfig.password}`);
+
+  // Cổng 1: Thử kết nối trực tiếp kèm thông tin xác thực
+  try {
+    let res1 = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Authorization': `Basic ${basicAuth}` },
+      credentials: 'include'
+    });
+    if (res1.ok) rawHtml = await res1.text();
+  } catch (e1) {}
+
+  // Cổng 2: Thử qua Jina Reader HTML mode
+  if (!rawHtml || rawHtml.length < 100) {
+    try {
+      let res2 = await fetch(`https://r.jina.ai/${targetUrl}`, {
+        headers: {
+          'X-Return-Format': 'html',
+          'X-No-Cache': 'true',
+          'Authorization': `Basic ${basicAuth}`
+        }
+      });
+      if (res2.ok) rawHtml = await res2.text();
+    } catch (e2) {}
+  }
+
+  if (rawHtml && rawHtml.length > 100) {
+    let count = parseEportBerthMapHtmlOrText(rawHtml);
+    if (count > 0) {
+      await saveEportConfigAndCargoToSupabase();
+      renderTanVuLayout(getFilteredCalls());
+      renderEportCargoManageTable();
+      if (statusEl) {
+        statusEl.textContent = `✓ Đã đồng bộ tự động ${count} tàu từ ePort BerthMap (${new Date().toLocaleTimeString('vi-VN')})`;
+        statusEl.style.color = '#10b981';
+      }
+      if (!isSilent) alert(`Đã lấy thành công tiến độ làm hàng của ${count} tàu từ ePort BerthMap!`);
+      return;
+    }
+  }
+
+  if (statusEl) {
+    statusEl.textContent = `ℹ️ Cổng :15111 yêu cầu đăng nhập phiên nội bộ. Hãy bấm "↗ Mở BerthMap" rồi bấm "📋 Dán bảng tiến độ" hoặc nhập trực tiếp bên dưới.`;
+    statusEl.style.color = '#38bdf8';
+  }
+  if (!isSilent) {
+    if (confirm(`Trình duyệt chặn truy cập ngầm xuyên tên miền vào cổng :15111 của ePort.\n\nBạn có muốn mở trang BerthMap (TK: ${eportBerthMapConfig.username} / MK: ${eportBerthMapConfig.password} đã được copy sẵn) để copy nhanh bảng "Tiến độ làm hàng (theo tàu)" không?`)) {
+      try { navigator.clipboard.writeText(eportBerthMapConfig.password); } catch (e) {}
+      window.open(eportBerthMapConfig.url, '_blank', 'noopener');
+    }
+  }
+}
+window.syncCargoFromEportBerthMap = syncCargoFromEportBerthMap;
+
+// Giao diện Modal Cài đặt TK/MK ePort BerthMap & Cập nhật Tiến độ làm hàng Tân Vũ
+function ensureEportSetupModalDOM() {
+  if ($('eportSetupModal')) return;
+  const m = document.createElement('div');
+  m.id = 'eportSetupModal';
+  m.className = 'modal-shade';
+  m.innerHTML = `
+    <div class="modal" style="width:min(760px, 96vw);max-height:92vh;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px;">
+        <div>
+          <h3 style="margin:0;font-size:15px;">⚙️ Cấu Hình ePort BerthMap & Tiến Độ Làm Hàng Tân Vũ</h3>
+          <div class="muted tiny">Đồng bộ Tổng lượng hàng hóa · Đã thực hiện · Tiến độ (%) từ eportappapi.haiphongport.com.vn:15111/BerthMap</div>
+        </div>
+        <button type="button" onclick="$('eportSetupModal').classList.remove('open')" style="padding:4px 8px;font-size:11px;">✕ Đóng</button>
+      </div>
+
+      <div style="overflow-y:auto;flex:1;padding-right:4px;display:grid;gap:12px;">
+        <!-- KHỐI 1: CÀI ĐẶT TÀI KHOẢN & MẬT KHẨU EPORT BERTHMAP -->
+        <div style="background:rgba(2,132,199,0.07);border:1px solid rgba(2,132,199,0.3);border-radius:8px;padding:10px;">
+          <div style="font-weight:850;font-size:12px;color:var(--navy2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+            <span>🔐 Tài khoản kết nối ePort BerthMap (Có thể thay đổi TK/MK bất kỳ lúc nào)</span>
+            <span id="eportSyncStatusText" style="font-size:10px;color:var(--cyan);">Sẵn sàng</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1.6fr 0.8fr 1fr;gap:8px;">
+            <div class="form-group" style="margin:0;">
+              <label>Đường dẫn ePort BerthMap URL</label>
+              <input type="text" id="ep_cfgUrl" class="field" value="https://eportappapi.haiphongport.com.vn:15111/BerthMap">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Tài khoản (Username)</label>
+              <input type="text" id="ep_cfgUser" class="field" value="0566" style="font-weight:800;">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Mật khẩu (Password)</label>
+              <div style="display:flex;gap:4px;">
+                <input type="password" id="ep_cfgPass" class="field" value="75820200Dung@" style="flex:1;">
+                <button type="button" onclick="const inp=$('ep_cfgPass'); inp.type=inp.type==='password'?'text':'password';" title="Hiện/Ẩn mật khẩu" style="padding:4px 7px;">👁️</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+            <button type="button" class="primary" style="background:#0284c7;color:#fff;" onclick="saveEportCredentialsFromModal()">💾 Lưu TK/MK ePort</button>
+            <button type="button" class="primary" style="background:#059669;color:#fff;" onclick="syncCargoFromEportBerthMap(false)">🔄 Tự lấy dữ liệu BerthMap</button>
+            <button type="button" onclick="window.open($('ep_cfgUrl').value, '_blank', 'noopener')">↗ Mở trang BerthMap</button>
+            <button type="button" style="background:#f59e0b;color:#fff;" onclick="smartPasteEportBerthMapTable()">📋 Dán nhanh từ BerthMap</button>
+          </div>
+        </div>
+
+        <!-- KHỐI 2: THÊM / CẬP NHẬT NHANH TIẾN ĐỘ TỪNG TÀU TÂN VŨ -->
+        <div style="background:rgba(16,185,129,0.06);border:1px dashed #10b981;border-radius:8px;padding:10px;">
+          <div style="font-weight:850;font-size:12px;color:#059669;margin-bottom:6px;">
+            ➕ Cập nhật / Ghi đè Tiến độ làm hàng tàu Cảng Tân Vũ (Theo mẫu bảng #jobsTable BerthMap)
+          </div>
+          <div style="display:grid;grid-template-columns:0.7fr 1.3fr 0.9fr 1fr 1fr 0.8fr auto;gap:6px;align-items:end;">
+            <div class="form-group" style="margin:0;"><label>Bến</label><input id="ep_inBerth" class="field" placeholder="Cầu 4"></div>
+            <div class="form-group" style="margin:0;"><label>Tên tàu (*)</label><input id="ep_inVessel" class="field" placeholder="VD: SITC QINGDAO" list="tanVuVesselDatalist"></div>
+            <datalist id="tanVuVesselDatalist"></datalist>
+            <div class="form-group" style="margin:0;"><label>Hàng hóa</label><input id="ep_inCargoType" class="field" value="Container"></div>
+            <div class="form-group" style="margin:0;"><label>Tổng lượng (Cont/Tấn)</label><input id="ep_inTotal" class="field" placeholder="VD: 42/84" oninput="autoCalcModalEportPct()"></div>
+            <div class="form-group" style="margin:0;"><label>Đã thực hiện</label><input id="ep_inDone" class="field" placeholder="VD: 40/80" oninput="autoCalcModalEportPct()"></div>
+            <div class="form-group" style="margin:0;"><label>Tiến độ (%)</label><input id="ep_inPct" type="number" step="0.01" class="field" placeholder="95.24"></div>
+            <button type="button" class="primary" style="background:#059669;color:#fff;height:33px;" onclick="addOrUpdateSingleEportCargoRow()">+ Lưu tàu</button>
+          </div>
+        </div>
+
+        <!-- KHỐI 3: BẢNG TIẾN ĐỘ LÀM HÀNG (THEO TÀU) HIỆN TẠI -->
+        <div>
+          <div style="font-weight:850;font-size:12px;margin-bottom:6px;">📊 Bảng Tiến độ làm hàng (theo tàu) đang hiển thị tại Cảng Tân Vũ</div>
+          <div class="table-wrap" style="max-height:240px;">
+            <table style="min-width:620px;font-size:11px;">
+              <thead>
+                <tr>
+                  <th>Bến</th>
+                  <th>Tên tàu</th>
+                  <th>Hàng hóa</th>
+                  <th>Tổng Container / Tổng Tấn</th>
+                  <th>Đã thực hiện</th>
+                  <th>Tiến độ làm hàng</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="eportCargoTableRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(m);
+}
+
+function openEportBerthMapSetupModal() {
+  requestAdminPinAuth('Cấu Hình ePort BerthMap & Tiến Độ Làm Hàng', () => {
+    ensureEportSetupModalDOM();
+    if ($('ep_cfgUrl')) $('ep_cfgUrl').value = eportBerthMapConfig.url;
+    if ($('ep_cfgUser')) $('ep_cfgUser').value = eportBerthMapConfig.username;
+    if ($('ep_cfgPass')) $('ep_cfgPass').value = eportBerthMapConfig.password;
+
+    // Đổ danh sách tàu Tân Vũ vào datalist gợi ý
+    const dl = $('tanVuVesselDatalist');
+    if (dl) {
+      let tvShips = getFilteredCalls().filter(c => (c.terminal || '').toUpperCase().includes('TÂN VŨ') || (c.terminal || '').toUpperCase().includes('TAN VU'));
+      dl.innerHTML = tvShips.map(s => `<option value="${esc(s.vessel)}">${esc(s.berth || '')}</option>`).join('');
+    }
+
+    renderEportCargoManageTable();
+    $('eportSetupModal').classList.add('open');
+  });
+}
+window.openEportBerthMapSetupModal = openEportBerthMapSetupModal;
+
+function saveEportCredentialsFromModal() {
+  eportBerthMapConfig.url = ($('ep_cfgUrl')?.value || '').trim() || 'https://eportappapi.haiphongport.com.vn:15111/BerthMap';
+  eportBerthMapConfig.username = ($('ep_cfgUser')?.value || '').trim() || '0566';
+  eportBerthMapConfig.password = ($('ep_cfgPass')?.value || '').trim() || '75820200Dung@';
+  saveEportConfigAndCargoToSupabase();
+  alert(`Đã lưu cấu hình tài khoản ePort BerthMap (TK: ${eportBerthMapConfig.username}) thành công!`);
+}
+window.saveEportCredentialsFromModal = saveEportCredentialsFromModal;
+
+function autoCalcModalEportPct() {
+  let tot = $('ep_inTotal')?.value || '';
+  let done = $('ep_inDone')?.value || '';
+  let pct = calcProgressFromFraction(done, tot);
+  if (pct > 0 && $('ep_inPct')) {
+    $('ep_inPct').value = pct.toFixed(2);
+  }
+}
+window.autoCalcModalEportPct = autoCalcModalEportPct;
+
+function addOrUpdateSingleEportCargoRow() {
+  let vName = ($('ep_inVessel')?.value || '').trim().toUpperCase();
+  if (!vName) { alert('Vui lòng nhập Tên tàu!'); return; }
+  let berth = ($('ep_inBerth')?.value || 'Cầu Tân Vũ').trim();
+  let cargoType = ($('ep_inCargoType')?.value || 'Container').trim();
+  let totalCargo = ($('ep_inTotal')?.value || '0/0').trim();
+  let completedCargo = ($('ep_inDone')?.value || '0/0').trim();
+  let pct = parseFloat($('ep_inPct')?.value);
+  if (isNaN(pct)) pct = calcProgressFromFraction(completedCargo, totalCargo);
+
+  eportTanVuCargoMap.set(vName, {
+    berth,
+    cargoType,
+    totalCargo,
+    completedCargo,
+    progressPct: Number((pct || 0).toFixed(2)),
+    source: 'Cập nhật ePort',
+    updatedAt: new Date().toLocaleTimeString('vi-VN')
+  });
+
+  saveEportConfigAndCargoToSupabase();
+  renderEportCargoManageTable();
+  renderTanVuLayout(getFilteredCalls());
+}
+window.addOrUpdateSingleEportCargoRow = addOrUpdateSingleEportCargoRow;
+
+async function smartPasteEportBerthMapTable() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (e) {}
+  if (!text || text.trim().length < 5) {
+    text = prompt('Hãy dán (Ctrl+V) nội dung bảng "Tiến độ làm hàng (theo tàu)" hoặc HTML từ trang ePort BerthMap vào đây:');
+  }
+  if (!text) return;
+  let count = parseEportBerthMapHtmlOrText(text);
+  if (count > 0) {
+    await saveEportConfigAndCargoToSupabase();
+    renderEportCargoManageTable();
+    renderTanVuLayout(getFilteredCalls());
+    alert(`Đã bóc tách và nạp thành công tiến độ làm hàng của ${count} tàu!`);
+  } else {
+    alert('Không nhận diện được dòng dữ liệu tàu nào. Bạn có thể nhập trực tiếp vào các ô bên dưới!');
+  }
+}
+window.smartPasteEportBerthMapTable = smartPasteEportBerthMapTable;
+
+function renderEportCargoManageTable() {
+  const tbody = $('eportCargoTableRows');
+  if (!tbody) return;
+  if (eportTanVuCargoMap.size === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Chưa có dữ liệu đồng bộ riêng. Hệ thống đang hiển thị ước tính tự động cho các tàu tại Cảng Tân Vũ.</td></tr>`;
+    return;
+  }
+  let entries = Array.from(eportTanVuCargoMap.entries());
+  tbody.innerHTML = entries.map(([vName, d]) => `
+    <tr>
+      <td><b>${esc(d.berth || '—')}</b></td>
+      <td style="font-weight:850;color:var(--navy2);">${esc(vName)}</td>
+      <td>${esc(d.cargoType || 'Container')}</td>
+      <td><b>${esc(d.totalCargo || '—')}</b></td>
+      <td style="color:#0284c7;font-weight:800;">${esc(d.completedCargo || '—')}</td>
+      <td>
+        <span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:10px;font-weight:850;font-size:10.5px;">
+          ${Number(d.progressPct || 0).toFixed(2)}%
+        </span>
+      </td>
+      <td>
+        <button type="button" class="tiny" onclick="$('ep_inBerth').value='${esc(d.berth||'')}';$('ep_inVessel').value='${esc(vName)}';$('ep_inCargoType').value='${esc(d.cargoType||'Container')}';$('ep_inTotal').value='${esc(d.totalCargo||'')}';$('ep_inDone').value='${esc(d.completedCargo||'')}';$('ep_inPct').value='${d.progressPct||0}';">Sửa</button>
+        <button type="button" class="tiny" style="background:var(--red);color:#fff;" onclick="eportTanVuCargoMap.delete('${esc(vName)}');saveEportConfigAndCargoToSupabase();renderEportCargoManageTable();renderTanVuLayout(getFilteredCalls());">Xóa</button>
+      </td>
+    </tr>
+  `).join('');
+}
+window.renderEportCargoManageTable = renderEportCargoManageTable;
+
+// ----------------------------------------------------------------------------
+// PHẦN 5: NÂNG CẤP POPUP (#shipTooltip) HIỂN THỊ TỔNG LƯỢNG HÀNG - ĐÃ THỰC HIỆN - TIẾN ĐỘ LÀM HÀNG CHO TÀU TÂN VŨ & TỐI ƯU MOBILE/PC
+// ----------------------------------------------------------------------------
+(function injectTooltipAndResponsiveOptimizationCSS() {
+  if ($('hpEportTooltipAndMobileStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'hpEportTooltipAndMobileStyle';
+  st.textContent = `
+    /* Khối Tiến độ làm hàng ePort BerthMap bên trong Popup #shipTooltip */
+    #shipTooltip {
+      max-width: min(360px, 94vw) !important;
+      width: 345px !important;
+      z-index: 1100 !important;
+      transition: opacity 0.15s ease;
+    }
+    .tt-eport-cargo-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(2, 132, 199, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      border-radius: 8px;
+    }
+    .tt-eport-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 850;
+      color: #059669;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    :root[data-theme="dark"] .tt-eport-title { color: #34d399; }
+    .tt-eport-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      text-align: center;
+      background: var(--card);
+      padding: 5px 4px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      margin-bottom: 6px;
+    }
+    .tt-eport-metrics small {
+      display: block;
+      font-size: 8.5px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .tt-eport-metrics b {
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .tt-eport-bar-wrap {
+      height: 16px;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+    }
+    .tt-eport-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      border-radius: 10px;
+      transition: width 0.35s ease;
+    }
+    .tt-eport-bar-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+    }
+
+    /* Tối ưu toàn diện hiển thị trên Điện thoại (<= 768px) và Máy tính */
+    @media (max-width: 768px) {
+      .app {
+        grid-template-columns: 52px minmax(0, 1fr) !important;
+      }
+      .content {
+        padding: 10px 8px 28px !important;
+      }
+      .topbar {
+        padding: 6px 10px !important;
+      }
+      .topbar h1 {
+        font-size: 13px !important;
+      }
+      .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+      }
+      .kpi {
+        padding: 8px 10px !important;
+      }
+      .kpi-value {
+        font-size: 18px !important;
+      }
+      .panel-head {
+        padding: 8px 10px !important;
+      }
+      .panel-body {
+        padding: 8px 10px !important;
+      }
+      /* Trên điện thoại, Popup #shipTooltip luôn căn giữa nổi rõ ràng không bao giờ tràn mép màn hình */
+      #shipTooltip {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        top: auto !important;
+        bottom: 14px !important;
+        width: 92vw !important;
+        max-width: 92vw !important;
+        box-shadow: 0 10px 35px rgba(0,0,0,0.45) !important;
+        border: 1.5px solid var(--cyan) !important;
+      }
+      .berth-row {
+        grid-template-columns: 30px 1fr !important;
+        gap: 5px !important;
+      }
+      .ship-chip {
+        padding: 4px 6px !important;
+        font-size: 9.5px !important;
+      }
+    }
+  `;
+  document.head.appendChild(st);
+})();
+
+// Thêm nút "⚙️ ePort BerthMap" lên thanh tiêu đề thẻ "Cảng Tân Vũ (Tiêu điểm)" ở màn hình Toàn cảnh
+function injectTanVuEportHeaderButton() {
+  const tvTitle = $('t_tanvuTitle');
+  if (tvTitle && tvTitle.parentElement && !$('btnOpenEportSetup')) {
+    const head = tvTitle.parentElement;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;';
+    const countSpan = $('tanvuCount');
+    if (countSpan) wrap.appendChild(countSpan);
+
+    const btn = document.createElement('button');
+    btn.id = 'btnOpenEportSetup';
+    btn.type = 'button';
+    btn.className = 'tk-calc-btn';
+    btn.style.cssText = 'padding:3px 8px!important;font-size:10px!important;';
+    btn.innerHTML = '⚙️ Tiến độ ePort BerthMap';
+    btn.title = 'Cài đặt TK/MK ePort BerthMap (0566) & Cập nhật tiến độ làm hàng tàu Tân Vũ';
+    btn.onclick = openEportBerthMapSetupModal;
+    wrap.appendChild(btn);
+    head.appendChild(wrap);
+  }
+}
+
+// Ghi đè hàm showTooltip để hiển thị khối Tổng lượng hàng hóa - Đã thực hiện - Tiến độ làm hàng khi trỏ vào tàu Cảng Tân Vũ
+function showTooltip(e, s) {
+  if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+  let specs = getVesselEnrichedSpecs(s.vessel, s);
+  selectedShipForReport = { ...s, ...specs };
+  let tt = $('shipTooltip');
+  if (!tt) return;
+
+  $('ttName').textContent = s.vessel;
+  $('ttOperator').textContent = specs.operator || s.operator || '—';
+  if ($('ttVesselType')) $('ttVesselType').textContent = specs.vessel_type || 'Container';
+  $('ttLoa').textContent = `${specs.loa || '—'}m × ${specs.beam ? Number(specs.beam).toFixed(1) + 'm' : '—'}`;
+
+  let capPart = specs.teu > 0 ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'} · ` : '';
+  $('ttDwt').textContent = capPart + (specs.dwt ? `${specs.dwt} T` :
+  
 // --- ĐƯA CÁC HÀM RA WINDOW ---
 window.setStatsRankingMetric = setStatsRankingMetric;
 window.runEndOfDayVesselAudit = runEndOfDayVesselAudit;
