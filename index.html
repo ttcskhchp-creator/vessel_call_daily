@@ -1492,13 +1492,14 @@ window.hpSkin=(function(){
                 <div class="form-group">
                   <label>Loại tàu</label>
                   <select id="editVesselType" class="field" style="width:100%" onchange="onVesselTypeChangeUpdateCapacity()">
-                    <option value="Container">Container (TEU)</option>
-                    <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp (Tấn/m³)</option>
-                    <option value="Ô tô (PCTC)">Ô tô / Ro-Ro (PCTC - Units)</option>
-                    <option value="Tàu dầu / Hóa chất">Tàu dầu / Hóa chất (m³)</option>
-                    <option value="Tàu khí (LPG / LNG)">Tàu khí LPG / LNG (m³)</option>
-                    <option value="Tàu thiết bị / Project">Tàu thiết bị / Siêu trường (Units/Tấn)</option>
-                    <option value="Khác">Khác</option>
+                  <option value="Container">Tàu Container</option>
+                  <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp</option>
+                  <option value="Ô tô (PCTC)">Ô tô / Ro-Ro (PCTC)</option>
+                  <option value="Tàu dầu / Hóa chất">Tàu dầu / FSO / Hóa chất</option>
+                  <option value="Tàu khí (LPG / LNG)">Tàu khí (LPG / LNG)</option>
+                  <option value="Tàu chở khách (Passenger/Cruise)">Tàu chở khách (Passenger/Cruise)</option>
+                  <option value="Tàu thiết bị / Project">Tàu thiết bị / Project</option>
+                  <option value="Khác">Khác</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -9358,6 +9359,140 @@ setTimeout(() => {
     renderAll();
   }
 }, 250);
+
+/* ==================== CHUẨN HÓA TÊN LOẠI TÀU THỐNG NHẤT: "TÀU CONTAINER" ==================== */
+
+// 1. Hàm quy chuẩn mọi biến thể (Tàu mẹ Container, Container Feeder, Container Ship, General Cargo...) về "Container"
+function normalizeContainerTypeName(rawType) {
+  let s = String(rawType || '').trim();
+  if (!s) return 'Container';
+  let up = s.toUpperCase();
+  if (
+    up.includes('CONTAINER') ||
+    up.includes('FEEDER') ||
+    up.includes('GENERAL CARGO') ||
+    up.includes('TÀU MẸ')
+  ) {
+    return 'Container';
+  }
+  return s;
+}
+
+// 2. Cập nhật hàm ánh xạ từ VesselFinder để trả về thống nhất "Container"
+function mapVesselFinderShipType(rawVfType) {
+  let s = String(rawVfType || '').trim().toLowerCase();
+  if (!s) return '';
+  if (s.includes('container') || s.includes('general cargo') || s.includes('reefer') || s.includes('multi-purpose')) {
+    return 'Container';
+  }
+  if (s.includes('vehicles carrier') || s.includes('ro-ro') || s.includes('roro') || s.includes('car carrier')) {
+    return 'Tàu Ro-Ro (Vehicles Carrier)';
+  }
+  if (s.includes('passenger') || s.includes('cruise')) {
+    return 'Tàu chở khách (Passenger/Cruise)';
+  }
+  if (s.includes('lng') || s.includes('lpg') || s.includes('gas carrier') || s.includes('gas tanker')) {
+    return 'Tàu khí (LPG / LNG)';
+  }
+  if (s.includes('fso') || s.includes('fpso') || s.includes('tanker') || s.includes('crude') || s.includes('chemical') || s.includes('asphalt') || s.includes('bitumen') || s.includes('bunkering')) {
+    return 'Tàu dầu / FSO / Hóa chất';
+  }
+  if (s.includes('bulk') || s.includes('cement') || s.includes('wood chips') || s.includes('urea') || s.includes('aggregates') || s.includes('limestone') || s.includes('ore carrier')) {
+    return 'Tàu hàng rời (Bulk Carrier)';
+  }
+  if (s.includes('heavy load') || s.includes('landing craft') || s.includes('project') || s.includes('livestock')) {
+    return 'Tàu thiết bị / Project';
+  }
+  if (s.includes('tug') || s.includes('fishing') || s.includes('yacht') || s.includes('military') || s.includes('auxiliary')) {
+    return 'Khác';
+  }
+  return '';
+}
+window.mapVesselFinderShipType = mapVesselFinderShipType;
+
+// 3. Cập nhật lại danh sách <select> trên Form Sửa tàu và Bộ lọc bảng Tra cứu
+function ensureVesselTypeSelectOptions() {
+  const sel = $('editVesselType');
+  if (sel) {
+    let curVal = normalizeContainerTypeName(sel.value);
+    sel.innerHTML = `
+      <option value="Container">Tàu Container</option>
+      <option value="Tàu hàng rời (Bulk Carrier)">Tàu hàng rời (Bulk Carrier)</option>
+      <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp</option>
+      <option value="Tàu Ro-Ro (Vehicles Carrier)">Tàu Ro-Ro / Ô tô (PCTC)</option>
+      <option value="Tàu dầu / FSO / Hóa chất">Tàu dầu / FSO / Hóa chất</option>
+      <option value="Tàu khí (LPG / LNG)">Tàu khí (LPG / LNG)</option>
+      <option value="Tàu chở khách (Passenger/Cruise)">Tàu chở khách (Passenger/Cruise)</option>
+      <option value="Tàu thiết bị / Project">Tàu thiết bị / Project</option>
+      <option value="Khác">Khác</option>
+    `;
+    sel.value = curVal || 'Container';
+    sel.dataset.upgraded = '1';
+  }
+
+  // Đồng bộ luôn ô lọc Loại tàu ở màn hình Tra cứu lịch tàu (#cf_vessel_type)
+  const filterSel = $('cf_vessel_type');
+  if (filterSel) {
+    let curF = normalizeContainerTypeName(filterSel.value);
+    filterSel.innerHTML = `
+      <option value="">Tất cả loại</option>
+      <option value="Container">Tàu Container</option>
+      <option value="Hàng rời">Tàu hàng rời / Bulk</option>
+      <option value="Ro-Ro">Tàu Ro-Ro / Ô tô</option>
+      <option value="Dầu">Tàu dầu / FSO / Hóa chất</option>
+      <option value="Khí">Tàu khí LPG / LNG</option>
+      <option value="Khách">Tàu chở khách</option>
+      <option value="Thiết bị">Tàu thiết bị / Project</option>
+    `;
+    filterSel.value = filterSel.value ? curF : '';
+  }
+}
+window.ensureVesselTypeSelectOptions = ensureVesselTypeSelectOptions;
+
+// 4. Bọc lại hàm getVesselEnrichedSpecs để tự động chuẩn hóa mọi dữ liệu cũ trong Catalog/Override
+if (!window._containerTypeUnifiedWrapped) {
+  const _prevGetSpecs = getVesselEnrichedSpecs;
+  getVesselEnrichedSpecs = function(vesselName, rawCall = {}) {
+    let specs = _prevGetSpecs(vesselName, rawCall);
+    specs.vessel_type = normalizeContainerTypeName(specs.vessel_type);
+    return specs;
+  };
+  window.getVesselEnrichedSpecs = getVesselEnrichedSpecs;
+  window._containerTypeUnifiedWrapped = true;
+}
+
+// 5. Dọn dẹp và chuẩn hóa ngay dữ liệu đang lưu trong bộ nhớ đệm trình duyệt
+(function cleanExistingCatalogContainerLabels() {
+  ensureVesselTypeSelectOptions();
+  let updated = false;
+  if (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap instanceof Map) {
+    vesselCatalogMap.forEach((val, key) => {
+      let norm = normalizeContainerTypeName(val.type);
+      if (val.type !== norm) {
+        val.type = norm;
+        vesselCatalogMap.set(key, val);
+        updated = true;
+      }
+    });
+    if (updated) {
+      try {
+        localStorage.setItem('hp_vessel_catalog', JSON.stringify(Object.fromEntries(vesselCatalogMap)));
+      } catch (e) {}
+    }
+  }
+  if (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap instanceof Map) {
+    vesselOverridesMap.forEach((val, key) => {
+      if (val.vessel_type) {
+        val.vessel_type = normalizeContainerTypeName(val.vessel_type);
+        vesselOverridesMap.set(key, val);
+      }
+    });
+  }
+  if (Array.isArray(allCalls) && allCalls.length > 0) {
+    allCalls = filterAndDeduplicateCalls(allCalls);
+    renderAll();
+  }
+})();
   
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
