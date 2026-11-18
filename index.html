@@ -9984,109 +9984,220 @@ setTimeout(() => {
   }
 }, 200);
   
-/* ==================== MODULE HIỂN THỊ TIẾN ĐỘ LÀM HÀNG EPORT BERTHMAP TRÊN THẺ CẢNG TÂN VŨ (TIÊU ĐIỂM) ==================== */
+/* ==================== MODULE THẺ TÀU GỌN ĐẸP VỚI THANH TIẾN ĐỘ & POPUP CHI TIẾT EPORT ==================== */
 
-// Lưu trữ tiến độ làm hàng từ ePort BerthMap: Map<VESSEL_NAME, { berth, cargoType, contTeuStr, donePlanStr, doneNum, planNum, pct, atb, etd, updatedAt }>
 var eportTanVuJobsMap = window.eportTanVuJobsMap || new Map();
 window.eportTanVuJobsMap = eportTanVuJobsMap;
 
-// 1. Tiêm CSS cho thẻ tàu mở rộng hiển thị đầy đủ thông số ePort BerthMap & Thanh tiến độ (Progress Bar)
-(function injectTanVuEportCardCSS() {
-  if ($('hpTanVuEportStyle')) return;
+// 1. Tiêm CSS cho thẻ tàu gọn đẹp (Thanh tiến độ nằm ngay trên chip tàu) & Modal Popup chi tiết
+(function injectCompactProgressCardCSS() {
+  let oldStyle = $('hpTanVuEportStyle');
+  if (oldStyle) oldStyle.remove();
+
   const st = document.createElement('style');
   st.id = 'hpTanVuEportStyle';
   st.textContent = `
-    .tv-ship-card {
-      border-radius: 8px;
-      padding: 7px 10px;
+    /* Thẻ tàu gọn gàng, tinh tế thay thế sức chở bằng Thanh tiến độ */
+    .tv-compact-chip {
+      border-radius: 7px;
+      padding: 5px 9px;
       color: #ffffff;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 245px;
-      max-width: 340px;
-      flex: 1 1 260px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      position: relative;
-    }
-    .tv-ship-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.25);
-    }
-    .tv-ship-top {
-      display: flex;
-      justify-content: space-between;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.14);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      max-width: 100%;
     }
-    .tv-ship-name {
-      font-size: 11.5px;
+    .tv-compact-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+    }
+    .tv-chip-vname {
+      font-size: 11px;
       font-weight: 850;
       letter-spacing: 0.2px;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
-    .tv-ship-status {
+    /* Thanh tiến độ nhỏ gọn nằm thay vị trí sức chở trên thẻ tàu */
+    .tv-mini-prog {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0, 0, 0, 0.24);
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .tv-mini-track {
+      width: 46px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .tv-mini-fill {
+      height: 100%;
+      background: #6ee7b7;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .tv-mini-fill.is-done {
+      background: #a7f3d0;
+    }
+    .tv-mini-pct {
+      font-size: 9.5px;
+      font-weight: 850;
+      color: #fef08a;
+      min-width: 26px;
+      text-align: right;
+    }
+    .tv-chip-badge {
       font-size: 9px;
       padding: 2px 6px;
       background: rgba(0, 0, 0, 0.32);
       border-radius: 4px;
-      font-weight: 800;
+      font-weight: 750;
       white-space: nowrap;
-      flex-shrink: 0;
     }
-    .tv-eport-metrics {
+
+    /* Popup chi tiết tàu khi bấm vào thẻ */
+    .vessel-detail-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 3px 8px;
-      background: rgba(0, 0, 0, 0.18);
-      border-radius: 5px;
-      padding: 4px 7px;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin-top: 10px;
+    }
+    .vd-box {
+      background: rgba(38, 189, 200, 0.06);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 7px 10px;
+    }
+    .vd-box small {
+      display: block;
       font-size: 9.5px;
-      line-height: 1.3;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 2px;
     }
-    .tv-eport-metrics span {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .tv-eport-metrics b {
-      color: #fef08a;
-      font-weight: 800;
-    }
-    .tv-prog-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 1px;
-    }
-    .tv-prog-bar {
-      flex: 1;
-      height: 6px;
-      background: rgba(0, 0, 0, 0.35);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .tv-prog-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #34d399, #a7f3d0);
-      border-radius: 4px;
-      transition: width 0.35s ease;
-    }
-    .tv-prog-pct {
-      font-size: 9.5px;
-      font-weight: 850;
-      min-width: 34px;
-      text-align: right;
+    .vd-box b {
+      font-size: 11.5px;
+      color: var(--ink);
     }
   `;
   document.head.appendChild(st);
 })();
 
-// 2. Nạp dữ liệu tiến độ làm hàng từ LocalStorage & Supabase Storage ('eport_tanvu_jobs.json')
+// 2. Tạo Modal Popup Chi tiết tàu khi bấm vào thẻ tàu
+function ensureVesselDetailPopupModal() {
+  if ($('vesselDetailPopupModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'vesselDetailPopupModal';
+  modal.className = 'modal-shade';
+  modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+  modal.innerHTML = `
+    <div class="modal" style="width:min(480px, 94vw);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:8px;gap:8px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <h3 id="vd_name" style="margin:0;font-size:16px;">—</h3>
+            <span class="badge" id="vd_type">Container</span>
+            <span class="badge" id="vd_statusBadge" style="background:#dcfce7;color:#166534;">—</span>
+          </div>
+          <div id="vd_operator" class="muted tiny" style="margin-top:3px;">—</div>
+        </div>
+        <button type="button" onclick="$('vesselDetailPopupModal').classList.remove('open')" style="padding:4px 8px;font-size:11px;">✕</button>
+      </div>
+
+      <!-- Thanh tiến độ lớn trong Popup -->
+      <div style="margin-top:10px;background:rgba(2,132,199,0.08);border:1px solid rgba(2,132,199,0.25);border-radius:8px;padding:8px 10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;margin-bottom:5px;">
+          <span id="vd_progTitle">🏗️ Tiến độ làm hàng</span>
+          <span id="vd_progPctText" style="color:#059669;font-size:12.5px;">0%</span>
+        </div>
+        <div style="height:8px;background:var(--line);border-radius:5px;overflow:hidden;">
+          <div id="vd_progBarFill" style="height:100%;width:0%;background:linear-gradient(90deg,#0284c7,#10b981);border-radius:5px;transition:width 0.3s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:5px;">
+          <span>Tổng Cont / TEU: <b id="vd_contTeu" style="color:var(--ink);">—</b></span>
+          <span>Đã thực hiện: <b id="vd_donePlan" style="color:#0284c7;">—</b></span>
+        </div>
+      </div>
+
+      <!-- Lưới thông số kỹ thuật & hành trình -->
+      <div class="vessel-detail-grid">
+        <div class="vd-box"><small>Cảng · Cầu bến</small><b id="vd_berth">—</b></div>
+        <div class="vd-box"><small>LOA × Beam</small><b id="vd_dim">—</b></div>
+        <div class="vd-box"><small>Sức chở thiết kế / DWT</small><b id="vd_capDwt">—</b></div>
+        <div class="vd-box"><small>Năm SX / Tuổi tàu</small><b id="vd_yearAge">—</b></div>
+        <div class="vd-box"><small>Cập cầu (ATB / ETB)</small><b id="vd_etb">—</b></div>
+        <div class="vd-box"><small>Dự kiến rời (ETD)</small><b id="vd_etd">—</b></div>
+        <div class="vd-box"><small>Thời gian đã ở cầu</small><b id="vd_docked">—</b></div>
+        <div class="vd-box"><small>Thời gian còn lại</small><b id="vd_remain">—</b></div>
+        <div class="vd-box" style="grid-column:span 2;"><small>Hành trình (Last Port ➔ Destination)</small><b id="vd_route" style="color:var(--cyan);">—</b></div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px;display:flex;gap:6px;">
+        <button type="button" class="primary" style="flex:1;padding:8px;" onclick="$('vesselDetailPopupModal').classList.remove('open'); populateEditForm(selectedShipForReport);">✏️ Sửa / IMO</button>
+        <button type="button" style="flex:1;padding:8px;background:#059669;color:#fff;" onclick="$('vesselDetailPopupModal').classList.remove('open'); openSafetyPlanFromTooltip();">🛡️ Lập PA An Toàn</button>
+        <button type="button" style="flex:1;padding:8px;" onclick="openReportFromDetailPopup()">✉ Báo lỗi</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function openReportFromDetailPopup() {
+  $('vesselDetailPopupModal')?.classList.remove('open');
+  if (!selectedShipForReport) return;
+  nav('report');
+  if ($('repVessel')) $('repVessel').value = `${selectedShipForReport.vessel} - ${selectedShipForReport.terminal} ${selectedShipForReport.berth}`;
+  if ($('repContent')) $('repContent').value = `Phản ánh thông tin tàu ${selectedShipForReport.vessel} (Cập: ${dt(selectedShipForReport.etb)}, Rời: ${dt(selectedShipForReport.etd)}).`;
+}
+window.openReportFromDetailPopup = openReportFromDetailPopup;
+
+// 3. Mở Popup Chi tiết khi bấm vào thẻ tàu
+function openVesselDetailPopup(shipObj) {
+  ensureVesselDetailPopupModal();
+  hideTooltip();
+
+  let specs = getVesselEnrichedSpecs(shipObj.vessel, shipObj);
+  selectedShipForReport = { ...shipObj, ...specs };
+  let prog = getTanVuShipProgressInfo(shipObj, specs);
+
+  $('vd_name').textContent = shipObj.vessel + (specs.imo ? ` (IMO: ${specs.imo})` : '');
+  $('vd_type').textContent = specs.vessel_type || 'Container';
+  $('vd_statusBadge').textContent = prog.statusLabel;
+  $('vd_operator').textContent = specs.operator || shipObj.operator || 'Chưa rõ Hãng / Đại lý';
+
+  $('vd_progTitle').textContent = prog.isLiveEport ? '🟢 Tiến độ làm hàng (ePort BerthMap)' : '🏗️ Tiến độ làm hàng';
+  $('vd_progPctText').textContent = `${prog.pct}%`;
+  $('vd_progBarFill').style.width = `${prog.pct}%`;
+  $('vd_contTeu').textContent = prog.contTeuStr;
+  $('vd_donePlan').textContent = prog.donePlanStr;
+
+  $('vd_berth').textContent = `${shipObj.terminal || 'TAN VU'} · ${prog.berth}`;
+  $('vd_dim').textContent = `${specs.loa || '—'}m × ${specs.beam ? Number(specs.beam).toFixed(1) + 'm' : '—'}`;
+  let capStr = specs.teu > 0 ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'}` : '—';
+  $('vd_capDwt').textContent = `${capStr} · ${specs.dwt ? specs.dwt + ' T' : '—'}`;
+  $('vd_yearAge').textContent = specs.year_built ? `${specs.year_built} (${specs.vessel_age} tuổi)` : 'Chưa rõ';
+  $('vd_etb').textContent = prog.atbText;
+  $('vd_etd').textContent = prog.etdText;
+
+  let now = Date.now();
+  let t1 = shipObj.etb ? new Date(shipObj.etb).getTime() : 0;
+  let t2 = shipObj.etd ? new Date(shipObj.etd).getTime() : 0;
+  $('vd_docked').textContent = (t1 > 0 && now >= t1) ? formatDuration((now > t2 && t2 > 0) ? (t2 - t1) : (now - t1)) : 'Chưa cập';
+  $('vd_remain').textContent = (t2 > 0 && t2 > now) ? formatDuration(t2 - now) : ((t2 > 0 && now >= t2) ? 'Đã rời bến (100%)' : '—');
+  $('vd_route').textContent = (specs.last_port || specs.destination) ? `${specs.last_port || '—'} ➔ ${specs.destination || '—'}` : '—';
+
+  $('vesselDetailPopupModal').classList.add('open');
+}
+window.openVesselDetailPopup = openVesselDetailPopup;
+
+// 4. Nạp dữ liệu tiến độ ePort BerthMap
 async function loadEportTanVuJobs() {
   try {
     let localRaw = localStorage.getItem('hp_eport_tanvu_jobs');
@@ -10098,14 +10209,9 @@ async function loadEportTanVuJobs() {
 
   if (supabaseClient) {
     try {
-      const { data: files } = await supabaseClient.storage
-        .from('port-documents')
-        .list('', { search: 'eport_tanvu_jobs.json' });
-
+      const { data: files } = await supabaseClient.storage.from('port-documents').list('', { search: 'eport_tanvu_jobs.json' });
       if (Array.isArray(files) && files.some(f => f.name === 'eport_tanvu_jobs.json')) {
-        const { data, error } = await supabaseClient.storage
-          .from('port-documents')
-          .download('eport_tanvu_jobs.json');
+        const { data, error } = await supabaseClient.storage.from('port-documents').download('eport_tanvu_jobs.json');
         if (data && !error) {
           let obj = JSON.parse(await data.text());
           Object.entries(obj).forEach(([k, v]) => eportTanVuJobsMap.set(k.toUpperCase(), v));
@@ -10121,148 +10227,130 @@ async function loadEportTanVuJobs() {
 }
 window.loadEportTanVuJobs = loadEportTanVuJobs;
 
-// 3. Bóc tách dữ liệu Copy từ bảng #jobsTable của ePort BerthMap (VD: "Cầu 3 | ZHONG GU DI ZHONG HAI | Container | 1069/1633 | 370/692 | 18/11/2026 11:35 | ...")
 function parseEportBerthMapText(rawText) {
-  let lines = String(rawText || '')
-    .split(/[\r\n]+/)
-    .map(l => l.trim())
-    .filter(Boolean);
-
+  let lines = String(rawText || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
   let updatedList = [];
-
   lines.forEach(line => {
-    // Khớp mẫu dòng bảng #jobsTable: Cầu X | TÊN TÀU | Loại hàng | Cont/TEU (1069/1633) | Đã thực hiện (370/692) | ATB | ETD
     let m = line.match(/Cầu\s*(\d+)\s*[\t| ]+\s*([A-Z0-9\s\-]{3,35}?)\s*[\t| ]+\s*(Container|Ô tô|Hàng rời|Tổng hợp|Ro-Ro|Khác)\s*[\t| ]+\s*(\d+\s*\/\s*\d+)\s*[\t| ]+\s*(\d+)\s*\/\s*(\d+)(?:\s*[\t| ]+\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}))?(?:\s*[\t| ]+\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}))?/i);
-
     if (m) {
       let berthCode = 'B' + m[1];
       let vName = m[2].trim().toUpperCase();
-      let cargoType = m[3].trim();
-      let contTeuStr = m[4].replace(/\s+/g, '');
       let doneNum = parseInt(m[5], 10) || 0;
       let planNum = parseInt(m[6], 10) || 1;
       let pct = Math.min(100, Math.round((doneNum / Math.max(1, planNum)) * 100));
-      let atbStr = m[7] || '';
-      let etdStr = m[8] || '';
-
-      let record = {
+      eportTanVuJobsMap.set(vName, {
         berth: berthCode,
-        cargoType,
-        contTeuStr,
+        cargoType: m[3].trim(),
+        contTeuStr: m[4].replace(/\s+/g, ''),
         donePlanStr: `${doneNum}/${planNum}`,
-        doneNum,
-        planNum,
-        pct,
-        atb: atbStr,
-        etd: etdStr,
-        source: 'ePort Live',
+        doneNum, planNum, pct,
+        atb: m[7] || '', etd: m[8] || '',
         updatedAt: new Date().toISOString()
-      };
-      eportTanVuJobsMap.set(vName, record);
-      updatedList.push(`${vName} (${berthCode}: ${doneNum}/${planNum} - ${pct}%)`);
+      });
+      updatedList.push(`${vName} (${berthCode}: ${pct}%)`);
     }
   });
-
   return updatedList;
 }
 
-// 4. Nút Dán / Cập nhật nhanh từ ePort BerthMap ngay trên thẻ Cảng Tân Vũ (Tiêu điểm)
 async function quickImportFromEportBerthMap() {
   let clipText = '';
   try { clipText = await navigator.clipboard.readText(); } catch (e) {}
-
   let parsed = clipText ? parseEportBerthMapText(clipText) : [];
   if (parsed.length === 0) {
-    let manualText = prompt(
-      '📋 ĐỒNG BỘ TIẾN ĐỘ LÀM HÀNG TỪ EPORT BERTHMAP:\n\n' +
-      '1. Mở tab ePort BerthMap, bôi đen dòng tàu trong bảng "Tiến độ làm hàng (theo tàu)" (VD: Cầu 3  ZHONG GU DI ZHONG HAI  Container  1069/1633  370/692  18/11/2026 11:35) và bấm Ctrl+C.\n' +
-      '2. Dán (Ctrl+V) vào ô dưới đây:'
-    );
+    let manualText = prompt('Dán (Ctrl+V) dòng tàu copy từ bảng "Tiến độ làm hàng (theo tàu)" trên ePort BerthMap:');
     if (!manualText) return;
     parsed = parseEportBerthMapText(manualText);
   }
-
   if (parsed.length === 0) {
-    alert('⚠️ Không nhận diện được dòng dữ liệu chuẩn từ bảng ePort BerthMap. Vui lòng copy nguyên dòng từ bảng "Tiến độ làm hàng (theo tàu)".');
+    alert('⚠️ Không nhận diện được dữ liệu chuẩn từ bảng ePort BerthMap.');
     return;
   }
-
   let obj = Object.fromEntries(eportTanVuJobsMap);
   localStorage.setItem('hp_eport_tanvu_jobs', JSON.stringify(obj));
-
   if (supabaseClient) {
     try {
       const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
       await supabaseClient.storage.from('port-documents').upload('eport_tanvu_jobs.json', blob, { upsert: true });
     } catch (e) {}
   }
-
   renderTanVuLayout(getFilteredCalls());
-  alert(`✅ Đã đồng bộ tiến độ làm hàng từ ePort BerthMap cho ${parsed.length} tàu:\n• ${parsed.join('\n• ')}`);
+  alert(`✅ Đã đồng bộ tiến độ làm hàng cho ${parsed.length} tàu:\n• ${parsed.join('\n• ')}`);
 }
 window.quickImportFromEportBerthMap = quickImportFromEportBerthMap;
 
-// 5. Tính toán thông số Tiến độ làm hàng cho từng tàu tại Tân Vũ (Ưu tiên dữ liệu ePort thật -> Dự phòng ước tính theo thời gian thực)
+// 5. Tính toán % Tiến độ làm hàng (Tàu xong hoặc đã rời -> 100%, chưa cập -> 0%)
 function getTanVuShipProgressInfo(shipObj, specs) {
-  let vName = (shipObj.vessel || '').trim().toUpperCase();
-  let eportData = eportTanVuJobsMap.get(vName);
-
-  if (eportData) {
-    return {
-      isLiveEport: true,
-      berth: eportData.berth || shipObj.berth || 'B1',
-      cargoType: eportData.cargoType || (specs.vessel_type || 'Container'),
-      contTeuStr: eportData.contTeuStr,
-      donePlanStr: eportData.donePlanStr,
-      pct: eportData.pct,
-      atbText: eportData.atb || dt(shipObj.etb),
-      etdText: eportData.etd || dt(shipObj.etd)
-    };
-  }
-
-  // Dự phòng tự động tính tiến độ theo thời gian thực (nếu chưa bấm nạp ePort)
   let now = Date.now();
   let t1 = shipObj.etb ? new Date(shipObj.etb).getTime() : 0;
   let t2 = shipObj.etd ? new Date(shipObj.etd).getTime() : 0;
-  let capVal = Number(specs.teu || 0);
-  let unit = specs.capacity_unit || 'TEU';
+  let todayStr = getTodayString();
+  let etdDate = shipObj.etd ? shipObj.etd.split('T')[0] : '';
 
-  let estTeu = capVal > 0 ? capVal : 1200;
-  let estCont = Math.max(1, Math.round(estTeu / 1.52));
-  let planMoves = Math.max(50, Math.round((estTeu * 0.55) / 1.35));
+  let vName = (shipObj.vessel || '').trim().toUpperCase();
+  let eportData = eportTanVuJobsMap.get(vName);
 
-  let pct = 0;
-  if (t2 > 0 && t2 <= now) {
-    pct = 100;
-  } else if (t1 > 0 && now > t1) {
-    let elapsedHrs = (now - t1) / 3600000;
-    let totalStayHrs = (t2 > t1) ? ((t2 - t1) / 3600000) : Math.max(8, planMoves / 60);
-    pct = Math.min(98, Math.max(5, Math.round((elapsedHrs / totalStayHrs) * 100)));
+  // Xác định trạng thái tàu
+  let isDepartedOrDone = (t2 > 0 && t2 <= now) || (eportData && eportData.pct >= 100);
+  let statusLabel = '';
+  if (isDepartedOrDone) {
+    statusLabel = '✔️ Đã rời';
+  } else if (etdDate === todayStr && t2 > now) {
+    statusLabel = '🚩 Rời trong ngày';
+  } else if (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now)) {
+    statusLabel = '🏗️ Đang làm hàng';
+  } else {
+    statusLabel = '⏳ Sắp cập';
   }
 
-  let doneMoves = Math.round((planMoves * pct) / 100);
-  let contTeuDisplay = unit === 'TEU'
-    ? `${estCont.toLocaleString('vi-VN')}/${estTeu.toLocaleString('vi-VN')} (Cont/TEU)`
-    : `${estTeu.toLocaleString('vi-VN')} ${unit}`;
+  let capVal = Number(specs.teu || 0);
+  let unit = specs.capacity_unit || 'TEU';
+  let estTeu = capVal > 0 ? capVal : 1200;
+  let estCont = Math.max(1, Math.round(estTeu / 1.52));
+  let planMoves = eportData ? eportData.planNum : Math.max(50, Math.round((estTeu * 0.55) / 1.35));
+
+  // Quy tắc % tiến độ:
+  // - Tàu đã rời hoặc làm xong -> 100%
+  // - Tàu chưa cập -> 0%
+  // - Tàu đang làm hàng -> Lấy % thực tế từ ePort (nếu có) hoặc tính theo thời gian làm hàng
+  let pct = 0;
+  if (isDepartedOrDone) {
+    pct = 100;
+  } else if (t1 > 0 && now > t1) {
+    if (eportData && typeof eportData.pct === 'number') {
+      pct = Math.min(100, Math.max(0, eportData.pct));
+    } else {
+      let elapsedHrs = (now - t1) / 3600000;
+      let totalStayHrs = (t2 > t1) ? ((t2 - t1) / 3600000) : Math.max(8, planMoves / 60);
+      pct = Math.min(99, Math.max(5, Math.round((elapsedHrs / totalStayHrs) * 100)));
+    }
+  } else {
+    pct = 0;
+  }
+
+  let doneMoves = isDepartedOrDone ? planMoves : (eportData ? eportData.doneNum : Math.round((planMoves * pct) / 100));
+  let contTeuDisplay = eportData
+    ? eportData.contTeuStr
+    : (unit === 'TEU' ? `${estCont.toLocaleString('vi-VN')}/${estTeu.toLocaleString('vi-VN')} (Cont/TEU)` : `${estTeu.toLocaleString('vi-VN')} ${unit}`);
 
   return {
-    isLiveEport: false,
-    berth: shipObj.berth || 'B1',
-    cargoType: specs.vessel_type || 'Container',
+    isLiveEport: Boolean(eportData),
+    isDepartedOrDone,
+    statusLabel,
+    berth: (eportData && eportData.berth) || shipObj.berth || 'B1',
+    cargoType: (eportData && eportData.cargoType) || specs.vessel_type || 'Container',
     contTeuStr: contTeuDisplay,
-    donePlanStr: `${doneMoves}/${planMoves} (~${pct}%)`,
-    pct: pct,
-    atbText: dt(shipObj.etb),
-    etdText: dt(shipObj.etd)
+    donePlanStr: `${doneMoves}/${planMoves} (${pct}%)`,
+    pct,
+    atbText: (eportData && eportData.atb) || dt(shipObj.etb),
+    etdText: (eportData && eportData.etd) || dt(shipObj.etd)
   };
 }
 
-// 6. Ghi đè hàm renderTanVuLayout để hiển thị đầy đủ thông số ePort BerthMap ngay trên thẻ tàu
+// 6. Vẽ thẻ Cảng Tân Vũ (Tiêu điểm) GỌN ĐẸP: Thanh tiến độ thay cho sức chở, bấm vào mở Popup chi tiết
 function renderTanVuLayout(list) {
   try {
-    let now = Date.now();
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
-    let todayStr = getTodayString();
 
     let tanVuShips = list.filter(c => {
       let term = (c.terminal || '').toUpperCase();
@@ -10278,8 +10366,8 @@ function renderTanVuLayout(list) {
     if ($('tanvuCount')) {
       $('tanvuCount').innerHTML = `
         <span>${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}</span>
-        <button type="button" class="tk-calc-btn" style="margin-left:6px;padding:2px 7px!important;font-size:10px!important;" onclick="quickImportFromEportBerthMap()" title="Dán nhanh bảng Tiến độ làm hàng từ ePort BerthMap">
-          ⚡ Nạp tiến độ ePort
+        <button type="button" class="tk-calc-btn" style="margin-left:6px;padding:2px 7px!important;font-size:10px!important;" onclick="quickImportFromEportBerthMap()" title="Nạp nhanh tiến độ làm hàng từ ePort BerthMap">
+          ⚡ Nạp ePort
         </button>
       `;
     }
@@ -10290,7 +10378,6 @@ function renderTanVuLayout(list) {
     tanVuShips.forEach(c => {
       let vName = (c.vessel || '').trim().toUpperCase();
       let eportRec = eportTanVuJobsMap.get(vName);
-      // Nếu có dữ liệu cầu bến trực tiếp từ ePort BerthMap (VD: Cầu 3 -> B3), ưu tiên đặt đúng cầu đó
       let b = (eportRec && eportRec.berth) ? eportRec.berth : (c.berth || 'B1').trim().toUpperCase();
       if (!berthMap[b]) berthMap[b] = [];
       berthMap[b].push({ ...c, berth: b });
@@ -10299,83 +10386,37 @@ function renderTanVuLayout(list) {
     let html = buildVesselColorLegendHtml() + `
       <div class="berth-group">
         <div class="berth-group-head">
-          <span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'} (Tích hợp Tiến độ ePort BerthMap)</span>
-          <a href="https://eportappapi.haiphongport.com.vn:15111/BerthMap" target="_blank" rel="noopener" style="font-size:10px;color:var(--cyan);font-weight:700;text-decoration:none;">↗ Mở ePort BerthMap</a>
+          <span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span>
+          <span class="muted tiny">👆 Nhấp vào thẻ tàu để xem chi tiết tiến độ làm hàng</span>
         </div>`;
 
     Object.keys(berthMap).sort().forEach(bName => {
       let ships = berthMap[bName].sort((a, b) => new Date(a.etb || 0) - new Date(b.etb || 0));
-      html += `<div class="berth-row"><div class="berth-name" style="font-size:11px;color:var(--navy2);">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;gap:8px;padding:4px 0;">`;
+      html += `<div class="berth-row"><div class="berth-name" style="font-size:11px;color:var(--navy2);">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;gap:6px;padding:2px 0;">`;
 
       if (ships.length === 0) {
         html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
       } else {
         ships.forEach(s => {
-          let t1 = new Date(s.etb).getTime();
-          let t2 = s.etd ? new Date(s.etd).getTime() : 0;
-          let etdDate = s.etd ? s.etd.split('T')[0] : '';
-
-          let statusLabel = '', extraOpacity = '';
-          let isWorking = false;
-
-          if (t2 > 0 && t2 <= now) {
-            statusLabel = '✔️ Đã rời';
-            extraOpacity = 'opacity: 0.78;';
-          } else if (etdDate === todayStr && t2 > now) {
-            statusLabel = '🚩 Rời trong ngày';
-            isWorking = true;
-          } else if (t1 <= now && (t2 === 0 || t2 > now)) {
-            statusLabel = '🏗️ Đang làm hàng';
-            isWorking = true;
-          } else {
-            statusLabel = '⏳ Sắp cập';
-          }
-
           let { colorClass, specs } = getVesselUnitColorClass(s);
           let prog = getTanVuShipProgressInfo(s, specs);
-          let sourceTag = prog.isLiveEport ? '🟢 ePort' : '⏱️ Dự kiến';
+          let extraOpacity = prog.isDepartedOrDone ? 'opacity: 0.82;' : '';
+          let shipJson = JSON.stringify(s).replace(/"/g, '&quot;');
 
-          // Nếu tàu đang khai thác (Đang làm hàng / Rời trong ngày) hoặc có dữ liệu ePort -> Hiển thị thẻ chi tiết đầy đủ như ePort BerthMap
-          if (isWorking || prog.isLiveEport) {
-            html += `
-              <div class="tv-ship-card ${colorClass}"
-                   style="${extraOpacity}"
-                   onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})"
-                   onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})"
-                   onmouseleave="scheduleHideTooltip()">
-                <div class="tv-ship-top">
-                  <span class="tv-ship-name">🚢 ${esc(s.vessel)}</span>
-                  <span class="tv-ship-status">${statusLabel}</span>
-                </div>
-                <div class="tv-eport-metrics">
-                  <span>📦 Hàng: <b>${esc(prog.cargoType)}</b></span>
-                  <span>📊 Cont/TEU: <b>${esc(prog.contTeuStr)}</b></span>
-                  <span>🏗️ Đã làm: <b>${esc(prog.donePlanStr)}</b></span>
-                  <span>🕒 ATB: <b>${esc(prog.atbText)}</b></span>
-                  <span>🚪 ETD: <b>${esc(prog.etdText)}</b></span>
-                  <span style="text-align:right;opacity:0.9;">${sourceTag}</span>
-                </div>
-                <div class="tv-prog-wrap" title="Tiến độ làm hàng: ${prog.pct}%">
-                  <div class="tv-prog-bar">
-                    <div class="tv-prog-fill" style="width:${prog.pct}%;"></div>
-                  </div>
-                  <span class="tv-prog-pct">${prog.pct}%</span>
-                </div>
-              </div>`;
-          } else {
-            // Tàu đã rời hoặc chưa cập hiển thị gọn gàng
-            let capBadge = specs.teu > 0 ? `${specs.teu.toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'}` : `${specs.loa || ''}m`;
-            html += `
-              <div class="ship-chip ${colorClass}"
-                   style="${extraOpacity}"
-                   onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})"
-                   onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})"
-                   onmouseleave="scheduleHideTooltip()">
-                <span style="font-size: 10.5px; font-weight: 800;">${esc(s.vessel)}</span>
-                <span style="font-size: 9px; padding: 1px 4px; background: rgba(255,255,255,0.22); border-radius: 3px; font-weight: 700;">${esc(capBadge)}</span>
-                <span class="chip-time" style="font-size: 9px; padding: 2px 5px; background: rgba(0,0,0,0.32); border-radius: 4px; font-weight: 700; white-space: nowrap;">${statusLabel}</span>
-              </div>`;
-          }
+          html += `
+            <div class="tv-compact-chip ${colorClass}"
+                 style="${extraOpacity}"
+                 onclick="openVesselDetailPopup(${shipJson})"
+                 title="Nhấp để xem chi tiết tàu ${esc(s.vessel)} (${prog.pct}%)">
+              <span class="tv-chip-vname">${esc(s.vessel)}</span>
+              <span class="tv-mini-prog" title="Tiến độ làm hàng: ${prog.pct}%">
+                <span class="tv-mini-track">
+                  <span class="tv-mini-fill ${prog.pct >= 100 ? 'is-done' : ''}" style="width:${prog.pct}%;"></span>
+                </span>
+                <span class="tv-mini-pct">${prog.pct}%</span>
+              </span>
+              <span class="tv-chip-badge">${prog.statusLabel}</span>
+            </div>`;
         });
       }
       html += `</div></div>`;
@@ -10389,9 +10430,75 @@ function renderTanVuLayout(list) {
 }
 window.renderTanVuLayout = renderTanVuLayout;
 
-// Kích hoạt nạp dữ liệu ePort ngay khi mở trang và tự động làm mới mỗi 60 giây
+// 7. Cập nhật Sơ đồ Kế hoạch cầu bến (Gantt): Bỏ hiển thị các số sức chở / đơn vị trên thanh đại diện tàu
+function renderGantt() {
+  let days = +$('days')?.value || 4;
+  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
+  let end = new Date(start.getTime() + days * 86400000);
+  let list = getFilteredCalls();
+  let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
+
+  let headerHtml = buildVesselColorLegendHtml() + `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
+  for (let d = 0; d < days; d++) {
+    let curDate = new Date(start.getTime() + d * 86400000);
+    let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
+    headerHtml += `
+      <div class="gantt-time-slot">${dateStr} <span>00:00 - 12:00</span></div>
+      <div class="gantt-time-slot">${dateStr} <span>12:00 - 24:00</span></div>
+    `;
+  }
+  headerHtml += `</div></div>`;
+
+  let terms = {};
+  list.forEach(c => {
+    if (!c.etb) return;
+    if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
+    if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
+    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
+    if (!terms[key]) terms[key] = [];
+    terms[key].push(c);
+  });
+
+  const DEFAULT_STAY_MS = 20 * 3600000;
+  let out = headerHtml;
+  let hasData = false;
+
+  for (let [name, ships] of Object.entries(terms)) {
+    hasData = true;
+    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
+    ships.forEach((c, idx) => {
+      let t1 = new Date(c.etb).getTime();
+      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+      let a = t1;
+      let b = (t2 > t1 && (t2 - t1) <= 7 * 86400000) ? t2 : (t1 + DEFAULT_STAY_MS);
+
+      if (b >= start.getTime() && a <= end.getTime()) {
+        let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+        let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+        let zIdx = 2 + idx;
+        let { colorClass } = getVesselUnitColorClass(c);
+        let shipJson = JSON.stringify(c).replace(/"/g, '&quot;');
+
+        // Chỉ hiển thị gọn Tên tàu, bỏ hoàn toàn phần sức chở / đơn vị trên thanh đại diện tàu
+        out += `<div class="shipbar ${colorClass}" 
+                     style="left:${left}%;width:${right-left}%;z-index:${zIdx}" 
+                     onclick="openVesselDetailPopup(${shipJson})" 
+                     onmouseenter="showTooltip(event, ${shipJson})" 
+                     onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
+      }
+    });
+    out += `</div></div>`;
+  }
+  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
+  if ($('fullGantt')) $('fullGantt').innerHTML = out;
+  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
+}
+window.renderGantt = renderGantt;
+
 setTimeout(() => {
+  ensureVesselDetailPopupModal();
   loadEportTanVuJobs();
+  if ($('fullGantt')) renderGantt();
 }, 300);
 setInterval(loadEportTanVuJobs, 60000);
 
