@@ -9281,13 +9281,7 @@ function getPortGeographicalAndRankingStats(rows) {
 
   let activeCriterion = getActiveSinglePortSortCriterion();
 
-  // Hàm so sánh giá trị cảng theo tiêu chí đang chọn
-  const comparePortByCriterion = (a, b) => {
-    if (activeCriterion === 'calls') return (b.calls - a.calls) || (b.sumDwt - a.sumDwt);
-    if (activeCriterion === 'dwt') return (b.sumDwt - a.sumDwt) || (b.calls - a.calls);
-    if (activeCriterion === 'stay') return (b.avgStay - a.avgStay) || (b.calls - a.calls);
-    return (b.pesiScore - a.pesiScore) || (b.sumDwt - a.sumDwt);
-  };
+
 // Hàm so sánh giá trị cảng theo tiêu chí đang chọn (Port Stay: thấp nhất đứng #1)
   const comparePortByCriterion = (a, b) => {
     if (activeCriterion === 'calls') return (b.calls - a.calls) || (b.sumDwt - a.sumDwt);
