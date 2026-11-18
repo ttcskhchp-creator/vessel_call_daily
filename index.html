@@ -9997,11 +9997,13 @@ window.eportTanVuJobsMap = eportTanVuJobsMap;
   const st = document.createElement('style');
   st.id = 'hpTanVuEportStyle';
   st.textContent = `
-    /* Thẻ tàu gọn gàng, tinh tế thay thế sức chở bằng Thanh tiến độ */
+/* Thẻ tàu gọn gàng với nền màu nổi bật, không bao giờ bị trắng chữ */
     .tv-compact-chip {
+      background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+      border: 1px solid #7dd3fc !important;
       border-radius: 7px;
       padding: 5px 9px;
-      color: #ffffff;
+      color: #ffffff !important;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -10010,6 +10012,30 @@ window.eportTanVuJobsMap = eportTanVuJobsMap;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       max-width: 100%;
     }
+    .tv-compact-chip.unit-teu {
+      background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+      border-color: #7dd3fc !important;
+    }
+    .tv-compact-chip.unit-tan {
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      border-color: #6ee7b7 !important;
+    }
+    .tv-compact-chip.unit-units {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+      border-color: #c4b5fd !important;
+    }
+    .tv-compact-chip.unit-m3 {
+      background: linear-gradient(135deg, #e11d48, #be123c) !important;
+      border-color: #fda4af !important;
+    }
+    .tv-compact-chip.unit-pax {
+      background: linear-gradient(135deg, #db2777, #9d174d) !important;
+      border-color: #f9a8d4 !important;
+    }
+    .tv-compact-chip.large {
+      background: linear-gradient(135deg, #d89a24, #b57a0f) !important;
+      border: 1.5px solid #fef08a !important;
+    }
     .tv-compact-chip:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
@@ -10017,9 +10043,11 @@ window.eportTanVuJobsMap = eportTanVuJobsMap;
     .tv-chip-vname {
       font-size: 11px;
       font-weight: 850;
+      color: #ffffff !important;
       letter-spacing: 0.2px;
       white-space: nowrap;
     }
+    
     /* Thanh tiến độ nhỏ gọn nằm thay vị trí sức chở trên thẻ tàu */
     .tv-mini-prog {
       display: inline-flex;
