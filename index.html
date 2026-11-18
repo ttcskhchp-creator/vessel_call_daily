@@ -9316,7 +9316,9 @@ function getPortGeographicalAndRankingStats(rows) {
   // Nếu người dùng lọc đơn lẻ 1 tiêu chí, sắp xếp luôn thứ tự các Vùng từ cao xuống thấp theo tiêu chí đó
   if (activeCriterion === 'calls') zonesList.sort((a, b) => b.calls - a.calls);
   else if (activeCriterion === 'dwt') zonesList.sort((a, b) => b.sumDwt - a.sumDwt);
-  else if (activeCriterion === 'stay') zonesList.sort((a, b) => b.avgStay - a.avgStay);
+  else if (activeCriterion === 'stay') {
+    zonesList.sort((a, b) => ((a.avgStay > 0 ? a.avgStay : Infinity) - (b.avgStay > 0 ? b.avgStay : Infinity)));
+  }
 
   return { zonesList, allPorts, maxCalls, maxDwt, maxStay, maxSpeed, activeCriterion };
 }
