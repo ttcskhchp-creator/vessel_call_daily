@@ -9493,6 +9493,496 @@ if (!window._containerTypeUnifiedWrapped) {
     renderAll();
   }
 })();
+
+/* ==================== MODULE ĐỔI TÊN MENU, QUẢN LÝ PIN ĐỘNG (SĐT ADMIN) & KHỬ TRÙNG LẶP CHUYẾN VẮT NGÀY ==================== */
+
+// 1. Đổi tên 3 nút Menu dọc trái & Tiêu đề trang tương ứng (Hỗ trợ cả khi chuyển ngôn ngữ VI/EN)
+function applyCustomMenuLabels() {
+  if (typeof dict !== 'undefined') {
+    if (dict.vi) {
+      dict.vi.menuSearch = "Chi tiết lịch tàu";
+      dict.vi.searchHead = "Chi tiết lịch tàu";
+      dict.vi.menuEditVessel = "Tra cứu tàu mới";
+      dict.vi.editVesselHead = "Tra cứu tàu mới & Cập nhật thông tin tàu";
+      dict.vi.menuDraftSetup = "Cài đặt (Setting)";
+      dict.vi.draftSetupHead = "Cài đặt (Setting) · Hệ thống, Luồng & Mớn nước";
+    }
+    if (dict.en) {
+      dict.en.menuSearch = "Detailed Vessel Schedule";
+      dict.en.menuEditVessel = "New Vessel Lookup";
+      dict.en.menuDraftSetup = "Settings";
+    }
+  }
+
+  const updateNavText = (pageKey, newLabel) => {
+    const btn = document.querySelector(`.nav button[data-page="${pageKey}"]`);
+    if (btn) {
+      btn.title = newLabel;
+      const txtSpan = btn.querySelector('span.txt');
+      if (txtSpan) txtSpan.textContent = newLabel;
+    }
+  };
+
+  updateNavText('search', 'Chi tiết lịch tàu');
+  updateNavText('edit-vessel', 'Tra cứu tàu mới');
+  updateNavText('draft-setup', 'Cài đặt (Setting)');
+
+  const activePage = localStorage.getItem('hp_last_page') || 'overview';
+  if ($('crumb')) {
+    if (activePage === 'search') $('crumb').textContent = 'CHI TIẾT LỊCH TÀU';
+    if (activePage === 'edit-vessel') $('crumb').textContent = 'TRA CỨU TÀU MỚI';
+    if (activePage === 'draft-setup') $('crumb').textContent = 'CÀI ĐẶT (SETTING)';
+  }
+}
+
+// Bọc lại hàm applyLanguage và nav để luôn giữ tên Menu mới
+if (!window._customMenuWrapped) {
+  const _prevApplyLang = applyLanguage;
+  applyLanguage = function(lang) {
+    _prevApplyLang(lang);
+    applyCustomMenuLabels();
+  };
+  window.applyLanguage = applyLanguage;
+
+  const _prevNav = nav;
+  nav = function(page, saveState = true) {
+    _prevNav(page, saveState);
+    applyCustomMenuLabels();
+    if (page === 'draft-setup') renderPinSettingsCard();
+  };
+  window.nav = nav;
+  window._customMenuWrapped = true;
+}
+
+// 2. Cơ chế Mã PIN Quản trị động (Mặc định: 6868, Reset qua SĐT Admin: 0787307004)
+const ADMIN_RECOVERY_PHONE = '0787307004';
+const DEFAULT_ADMIN_PIN = '6868';
+
+function getCurrentAdminPin() {
+  return localStorage.getItem('hp_admin_pin') || (typeof draftConfig !== 'undefined' && draftConfig.adminPin) || DEFAULT_ADMIN_PIN;
+}
+
+function verifyAdminPinPrompt(actionLabel = 'thực hiện thao tác này') {
+  let currentPin = getCurrentAdminPin();
+  let entered = prompt(`🔒 Nhập mã PIN quản trị (••••) để ${actionLabel}:`);
+  if (entered === null) return false;
+  if (String(entered).trim() === String(currentPin).trim()) {
+    return true;
+  }
+  alert('❌ Mã PIN quản trị không chính xác!');
+  return false;
+}
+
+// Tạo giao diện Đổi Mã PIN & Reset Mã PIN ngay trong màn hình Cài đặt (Setting)
+function renderPinSettingsCard() {
+  const setupPage = $('page-draft-setup');
+  if (!setupPage) return;
+
+  const h2 = setupPage.querySelector('.page-head h2');
+  if (h2) h2.textContent = 'Cài đặt (Setting) · Bảo mật PIN, Luồng & Dải Mớn Nước';
+
+  if (!$('adminPinSettingsCard')) {
+    const firstCard = setupPage.querySelector('.draft-setup-card');
+    const pinCard = document.createElement('div');
+    pinCard.id = 'adminPinSettingsCard';
+    pinCard.className = 'draft-setup-card';
+    pinCard.style.borderLeft = '4px solid #0284c7';
+    pinCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;font-size:13.5px;color:var(--cyan);">🔐 Cài đặt Mã PIN Quản Trị (Bảo mật Lưu / Xóa / Khôi phục)</h3>
+        <span class="badge" style="background:rgba(2,132,199,0.12);color:#0284c7;">Trạng thái PIN: Đã kích hoạt (••••)</span>
+      </div>
+      <div class="draft-setup-grid" style="align-items:end;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Mã PIN hiện tại (*)</label>
+          <input type="password" id="pinOldInput" class="field" maxlength="10" placeholder="Nhập PIN cũ (••••)" style="letter-spacing:3px;font-weight:800;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Mã PIN mới (*)</label>
+          <input type="password" id="pinNewInput" class="field" maxlength="10" placeholder="Nhập PIN mới (••••)" style="letter-spacing:3px;font-weight:800;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Xác nhận Mã PIN mới (*)</label>
+          <input type="password" id="pinConfirmInput" class="field" maxlength="10" placeholder="Nhập lại PIN mới (••••)" style="letter-spacing:3px;font-weight:800;">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="primary" style="flex:1;padding:8px 10px;" onclick="handleChangeAdminPin()">🔑 Đổi Mã PIN</button>
+          <button type="button" style="background:#f59e0b;color:#fff;padding:8px 10px;" onclick="handleResetAdminPinByPhone()" title="Quên mã PIN? Đặt lại bằng SĐT Admin">↺ Reset PIN</button>
+        </div>
+      </div>
+      <small class="muted" style="display:block;margin-top:6px;">
+        * Mã PIN áp dụng cho: Lưu cấu hình Bucket, Khôi phục mặc định, Lưu/Cập nhật thông tin tàu, Xóa/Ẩn chuyến tàu và Mở hòm thư.
+      </small>
+    `;
+    if (firstCard) {
+      setupPage.insertBefore(pinCard, firstCard);
+    } else {
+      setupPage.appendChild(pinCard);
+    }
+  }
+}
+
+async function handleChangeAdminPin() {
+  let oldPin = ($('pinOldInput')?.value || '').trim();
+  let newPin = ($('pinNewInput')?.value || '').trim();
+  let confirmPin = ($('pinConfirmInput')?.value || '').trim();
+  let actualPin = getCurrentAdminPin();
+
+  if (!oldPin || !newPin || !confirmPin) {
+    alert('Vui lòng nhập đầy đủ Mã PIN hiện tại, Mã PIN mới và Xác nhận Mã PIN mới!');
+    return;
+  }
+  if (oldPin !== String(actualPin)) {
+    alert('❌ Mã PIN hiện tại không chính xác!');
+    $('pinOldInput')?.focus();
+    return;
+  }
+  if (newPin.length < 4) {
+    alert('Mã PIN mới phải có ít nhất 4 ký tự/chữ số!');
+    return;
+  }
+  if (newPin !== confirmPin) {
+    alert('❌ Xác nhận Mã PIN mới không trùng khớp!');
+    $('pinConfirmInput')?.focus();
+    return;
+  }
+
+  localStorage.setItem('hp_admin_pin', newPin);
+  if (typeof draftConfig === 'object') {
+    draftConfig.adminPin = newPin;
+    localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+    if (supabaseClient) {
+      try {
+        const blob = new Blob([JSON.stringify(draftConfig)], { type: 'application/json' });
+        await supabaseClient.storage.from('port-documents').upload('port_channel_config.json', blob, { upsert: true });
+      } catch (e) {}
+    }
+  }
+
+  $('pinOldInput').value = '';
+  $('pinNewInput').value = '';
+  $('pinConfirmInput').value = '';
+  alert('✅ Đã thay đổi Mã PIN quản trị mới và đồng bộ thành công!');
+}
+window.handleChangeAdminPin = handleChangeAdminPin;
+
+async function handleResetAdminPinByPhone() {
+  let phone = prompt('🔐 KHÔI PHỤC MÃ PIN QUẢN TRỊ:\nVui lòng nhập Số điện thoại của Admin để đặt lại mã PIN về mặc định:');
+  if (phone === null) return;
+  let cleanPhone = String(phone).replace(/\s+|\.|-/g, '').trim();
+
+  if (cleanPhone !== ADMIN_RECOVERY_PHONE) {
+    alert('❌ Số điện thoại Admin không chính xác! Không thể reset mã PIN.');
+    return;
+  }
+
+  localStorage.setItem('hp_admin_pin', DEFAULT_ADMIN_PIN);
+  if (typeof draftConfig === 'object') {
+    draftConfig.adminPin = DEFAULT_ADMIN_PIN;
+    localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+    if (supabaseClient) {
+      try {
+        const blob = new Blob([JSON.stringify(draftConfig)], { type: 'application/json' });
+        await supabaseClient.storage.from('port-documents').upload('port_channel_config.json', blob, { upsert: true });
+      } catch (e) {}
+    }
+  }
+  alert('✅ Xác thực SĐT Admin thành công! Mã PIN quản trị đã được đặt lại về mặc định (6868).');
+}
+window.handleResetAdminPinByPhone = handleResetAdminPinByPhone;
+
+// 3. Áp dụng Mã PIN động vào tất cả các nút yêu cầu:
+// - Lưu cấu hình Bucket (Cài đặt)
+// - Khôi phục mặc định (Cài đặt)
+// - Lưu / Cập nhật tàu (Tra cứu tàu mới)
+// - Xóa bản ghi / Ẩn chuyến (Tra cứu tàu mới)
+// - Hòm thư & Xuất/Lưu Snapshot
+
+// Đồng bộ adminPin khi tải cấu hình từ Bucket
+if (typeof loadDraftFormulaConfig === 'function' && !window._pinSyncConfigWrapped) {
+  const _prevLoadDraftCfg = loadDraftFormulaConfig;
+  loadDraftFormulaConfig = async function() {
+    await _prevLoadDraftCfg();
+    if (draftConfig && draftConfig.adminPin) {
+      localStorage.setItem('hp_admin_pin', String(draftConfig.adminPin));
+    }
+    renderPinSettingsCard();
+  };
+  window.loadDraftFormulaConfig = loadDraftFormulaConfig;
+  window._pinSyncConfigWrapped = true;
+}
+
+saveDraftFormulaConfig = async function(skipPinPrompt = false) {
+  if (!skipPinPrompt && !verifyAdminPinPrompt('lưu cấu hình Bucket')) return;
+
+  draftConfig.berthDepth = parseFloat($('cfg_berthDepth').value) || 9.0;
+  draftConfig.channelDepth = parseFloat($('cfg_channelDepth').value) || 8.0;
+  draftConfig.draftMarginRatio = parseFloat($('cfg_draftMarginRatio').value) || 0.10;
+  draftConfig.adminPin = getCurrentAdminPin();
+
+  let inputs = document.querySelectorAll('.edit-ref-draft');
+  inputs.forEach(inp => {
+    let idx = parseInt(inp.dataset.idx, 10);
+    if (draftConfig.benchmarks[idx]) {
+      draftConfig.benchmarks[idx].refDraft = parseFloat(inp.value) || draftConfig.benchmarks[idx].refDraft;
+    }
+  });
+
+  localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+
+  if (supabaseClient) {
+    try {
+      const blob = new Blob([JSON.stringify(draftConfig)], { type: 'application/json' });
+      const { error } = await supabaseClient.storage.from('port-documents').upload('port_channel_config.json', blob, { upsert: true });
+      if (error) { alert('Lỗi lưu Supabase Bucket: ' + error.message); return; }
+      alert('✅ Đã lưu và đồng bộ cấu hình Bến & Luồng lên Supabase Bucket thành công!');
+    } catch (err) {
+      alert('Lỗi kết nối Supabase: ' + err.message);
+      return;
+    }
+  } else {
+    alert('✅ Đã lưu cấu hình cục bộ trên máy!');
+  }
+
+  renderDailySafeDraftTable();
+  if (typeof checkWorkingVesselsLoadingAlert === 'function') checkWorkingVesselsLoadingAlert();
+};
+window.saveDraftFormulaConfig = saveDraftFormulaConfig;
+
+resetDraftFormulaConfig = function() {
+  if (!verifyAdminPinPrompt('khôi phục cấu hình luồng mớn về mặc định')) return;
+  if (!confirm('Xác nhận khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
+
+  let keepPin = getCurrentAdminPin();
+  localStorage.removeItem('hp_draft_config');
+  draftConfig = {
+    berthDepth: 9.0,
+    channelDepth: 8.0,
+    draftMarginRatio: 0.10,
+    adminPin: keepPin,
+    benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
+  };
+  if ($('cfg_berthDepth')) $('cfg_berthDepth').value = 9.0;
+  if ($('cfg_channelDepth')) $('cfg_channelDepth').value = 8.0;
+  if ($('cfg_draftMarginRatio')) $('cfg_draftMarginRatio').value = 0.10;
+  if (typeof renderDraftEditTable === 'function') renderDraftEditTable();
+  saveDraftFormulaConfig(true);
+};
+window.resetDraftFormulaConfig = resetDraftFormulaConfig;
+
+saveVesselOverrideProtected = async function() {
+  if (!verifyAdminPinPrompt('lưu / cập nhật thông tin tàu')) return;
+
+  let vName = ($('editVesselName').value || '').trim().toUpperCase();
+  if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
+
+  let vType = $('editVesselType')?.value || 'Container';
+  let capUnit = $('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType);
+  let yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
+
+  let payload = {
+    vessel_name: vName,
+    imo: ($('editVesselImo')?.value || '').trim(),
+    vessel_type: vType,
+    year_built: yearBuilt,
+    operator: $('editVesselOperator').value.trim(),
+    last_port: ($('editVesselLastPort')?.value || '').trim().toUpperCase(),
+    destination: ($('editVesselDestination')?.value || '').trim().toUpperCase(),
+    terminal: $('editVesselTerminal').value.trim(),
+    berth: $('editVesselBerth').value.trim(),
+    loa: Number($('editVesselLoa').value) || 0,
+    beam: Number($('editVesselBeam')?.value) || 0,
+    teu: Number($('editVesselTeu')?.value) || 0,
+    capacity_unit: capUnit,
+    dwt: $('editVesselDwt').value.trim(),
+    gt: ($('editVesselGt')?.value || '').trim(),
+    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
+    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  vesselOverridesMap.set(vName, payload);
+  vesselCatalogMap.set(vName, {
+    type: payload.vessel_type, year_built: payload.year_built, last_port: payload.last_port, destination: payload.destination,
+    loa: payload.loa, beam: payload.beam, teu: payload.teu, capacity_unit: payload.capacity_unit,
+    dwt: payload.dwt, gt: payload.gt, imo: payload.imo, agent: payload.operator
+  });
+
+  let catalogObj = Object.fromEntries(vesselCatalogMap);
+  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
+
+  try {
+    if (supabaseClient) {
+      await supabaseClient.from('vessel_overrides').upsert({
+        vessel_name: payload.vessel_name, operator: payload.operator, terminal: payload.terminal, berth: payload.berth,
+        loa: payload.loa, dwt: payload.dwt, etb: payload.etb, etd: payload.etd, updated_at: payload.updated_at
+      }, { onConflict: 'vessel_name' });
+      const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
+      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
+    }
+    updateCatalogBadgeCount();
+    allCalls = filterAndDeduplicateCalls(allCalls);
+    renderAll();
+    renderOverrideTable();
+    alert(`✅ Đã lưu tàu "${vName}" thành công!`);
+  } catch (err) {
+    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
+  }
+};
+window.saveVesselOverrideProtected = saveVesselOverrideProtected;
+
+deleteVesselOverrideProtected = async function() {
+  if (!verifyAdminPinPrompt('xóa / ẩn bản ghi chuyến tàu')) return;
+
+  let vName = ($('editVesselName').value || '').trim().toUpperCase();
+  let vEtb = $('editVesselEtb').value;
+  if (!vName) { alert('Vui lòng nhập tên tàu cần xóa!'); return; }
+
+  let timeStr = vEtb ? vEtb.replace('T', ' ') : 'chưa có giờ cập';
+  if (!confirm(`Bạn có chắc chắn muốn XÓA / ẨN chuyến tàu "${vName}" (Mốc cập: ${timeStr}) khỏi hệ thống?`)) return;
+
+  let payload = {
+    vessel_name: vName,
+    is_hidden: true,
+    etb: vEtb ? new Date(vEtb).toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (supabaseClient) {
+      let { error } = await supabaseClient.from('vessel_overrides').upsert(payload, { onConflict: 'vessel_name' });
+      if (error) { alert('Supabase error: ' + error.message); return; }
+    }
+    let currentOv = vesselOverridesMap.get(vName) || {};
+    vesselOverridesMap.set(vName, { ...currentOv, ...payload });
+    renderOverrideTable();
+    allCalls = filterAndDeduplicateCalls(allCalls);
+    renderAll();
+    alert(`✅ Đã xóa / ẩn chuyến của tàu "${vName}" thành công!`);
+    ['editVesselName', 'editVesselOperator', 'editVesselTerminal', 'editVesselBerth', 'editVesselLoa', 'editVesselDwt', 'editVesselEtb', 'editVesselEtd'].forEach(id => {
+      if ($(id)) $(id).value = '';
+    });
+  } catch (err) {
+    alert('Connection error: ' + err.message);
+  }
+};
+window.deleteVesselOverrideProtected = deleteVesselOverrideProtected;
+
+// Đồng bộ luôn PIN động cho Hòm thư, Lưu Snapshot, Xuất/Nạp Excel
+verifyMailPassword = function() {
+  let pwd = ($('mailPasswordInput')?.value || '').trim();
+  if (pwd === String(getCurrentAdminPin())) {
+    closeMailAuthModal();
+    renderInboxModal();
+    $('inboxModal').classList.add('open');
+  } else {
+    if ($('mailAuthError')) $('mailAuthError').style.display = 'block';
+    $('mailPasswordInput')?.select();
+  }
+};
+window.verifyMailPassword = verifyMailPassword;
+
+exportConfigAsCSVProtected = function() {
+  if (verifyAdminPinPrompt('xuất báo cáo Excel')) exportConfigAsCSV();
+};
+window.exportConfigAsCSVProtected = exportConfigAsCSVProtected;
+
+handleManualSave = function() {
+  if (verifyAdminPinPrompt('lưu Snapshot lên Cloud')) saveCurrentDataToSupabase(false);
+};
+window.handleManualSave = handleManualSave;
+
+// 4. Thuật toán khử trùng lặp thông minh:
+// - Xóa bản ghi rác trùng lặp (cùng tàu, cùng cảng, chưa rời bến hoặc ETB lệch < 4.5 tiếng)
+// - GIỮ NGUYÊN thành 2 chuyến riêng biệt nếu tàu đã rời đi / ra ngoài đỗ khác và quay lại cập sau >= 5 tiếng!
+if (!window._sameVoyageSmartRevisitWrapped) {
+  const _prevFilterAll = filterAndDeduplicateCalls;
+  filterAndDeduplicateCalls = function(rawList) {
+    let list = _prevFilterAll(rawList);
+    if (!Array.isArray(list) || list.length <= 1) return list;
+
+    // Sắp xếp theo tên tàu và thời gian cập (ETB) tăng dần
+    let sorted = [...list].sort((a, b) => {
+      let cmp = String(a.vessel || '').localeCompare(String(b.vessel || ''));
+      if (cmp !== 0) return cmp;
+      return new Date(a.etb || 0).getTime() - new Date(b.etb || 0).getTime();
+    });
+
+    let merged = [];
+    const MIN_REVISIT_GAP_MS = 4.5 * 3600000; // Ngưỡng thực tế >= 5 tiếng (lấy 4.5h để bao phủ sai số làm tròn phút)
+
+    sorted.forEach(curr => {
+      if (merged.length === 0) {
+        merged.push({ ...curr, visit_seq: 1 });
+        return;
+      }
+
+      let prev = merged[merged.length - 1];
+      let sameVessel = prev.vessel === curr.vessel;
+
+      if (!sameVessel) {
+        merged.push({ ...curr, visit_seq: 1 });
+        return;
+      }
+
+      let prevTerm = String(prev.terminal || '').trim().toUpperCase();
+      let currTerm = String(curr.terminal || '').trim().toUpperCase();
+      let sameTerminal = (prevTerm === currTerm) || (prevTerm && currTerm && (prevTerm.includes(currTerm) || currTerm.includes(prevTerm)));
+
+      let tPrevEtb = prev.etb ? new Date(prev.etb).getTime() : 0;
+      let tPrevEtd = (!prev.is_estimated_etd && prev.etd) ? new Date(prev.etd).getTime() : 0;
+      let tCurrEtb = curr.etb ? new Date(curr.etb).getTime() : 0;
+
+      // KIỂM TRA 1: Tàu đã có giờ rời thực tế (ETD) ở lượt 1 và quay lại cập lượt 2 sau >= 5 tiếng
+      let isGenuineRevisitAfterDeparture = (tPrevEtd > 0 && tCurrEtb >= (tPrevEtd + MIN_REVISIT_GAP_MS));
+
+      // KIỂM TRA 2: Tàu cập tại 2 cảng khác nhau và thời gian cách nhau >= 5 tiếng (chuyển bến giữa 2 cảng)
+      let isGenuineInterPortShift = (!sameTerminal && tPrevEtb > 0 && (tCurrEtb - tPrevEtb) >= MIN_REVISIT_GAP_MS);
+
+      // KIỂM TRA 3: Ngay cả khi chưa có ETD tường minh, nếu cùng cảng nhưng 2 mốc ETB cách nhau >= 14 tiếng
+      // (tức đã hoàn thành 1 lượt làm hàng và quay lại cập lượt kế tiếp) -> Coi là lượt cập mới
+      let isDistinctNextDayCall = (sameTerminal && tPrevEtb > 0 && (tCurrEtb - tPrevEtb) >= 14 * 3600000);
+
+      if (isGenuineRevisitAfterDeparture || isGenuineInterPortShift || isDistinctNextDayCall) {
+        // GIỮ NGUYÊN LƯỢT CẬP THỨ 2 (Tàu ra ngoài đỗ khác rồi quay lại cập sau >= 5 tiếng)
+        let nextSeq = (prev.visit_seq || 1) + 1;
+        merged.push({
+          ...curr,
+          visit_seq: nextSeq,
+          revisit_note: `Cập lần ${nextSeq}`
+        });
+      } else if (sameTerminal && tPrevEtb > 0 && Math.abs(tCurrEtb - tPrevEtb) < MIN_REVISIT_GAP_MS) {
+        // GỘP BẢN GHI RÁC TRÙNG LẶP (Cùng tàu, cùng cảng, ETB lệch < 4.5h hoặc nhân đôi dòng như HAI PHONG GAS)
+        merged[merged.length - 1] = {
+          ...prev,
+          ...curr,
+          visit_seq: prev.visit_seq || 1,
+          etb: tCurrEtb >= tPrevEtb ? curr.etb : prev.etb,
+          etd: (!curr.is_estimated_etd && curr.etd) ? curr.etd : ((!prev.is_estimated_etd && prev.etd) ? prev.etd : (curr.etd || prev.etd)),
+          is_estimated_etd: Boolean((!curr.etd || curr.is_estimated_etd) && (!prev.etd || prev.is_estimated_etd))
+        };
+      } else {
+        // Các trường hợp khác giữ nguyên
+        merged.push({ ...curr, visit_seq: (prev.visit_seq || 1) + 1 });
+      }
+    });
+
+    return (typeof applyPortBerthAllocationRules === 'function')
+      ? applyPortBerthAllocationRules(merged)
+      : merged;
+  };
+  window.filterAndDeduplicateCalls = filterAndDeduplicateCalls;
+  window._sameVoyageSmartRevisitWrapped = true;
+}
+// Kích hoạt ngay các thay đổi khi nạp script
+setTimeout(() => {
+  applyCustomMenuLabels();
+  renderPinSettingsCard();
+  if (Array.isArray(allCalls) && allCalls.length > 0) {
+    allCalls = filterAndDeduplicateCalls(allCalls);
+    renderAll();
+  }
+}, 200);
   
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
