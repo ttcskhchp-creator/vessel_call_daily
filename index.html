@@ -9025,6 +9025,333 @@ Object.assign(window, {
   openChartGuidePopup, openChartDrilldownModal
 });
 
+/* ==================== BẢN VÁ TỐI ƯU: PORT STAY 60 MOVE/H, VỊ TRÍ TÂN CẢNG 189 - MIPEC & RANKING ĐỘNG THEO BỘ LỌC ==================== */
+
+// 1. Sửa phân vùng địa lý: Đưa TÂN CẢNG 189 nằm cạnh MIPEC trong Vùng 2 (Bán đảo Đình Vũ - Tân Vũ)
+function classifyPortGeography(rawPortName) {
+  let p = String(rawPortName || 'CHƯA PHÂN CẢNG').trim().toUpperCase();
+
+  // VÙNG 1: CẢNG NƯỚC SÂU LẠCH HUYỆN (CỬA BIỂN)
+  if (p.includes('HHIT') || p.includes('HTIT') || p.includes('HICT') || p.includes('LẠCH HUYỆN') || p.includes('LACH HUYEN') || p.includes('TIL')) {
+    let order = p.includes('HHIT') ? 11 : (p.includes('HTIT') ? 12 : (p.includes('HICT') ? 13 : 19));
+    return {
+      zoneId: 1,
+      zoneCode: 'ZONE_1',
+      zoneName: '1. Cảng nước sâu Lạch Huyện (Cửa biển: HHIT · HTIT · HICT)',
+      zoneShort: 'Khu vực Nước sâu Lạch Huyện',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 2: KHU VỰC BÁN ĐẢO ĐÌNH VŨ – TÂN VŨ (TÂN CẢNG 189 NẰM NGAY CẠNH MIPEC)
+  if (
+    p.includes('TÂN VŨ') || p.includes('TAN VU') ||
+    p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV') ||
+    p.includes('VIP GREEN') || p.includes('VGP') ||
+    p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV') ||
+    p.includes('ĐÌNH VŨ') || p.includes('DINH VU') ||
+    p.includes('HẢI AN') || p.includes('HAI AN') ||
+    p.includes('PTSC') || p.includes('MIPEC') || p.includes('MPC') ||
+    p.includes('TÂN CẢNG 189') || p.includes('TAN CANG 189') || p.includes('189') ||
+    p.includes('DAP') || p.includes('EURO')
+  ) {
+    let order = 29;
+    if (p.includes('TÂN VŨ') || p.includes('TAN VU')) order = 21;
+    else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) order = 22;
+    else if (p.includes('VIP GREEN') || p.includes('VGP')) order = 23;
+    else if (p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV')) order = 24;
+    else if (p.includes('ĐÌNH VŨ') || p.includes('DINH VU')) order = 25;
+    else if (p.includes('PTSC')) order = 26;
+    else if (p.includes('HẢI AN') || p.includes('HAI AN')) order = 27;
+    else if (p.includes('MIPEC') || p.includes('MPC')) order = 28.0;
+    else if (p.includes('TÂN CẢNG 189') || p.includes('TAN CANG 189') || p.includes('189')) order = 28.2; // Nằm ngay cạnh MIPEC
+
+    return {
+      zoneId: 2,
+      zoneCode: 'ZONE_2',
+      zoneName: '2. Khu vực Bán đảo Đình Vũ – Tân Vũ (Tân Vũ · NĐV · VGP · NHDV · Đình Vũ · MIPEC · Tân Cảng 189...)',
+      zoneShort: 'Khu vực Đình Vũ – Tân Vũ',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 3: KHU VỰC TRUNG LƯU SÔNG CẤM
+  if (
+    p.includes('GREEN PORT') || p.includes('GREENPORT') ||
+    p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP') ||
+    p.includes('CHÙA VẼ') || p.includes('CHUA VE') ||
+    p.includes('NAM HẢI') || p.includes('NAM HAI') ||
+    p.includes('TRANSVINA') || p.includes('128') || p.includes('HẢI ĐĂNG')
+  ) {
+    let order = p.includes('GREEN') ? 31 : ((p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP')) ? 32 : ((p.includes('CHÙA VẼ') || p.includes('CHUA VE')) ? 33 : (p.includes('NAM HẢI') ? 34 : 35)));
+    return {
+      zoneId: 3,
+      zoneCode: 'ZONE_3',
+      zoneName: '3. Khu vực Trung lưu Sông Cấm (Green Port · Đoạn Xá · Chùa Vẽ · Nam Hải...)',
+      zoneShort: 'Trung lưu Sông Cấm',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  // VÙNG 4: KHU VỰC THƯỢNG LƯU SÔNG CẤM / NỘI ĐÔ
+  if (
+    p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU') ||
+    p.includes('VẬT CÁCH') || p.includes('VAT CACH') ||
+    p.includes('THỦY SẢN') || p.includes('THUY SAN') || p.includes('BÍNH')
+  ) {
+    let order = (p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU')) ? 41 : 42;
+    return {
+      zoneId: 4,
+      zoneCode: 'ZONE_4',
+      zoneName: '4. Khu vực Thượng lưu Sông Cấm – Nội đô (Hoàng Diệu · Vật Cách...)',
+      zoneShort: 'Thượng lưu Sông Cấm (Hoàng Diệu)',
+      portOrder: order,
+      portName: p
+    };
+  }
+
+  return {
+    zoneId: 5,
+    zoneCode: 'ZONE_5',
+    zoneName: '5. Khu vực Bến phao / Cảng liên kết khác',
+    zoneShort: 'Khu vực khác',
+    portOrder: 59,
+    portName: p
+  };
+}
+window.classifyPortGeography = classifyPortGeography;
+
+// 2. Hàm tính Port Stay chuẩn theo năng suất giải phóng trung bình 60 move/h cho tàu container > 200h (hoặc thiếu ETD từ 26/10)
+function calcStandardPortStay60MovesPerHour(specs, loa, dwtMt) {
+  let vType = String(specs.vessel_type || 'Container').toUpperCase();
+  let teu = Number(specs.teu || 0);
+
+  // Nếu là tàu Container (hoặc đơn vị TEU)
+  if (teu > 0 && (specs.capacity_unit === 'TEU' || vType.includes('CONTAINER') || vType.includes('FEEDER'))) {
+    // Tổng lượng hàng xếp/dỡ bình quân chuyến = 55% sức chở TEU, quy đổi 1 move = 1.35 TEU, năng suất 60 move/h + 2.5h làm dây/thủ tục
+    let estMoves = (teu * 0.55) / 1.35;
+    let stayHours = 2.5 + (estMoves / 60);
+    return Number(Math.max(8.0, Math.min(48.0, stayHours)).toFixed(1));
+  }
+
+  // Nếu là tàu hàng rời / tổng hợp / khác thiếu ETD
+  if (dwtMt > 0) {
+    let stayBulk = 6.0 + (dwtMt / 1200);
+    return Number(Math.max(12.0, Math.min(72.0, stayBulk)).toFixed(1));
+  }
+  return 16.0;
+}
+
+// 3. Ghi đè hàm làm giàu dữ liệu từng dòng bảng Tra cứu: Tự động chuẩn hóa các chuyến Port Stay > 200h về chuẩn 60 move/h
+function enrichCallForSearchTable(rawCall) {
+  let specs = getVesselEnrichedSpecs(rawCall.vessel, rawCall);
+  let loa = parseFloat(String(specs.loa || rawCall.loa || 0).replace(',', '.')) || 0;
+  let beam = parseFloat(String(specs.beam || rawCall.beam || 0).replace(',', '.')) || 0;
+  let dwtMt = parseDwtToMetricTons(specs.dwt || rawCall.dwt, loa);
+  let vType = specs.vessel_type || rawCall.vessel_type || 'Container';
+  let capUnit = specs.capacity_unit || rawCall.capacity_unit || getDefaultCapacityUnitByType(vType);
+  let capVal = Number(specs.teu !== undefined ? specs.teu : (rawCall.teu || 0));
+
+  let curYear = new Date().getFullYear();
+  let yearBuilt = parseInt(specs.year_built || rawCall.year_built || 0, 10);
+  let vesselAge = null;
+  if (yearBuilt >= 1950 && yearBuilt <= curYear + 1) {
+    vesselAge = Math.max(0, curYear - yearBuilt);
+  } else {
+    yearBuilt = loa >= 250 ? 2015 : (loa >= 180 ? 2014 : (loa >= 150 ? 2012 : 2010));
+    vesselAge = curYear - yearBuilt;
+  }
+
+  let t1 = rawCall.etb ? new Date(rawCall.etb).getTime() : 0;
+  let t2 = rawCall.etd ? new Date(rawCall.etd).getTime() : 0;
+  let now = Date.now();
+  let portStayHours = 0;
+  let isEstimated60Move = false;
+  let effectiveEtdStr = rawCall.etd || '';
+
+  if (t1 > 0 && t2 > t1) {
+    portStayHours = (t2 - t1) / 3600000;
+  } else if (t1 > 0 && now > t1) {
+    portStayHours = (now - t1) / 3600000;
+  }
+
+  // Nếu Port Stay > 200 giờ (do dữ liệu từ 26/10 thiếu ETD hoặc bị treo) -> Chuẩn hóa theo 60 move/h
+  if (portStayHours > 200 || (t1 > 0 && !t2 && portStayHours > 72)) {
+    portStayHours = calcStandardPortStay60MovesPerHour({ ...specs, teu: capVal, capacity_unit: capUnit, vessel_type: vType }, loa, dwtMt);
+    isEstimated60Move = true;
+    if (t1 > 0) {
+      t2 = t1 + Math.round(portStayHours * 3600000);
+      effectiveEtdStr = new Date(t2).toISOString();
+    }
+  }
+
+  let lastPort = specs.last_port || rawCall.last_port || '';
+  let destination = specs.destination || rawCall.destination || '';
+  let routeStr = (lastPort || destination) ? `${lastPort || '—'} ➔ ${destination || '—'}` : '';
+  let berthCombined = `${rawCall.terminal || ''} · ${rawCall.berth || ''}`.trim();
+
+  return {
+    ...rawCall,
+    etd: effectiveEtdStr,
+    imo: specs.imo || rawCall.imo || '',
+    vessel_type: vType,
+    year_built: yearBuilt,
+    vessel_age: vesselAge,
+    operator: rawCall.operator || specs.operator || '',
+    loa, beam, teu: capVal, capacity_unit: capUnit, dwtMt,
+    dwtDisplay: dwtMt > 0 ? dwtMt.toLocaleString('vi-VN') : (rawCall.dwt || '—'),
+    last_port: lastPort, destination, routeStr, berthCombined,
+    etbMs: t1, etdMs: t2,
+    etbText: dt(rawCall.etb),
+    etdText: effectiveEtdStr ? (isEstimated60Move ? `~${dt(effectiveEtdStr)}` : dt(effectiveEtdStr)) : '—',
+    portStayHours: Number(portStayHours.toFixed(1)),
+    isOngoingStay: isEstimated60Move
+  };
+}
+window.enrichCallForSearchTable = enrichCallForSearchTable;
+
+// 4. Xếp Rank & Sắp xếp thứ tự cảng động theo đúng Tiêu chí đang được chọn trên Biểu đồ
+function getActiveSinglePortSortCriterion() {
+  let m = searchTableState.portMetrics || { calls: true, stay: true, dwt: true, score: true };
+  let activeKeys = Object.keys(m).filter(k => m[k]);
+  // Nếu người dùng chỉ bật đơn lẻ 1 tiêu chí thì xếp hạng & sắp xếp theo đúng tiêu chí đó
+  if (activeKeys.length === 1) {
+    return activeKeys[0]; // 'calls' | 'stay' | 'dwt' | 'score'
+  }
+  return 'multi'; // Nhiều tiêu chí bật cùng lúc -> Xếp rank theo PESI, sắp xếp theo trục địa lý
+}
+
+function getPortGeographicalAndRankingStats(rows) {
+  let portMap = {};
+  rows.forEach(r => {
+    let geo = classifyPortGeography(r.terminal);
+    let pKey = geo.portName;
+    if (!portMap[pKey]) {
+      portMap[pKey] = {
+        port: pKey, zoneId: geo.zoneId, zoneCode: geo.zoneCode, zoneName: geo.zoneName, zoneShort: geo.zoneShort,
+        portOrder: geo.portOrder, calls: 0, sumStay: 0, stayCnt: 0, sumDwt: 0, sumTeu: 0, vessels: []
+      };
+    }
+    let p = portMap[pKey];
+    p.calls++;
+    if (r.portStayHours > 0) { p.sumStay += r.portStayHours; p.stayCnt++; }
+    p.sumDwt += (r.dwtMt || 0);
+    if (r.capacity_unit === 'TEU') p.sumTeu += (r.teu || 0);
+    p.vessels.push(r);
+  });
+
+  let allPorts = Object.values(portMap).map(p => {
+    let avgStay = p.stayCnt > 0 ? Number((p.sumStay / p.stayCnt).toFixed(1)) : 0;
+    let sumStay = Number(p.sumStay.toFixed(1));
+    let avgDwt = p.calls > 0 ? Math.round(p.sumDwt / p.calls) : 0;
+    let effectiveHours = sumStay > 0 ? sumStay : (p.calls * 14);
+    let dwtPerHour = Math.round(p.sumDwt / Math.max(1, effectiveHours));
+    return { ...p, avgStay, sumStay, avgDwt, dwtPerHour };
+  });
+
+  let maxCalls = Math.max(1, ...allPorts.map(p => p.calls));
+  let maxDwt = Math.max(1, ...allPorts.map(p => p.sumDwt));
+  let maxSpeed = Math.max(1, ...allPorts.map(p => p.dwtPerHour));
+  let maxStay = Math.max(24, ...allPorts.map(p => p.avgStay));
+
+  allPorts.forEach(p => {
+    p.pesiScore = Number((0.40 * (p.sumDwt / maxDwt) * 100 + 0.30 * (p.calls / maxCalls) * 100 + 0.30 * (p.dwtPerHour / maxSpeed) * 100).toFixed(1));
+  });
+
+  let zonesMap = new Map();
+  allPorts.forEach(p => {
+    if (!zonesMap.has(p.zoneId)) {
+      zonesMap.set(p.zoneId, {
+        zoneId: p.zoneId, zoneCode: p.zoneCode, zoneName: p.zoneName, zoneShort: p.zoneShort,
+        ports: [], calls: 0, sumDwt: 0, sumStay: 0, stayCnt: 0, vessels: []
+      });
+    }
+    let z = zonesMap.get(p.zoneId);
+    z.ports.push(p); z.calls += p.calls; z.sumDwt += p.sumDwt; z.sumStay += p.sumStay; z.stayCnt += p.stayCnt;
+    z.vessels.push(...p.vessels);
+  });
+
+  let zonesList = Array.from(zonesMap.values()).sort((a, b) => a.zoneId - b.zoneId);
+  let maxZoneDwt = Math.max(1, ...zonesList.map(z => z.sumDwt));
+  let maxZoneCalls = Math.max(1, ...zonesList.map(z => z.calls));
+  let maxZoneSpeed = Math.max(1, ...zonesList.map(z => z.sumDwt / Math.max(1, z.sumStay || z.calls * 14)));
+
+  let activeCriterion = getActiveSinglePortSortCriterion();
+
+  // Hàm so sánh giá trị cảng theo tiêu chí đang chọn
+  const comparePortByCriterion = (a, b) => {
+    if (activeCriterion === 'calls') return (b.calls - a.calls) || (b.sumDwt - a.sumDwt);
+    if (activeCriterion === 'dwt') return (b.sumDwt - a.sumDwt) || (b.calls - a.calls);
+    if (activeCriterion === 'stay') return (b.avgStay - a.avgStay) || (b.calls - a.calls);
+    return (b.pesiScore - a.pesiScore) || (b.sumDwt - a.sumDwt);
+  };
+
+  zonesList.forEach(z => {
+    z.avgStay = z.stayCnt > 0 ? Number((z.sumStay / z.stayCnt).toFixed(1)) : 0;
+    z.avgDwt = z.calls > 0 ? Math.round(z.sumDwt / z.calls) : 0;
+    let zSpeed = Math.round(z.sumDwt / Math.max(1, z.sumStay || z.calls * 14));
+    z.zonePesiScore = Number((0.40 * (z.sumDwt / maxZoneDwt) * 100 + 0.30 * (z.calls / maxZoneCalls) * 100 + 0.30 * (zSpeed / maxZoneSpeed) * 100).toFixed(1));
+
+    // Tính Rank (🥇 #1, 🥈 #2, 🥉 #3...) theo đúng tiêu chí đang lọc
+    let rankedList = [...z.ports].sort(comparePortByCriterion);
+    rankedList.forEach((p, idx) => { p.rankInZone = idx + 1; });
+
+    // Nếu người dùng lọc đơn lẻ 1 tiêu chí -> Sắp xếp thứ tự cảng đứng nhất lên đầu theo tiêu chí đó
+    // Nếu bật tổng hợp -> Giữ trục vị trí địa lý từ ngoài biển vào trong sông (portOrder)
+    if (activeCriterion !== 'multi') {
+      z.ports.sort(comparePortByCriterion);
+    } else {
+      z.ports.sort((a, b) => a.portOrder !== b.portOrder ? a.portOrder - b.portOrder : b.pesiScore - a.pesiScore);
+    }
+  });
+
+  // Nếu người dùng lọc đơn lẻ 1 tiêu chí, sắp xếp luôn thứ tự các Vùng từ cao xuống thấp theo tiêu chí đó
+  if (activeCriterion === 'calls') zonesList.sort((a, b) => b.calls - a.calls);
+  else if (activeCriterion === 'dwt') zonesList.sort((a, b) => b.sumDwt - a.sumDwt);
+  else if (activeCriterion === 'stay') zonesList.sort((a, b) => b.avgStay - a.avgStay);
+
+  return { zonesList, allPorts, maxCalls, maxDwt, maxStay, maxSpeed, activeCriterion };
+}
+window.getPortGeographicalAndRankingStats = getPortGeographicalAndRankingStats;
+
+// 5. Đồng bộ lại filterAndDeduplicateCalls để các tàu chưa có ETD từ 26/10 tự nhận ETD chuẩn 60 move/h trên toàn hệ thống
+if (!window._portStay60Wrapped) {
+  const _prevFilterDedup = filterAndDeduplicateCalls;
+  filterAndDeduplicateCalls = function(rawList) {
+    let baseList = _prevFilterDedup(rawList);
+    let now = Date.now();
+    return baseList.map(c => {
+      let t1 = c.etb ? new Date(c.etb).getTime() : 0;
+      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
+      let stayHrs = (t1 > 0 && t2 > t1) ? ((t2 - t1) / 3600000) : ((t1 > 0 && now > t1) ? ((now - t1) / 3600000) : 0);
+
+      if (t1 > 0 && (stayHrs > 200 || (!t2 && stayHrs > 72))) {
+        let dwtMt = parseDwtToMetricTons(c.dwt, c.loa);
+        let stdHours = calcStandardPortStay60MovesPerHour(c, c.loa, dwtMt);
+        return {
+          ...c,
+          etd: new Date(t1 + Math.round(stdHours * 3600000)).toISOString(),
+          is_estimated_etd: true
+        };
+      }
+      return c;
+    });
+  };
+  window.filterAndDeduplicateCalls = filterAndDeduplicateCalls;
+  window._portStay60Wrapped = true;
+}
+
+// Cập nhật lại dữ liệu ngay lập tức nếu đã nạp sẵn
+setTimeout(() => {
+  if (Array.isArray(allCalls) && allCalls.length > 0) {
+    allCalls = filterAndDeduplicateCalls(allCalls);
+    renderAll();
+  }
+}, 250);
+  
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
