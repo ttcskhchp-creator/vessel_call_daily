@@ -40,29 +40,53 @@ button:hover{filter:brightness(.95)}
 
 .brand-emblem-wrap {
   position: relative;
-  width: 154px;
-  height: 94px;
+  width: 176px;
+  height: 112px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .brand-icon-box {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
-  background: linear-gradient(145deg, #123d6a, #0a2342);
-  border: 1.8px solid var(--cyan);
+  width: 124px;
+  height: 98px;
+  min-width: 124px;
+  background: #ffffff;
+  border: 2px solid var(--cyan);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px rgba(38, 189, 200, 0.4), inset 0 0 10px rgba(38, 189, 200, 0.25);
+  box-shadow: 0 4px 14px rgba(16, 43, 70, 0.22);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   z-index: 2;
-  margin-bottom: 2px;
-  padding: 4px;
+  padding: 4px 6px;
+}
+
+.brand-icon-box:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 18px rgba(38, 189, 200, 0.45);
+}
+
+.brand-icon-box svg {
+  width: 100%;
+  height: 100%;
+}
+
+.topbar-brand-mini {
+  width: 52px;
+  height: 38px;
+  min-width: 52px;
+  background: #ffffff;
+  border: 1.5px solid #185494;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(24, 84, 148, 0.18);
+  flex-shrink: 0;
+  padding: 2px 3px;
 }
 
 .brand-icon-box:hover {
@@ -266,20 +290,7 @@ button:hover{filter:brightness(.95)}
   gap: 10px;
   min-width: 0;
 }
-.topbar-brand-mini{
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  background: linear-gradient(145deg, #103358, #09203a);
-  border: 1.2px solid var(--cyan);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 8px rgba(38, 189, 200, 0.25);
-  flex-shrink: 0;
-  padding: 3px;
-}
+
 .topbar-brand-mini svg{
   width: 100%;
   height: 100%;
@@ -884,7 +895,95 @@ tbody tr:nth-child(even){background:var(--zebra)}tbody tr:hover{background:var(-
   .alert-ticker-badge{font-size:10px;padding:0 8px}
 }
 @media(max-width:380px){.kpis{grid-template-columns:minmax(0,1fr)!important}.weather-indicators-grid{grid-template-columns:repeat(2,1fr)}}
+/* === CHUẨN NHẬN DIỆN THƯƠNG HIỆU CẢNG HẢI PHÒNG (CHP BRAND BOOK) === */
+.brand-emblem-wrap {
+  position: relative;
+  width: 174px;
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
 
+.brand-icon-box {
+  width: 166px;
+  height: 112px;
+  min-width: 166px;
+  background: #ffffff;
+  border: 2px solid #00a8e8;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(24, 84, 148, 0.24);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 5px 8px;
+}
+
+.brand-icon-box:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 168, 232, 0.45);
+}
+
+.brand-icon-box svg {
+  width: 100%;
+  height: 100%;
+}
+
+.topbar-brand-mini {
+  width: 58px;
+  height: 40px;
+  min-width: 58px;
+  background: #ffffff;
+  border: 1.5px solid #185494;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(24, 84, 148, 0.16);
+  flex-shrink: 0;
+  padding: 2px 4px;
+}
+
+.topbar-brand-mini svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Dải băng nhận diện vát chéo 45° đặc trưng của CHP */
+.chp-brand-ribbon {
+  height: 6px;
+  width: 100%;
+  background: linear-gradient(135deg, #185494 0%, #185494 34%, #0d7bc4 34.2%, #00a8e8 38%, #00a8e8 100%);
+  flex-shrink: 0;
+}
+
+/* Bộ Icon nét mảnh đồng nhất theo quy chuẩn CHP */
+.nav button span.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  color: #185494;
+}
+:root[data-theme="dark"] .nav button span.icon {
+  color: #38bdf8;
+}
+.nav button.active span.icon {
+  color: var(--cyan);
+}
+.nav button span.icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 </style>
 <script>
 /* Chủ đề theo mùa/lễ: chạy sớm để không chớp nháy */
@@ -906,38 +1005,54 @@ window.hpSkin=(function(){
   <aside class="side" id="sidebarNav">
     <div class="brand">
       <div class="brand-emblem-wrap">
-        <svg class="brand-arc-svg" viewBox="0 0 154 96">
-          <defs>
-            <path id="curveTop" d="M 12,75 A 65,65 0 0,1 142,75" fill="none" />
-          </defs>
-          <text class="brand-arc-text">
-            <textPath href="#curveTop" startOffset="50%" text-anchor="middle">
-              OPERATIONS & CUSTOMER SERVICE CENTER
-            </textPath>
-          </text>
-        </svg>
+        <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874">
+          <svg viewBox="0 0 280 206" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <path id="chpArcTop" d="M 48,54 A 104,64 0 0,1 232,54" fill="none" />
+            </defs>
 
-        <!-- LOGO CẢNG HẢI PHÒNG (VECTOR AN TOÀN TUYỆT ĐỐI) -->
-        <div class="brand-icon-box" title="Cảng Hải Phòng - Thành lập năm 1874 (150+ Năm phát triển)">
-          <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <text x="100" y="24" fill="#ffffff" font-size="16" font-family="'Segoe UI',Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="1">Since 1874</text>
-            <ellipse cx="100" cy="85" rx="92" ry="54" stroke="#ffffff" stroke-width="4.5" fill="#1b5ba4"/>
-            <ellipse cx="100" cy="85" rx="84" ry="46" stroke="#ffffff" stroke-width="2" fill="none"/>
-            <path d="M60 46H84V52H60z" fill="#ffffff"/>
-            <path d="M52 56L64 52H80L92 56L88 74H56L52 56z" fill="#ffffff"/>
-            <polygon points="72,59 79,64 79,71 72,76 65,71 65,64" fill="#1b5ba4"/>
-            <polygon points="126,59 100,56 126,62" fill="#ffffff" opacity="0.9"/>
-            <polygon points="134,59 160,56 134,62" fill="#ffffff" opacity="0.9"/>
-            <rect x="127" y="54" width="6" height="5" fill="#ffffff"/>
-            <path d="M126 62L124 88H136L134 62H126z" fill="#ffffff"/>
-            <path d="M42 90C42 80 50 74 62 74H74V86H62C58 86 54 88 54 92C54 96 58 98 62 98H74V110H62C50 110 42 104 42 94V90z" fill="#ffffff"/>
-            <path d="M80 74H92V88H108V74H120V110H108V96H92V110H80V74z" fill="#ffffff"/>
-            <path d="M126 74H164L148 110H126V74z" fill="#ffffff"/>
-            <circle cx="145" cy="87" r="4.5" fill="#1b5ba4"/>
-            <rect x="50" y="114" width="100" height="3" fill="#ffffff"/>
-            <circle cx="178" cy="120" r="5" stroke="#ffffff" stroke-width="1.2" fill="none"/>
-            <text x="178" y="123" fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle">R</text>
-            <text x="100" y="152" fill="#ffffff" font-size="13" font-family="'Segoe UI',Arial,sans-serif" font-weight="900" text-anchor="middle" letter-spacing="0.5">PORT OF HAI PHONG</text>
+            <!-- Dòng chữ uốn cong: Since 1874 -->
+            <text fill="#185494" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="18.5" letter-spacing="1">
+              <textPath href="#chpArcTop" startOffset="50%" text-anchor="middle">Since 1874</textPath>
+            </text>
+
+            <!-- Khung Oval viền đôi đặc trưng CHP -->
+            <ellipse cx="140" cy="104" rx="122" ry="66" fill="#ffffff" stroke="#185494" stroke-width="5.5"/>
+            <ellipse cx="140" cy="104" rx="114" ry="59" fill="#185494"/>
+
+            <!-- Puli & Móc cẩu (Bên trái) -->
+            <rect x="73" y="47" width="3.5" height="14" fill="#ffffff"/>
+            <rect x="89" y="47" width="3.5" height="14" fill="#ffffff"/>
+            <rect x="69" y="60" width="28" height="6.5" rx="1" fill="#ffffff"/>
+            <polygon points="68,68 97,68 103,76 103,86 95,94 70,94 62,86 62,76" fill="#ffffff"/>
+            <circle cx="82.5" cy="81" r="7.5" fill="#185494"/>
+            <rect x="75.5" y="93" width="14" height="7" fill="#ffffff"/>
+
+            <!-- Hải đăng Hòn Dáu & Hai luồng sáng ngang (Bên phải) -->
+            <polygon points="179,98 193,98 189.5,70 182.5,70" fill="#ffffff"/>
+            <rect x="180.5" y="68" width="11" height="2.2" fill="#ffffff"/>
+            <rect x="182.5" y="62" width="7" height="6" fill="#ffffff"/>
+            <path d="M 181.5,62 Q 186,57 190.5,62 Z" fill="#ffffff"/>
+            <polygon points="181,63.2 138,60 138,68.5 181,66.5" fill="#ffffff"/>
+            <polygon points="191,63.2 229,60 229,68.5 191,66.5" fill="#ffffff"/>
+
+            <!-- Chữ C -->
+            <path d="M 108,100 L 72,100 C 54,100 46,109 46,122.5 C 46,136 54,145 72,145 L 108,145 L 108,132.5 L 73,132.5 C 66.5,132.5 63.5,128.5 63.5,122.5 C 63.5,116.5 66.5,112.5 73,112.5 L 108,112.5 Z" fill="#ffffff"/>
+            <!-- Chữ H -->
+            <path d="M 114,100 H 130 V 116 H 146 V 100 H 162 V 145 H 146 V 128 H 130 V 145 H 114 Z" fill="#ffffff"/>
+            <!-- Chữ P vát chéo cạnh phải -->
+            <path d="M 168,100 L 228,100 L 215,130 L 184,130 L 184,145 L 168,145 Z" fill="#ffffff"/>
+            <polygon points="184,110.5 208,110.5 204,120 184,120" fill="#185494"/>
+
+            <!-- Đường chân cầu bến ngang -->
+            <rect x="60" y="150" width="160" height="3.8" rx="1.5" fill="#ffffff"/>
+
+            <!-- Ký hiệu ® -->
+            <circle cx="255" cy="166" r="6" fill="none" stroke="#185494" stroke-width="1.4"/>
+            <text x="255" y="169.2" fill="#185494" font-family="Arial, sans-serif" font-size="8.5" font-weight="900" text-anchor="middle">R</text>
+
+            <!-- Dòng chữ PORT OF HAI PHONG -->
+            <text x="140" y="196" fill="#185494" font-family="'Segoe UI', Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle" letter-spacing="0.4">PORT OF HAI PHONG</text>
           </svg>
         </div>
       </div>
@@ -952,17 +1067,46 @@ window.hpSkin=(function(){
     <div>
       <div class="nav-label" id="t_navWorkspace">Không gian làm việc</div>
       <nav class="nav">
-        <button class="active" data-page="overview" title="Toàn cảnh"><span class="icon">▦</span><span class="txt" id="t_menuOverview">Toàn cảnh</span></button>
-        <!-- THẺ TAB MỚI: BÁO CÁO KHAI THÁC -->
-        <button data-page="ops-report" title="Báo cáo khai thác"><span class="icon">📊</span><span class="txt" id="t_menuOpsReport">Báo cáo khai thác</span></button>
-        <button data-page="planning" title="Kế hoạch cầu"><span class="icon">▤</span><span class="txt" id="t_menuPlanning">Kế hoạch cầu</span></button>
-        <button data-page="search" title="Tra cứu tàu"><span class="icon">⌕</span><span class="txt" id="t_menuSearch">Tra cứu tàu</span></button>
-        <button data-page="stats" title="Thống kê"><span class="icon">▥</span><span class="txt" id="t_menuStats">Thống kê</span></button>
-        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu"><span class="icon">✎</span><span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span></button>
-        <button data-page="draft-setup" title="Setup Luồng & Bến"><span class="icon">⚙</span><span class="txt">Setup Luồng & Mớn</span></button>
-        <button data-page="safety-plan" title="Lập PA An Toàn"><span class="icon">🛡️</span><span class="txt" id="t_menuSafetyPlan">Lập PA An Toàn</span></button>
-        <button data-page="report" title="Báo cáo & Góp ý"><span class="icon">✉</span><span class="txt" id="t_menuReport">Báo cáo & Góp ý</span></button>
-        <button data-page="resources" title="Nguồn & Liên hệ"><span class="icon">↗</span><span class="txt" id="t_menuResources">Nguồn & Liên hệ</span></button>
+        <button class="active" data-page="overview" title="Toàn cảnh">
+          <span class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+          <span class="txt" id="t_menuOverview">Toàn cảnh</span>
+        </button>
+        <button data-page="ops-report" title="Báo cáo khai thác">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></span>
+          <span class="txt" id="t_menuOpsReport">Báo cáo khai thác</span>
+        </button>
+        <button data-page="planning" title="Kế hoạch cầu">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M2 20c2-1 4-1 6 0s4 1 6 0 4-1 6 0"/><path d="M4 16l2-6h12l2 6"/><path d="M9 10V6h6v4"/></svg></span>
+          <span class="txt" id="t_menuPlanning">Kế hoạch cầu</span>
+        </button>
+        <button data-page="search" title="Tra cứu tàu">
+          <span class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <span class="txt" id="t_menuSearch">Tra cứu tàu</span>
+        </button>
+        <button data-page="stats" title="Thống kê">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+          <span class="txt" id="t_menuStats">Thống kê</span>
+        </button>
+        <button data-page="edit-vessel" title="Bổ sung & Sửa tàu">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+          <span class="txt" id="t_menuEditVessel">Bổ sung & Sửa tàu</span>
+        </button>
+        <button data-page="draft-setup" title="Setup Luồng & Bến">
+          <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09c-.63.11-1.14.53-1.51 1.13Z"/></svg></span>
+          <span class="txt">Setup Luồng & Mớn</span>
+        </button>
+        <button data-page="safety-plan" title="Lập PA An Toàn">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <span class="txt" id="t_menuSafetyPlan">Lập PA An Toàn</span>
+        </button>
+        <button data-page="report" title="Báo cáo & Góp ý">
+          <span class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+          <span class="txt" id="t_menuReport">Báo cáo & Góp ý</span>
+        </button>
+        <button data-page="resources" title="Nguồn & Liên hệ">
+          <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M11.5 3a17 17 0 0 0 0 18M12.5 3a17 17 0 0 1 0 18"/></svg></span>
+          <span class="txt" id="t_menuResources">Nguồn & Liên hệ</span>
+        </button>
       </nav>
     </div>
 
@@ -1025,17 +1169,26 @@ window.hpSkin=(function(){
     <header class="topbar">
       <div class="topbar-header-left">
         <div class="topbar-brand-mini" title="Cảng Hải Phòng - Since 1874">
-          <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="100" cy="80" rx="94" ry="58" stroke="#ffffff" stroke-width="5" fill="#1b5ba4"/>
-            <ellipse cx="100" cy="80" rx="86" ry="50" stroke="#ffffff" stroke-width="2" fill="none"/>
-            <path d="M52 56L64 52H80L92 56L88 74H56L52 56z" fill="#ffffff"/>
-            <polygon points="126,59 100,56 126,62" fill="#ffffff"/>
-            <polygon points="134,59 160,56 134,62" fill="#ffffff"/>
-            <path d="M126 62L124 88H136L134 62H126z" fill="#ffffff"/>
-            <path d="M42 90C42 80 50 74 62 74H74V86H62C58 86 54 88 54 92C54 96 58 98 62 98H74V110H62C50 110 42 104 42 94V90z" fill="#ffffff"/>
-            <path d="M80 74H92V88H108V74H120V110H108V96H92V110H80V74z" fill="#ffffff"/>
-            <path d="M126 74H164L148 110H126V74z" fill="#ffffff"/>
-            <circle cx="145" cy="87" r="4.5" fill="#1b5ba4"/>
+          <svg viewBox="0 0 256 144" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="128" cy="72" rx="122" ry="66" fill="#ffffff" stroke="#185494" stroke-width="5.5"/>
+            <ellipse cx="128" cy="72" rx="114" ry="59" fill="#185494"/>
+            <rect x="61" y="15" width="3.5" height="14" fill="#ffffff"/>
+            <rect x="77" y="15" width="3.5" height="14" fill="#ffffff"/>
+            <rect x="57" y="28" width="28" height="6.5" rx="1" fill="#ffffff"/>
+            <polygon points="56,36 85,36 91,44 91,54 83,62 58,62 50,54 50,44" fill="#ffffff"/>
+            <circle cx="70.5" cy="49" r="7.5" fill="#185494"/>
+            <rect x="63.5" y="61" width="14" height="7" fill="#ffffff"/>
+            <polygon points="167,66 181,66 177.5,38 170.5,38" fill="#ffffff"/>
+            <rect x="168.5" y="36" width="11" height="2.2" fill="#ffffff"/>
+            <rect x="170.5" y="30" width="7" height="6" fill="#ffffff"/>
+            <path d="M 169.5,30 Q 174,25 178.5,30 Z" fill="#ffffff"/>
+            <polygon points="169,31.2 126,28 126,36.5 169,34.5" fill="#ffffff"/>
+            <polygon points="179,31.2 217,28 217,36.5 179,34.5" fill="#ffffff"/>
+            <path d="M 96,68 L 60,68 C 42,68 34,77 34,90.5 C 34,104 42,113 60,113 L 96,113 L 96,100.5 L 61,100.5 C 54.5,100.5 51.5,96.5 51.5,90.5 C 51.5,84.5 54.5,80.5 61,80.5 L 96,80.5 Z" fill="#ffffff"/>
+            <path d="M 102,68 H 118 V 84 H 134 V 68 H 150 V 113 H 134 V 96 H 118 V 113 H 102 Z" fill="#ffffff"/>
+            <path d="M 156,68 L 216,68 L 203,98 L 172,98 L 172,113 L 156,113 Z" fill="#ffffff"/>
+            <polygon points="172,78.5 196,78.5 192,88 172,88" fill="#185494"/>
+            <rect x="48" y="118" width="160" height="3.8" rx="1.5" fill="#ffffff"/>
           </svg>
         </div>
 
@@ -1054,6 +1207,7 @@ window.hpSkin=(function(){
       </div>
 
     </header>
+<div class="chp-brand-ribbon"></div>
     <!-- DÒNG LOA CẢNH BÁO LÀM HÀNG TẠI CẦU BẾN TÂN VŨ -->
     <div class="alert-ticker-wrap" id="alertTickerWrap">
       <div class="alert-ticker-badge">📢 CẢNH BÁO LÀM HÀNG BẾN TÂN VŨ</div>
