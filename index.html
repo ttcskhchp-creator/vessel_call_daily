@@ -11046,7 +11046,8 @@ setTimeout(loadCangVuCallsMaster, 300);
 setInterval(loadCangVuCallsMaster, 120000);
 
 
-/* ==================== TỰ ĐỘNG LÀM MỚI DỮ LIỆU EPORT TÂN VŨ & HIỂN THỊ MỐC THỜI GIAN CẬP NHẬT ==================== */
+
+/* ==================== TỰ ĐỘNG LÀM MỚI DỮ LIỆU EPORT TÂN VŨ (AN TOÀN POPUP 100%) ==================== */
 async function refreshEportTanVuRealtime() {
   try {
     const url = `${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`;
@@ -11057,7 +11058,12 @@ async function refreshEportTanVuRealtime() {
     if (jobsMap && typeof jobsMap === 'object') {
       window.eportTanVuJobsMap = jobsMap;
 
-      // Tìm mốc thời gian updatedAt mới nhất trong dữ liệu ePort
+      // Vẽ lại khung Cảng Tân Vũ bằng hàm gốc để giữ nguyên vẹn sự kiện click mở Popup
+      if (typeof renderTanVuLayout === 'function') {
+        renderTanVuLayout(getFilteredCalls());
+      }
+
+      // Tìm mốc thời gian updatedAt mới nhất để hiển thị lên góc phải (không đụng vào innerHTML thẻ tàu)
       let latestIso = '';
       Object.values(jobsMap).forEach(item => {
         if (item && item.updatedAt && item.updatedAt > latestIso) {
@@ -11065,31 +11071,15 @@ async function refreshEportTanVuRealtime() {
         }
       });
 
-      // Vẽ lại khung Cảng Tân Vũ (Tiêu điểm) với số % làm hàng mới nhất
-      if (typeof renderTanVuLayout === 'function') {
-        renderTanVuLayout(getFilteredCalls());
-      }
-
-      // Gắn giờ cập nhật thực tế lên dòng trạng thái "Đồng bộ tự động ePort"
-      if (latestIso) {
+      if (latestIso && $('tanvuCount')) {
         const d = new Date(latestIso);
         const timeStr = d.toLocaleTimeString('vi-VN', {
           hour: '2-digit',
           minute: '2-digit',
           timeZone: 'Asia/Ho_Chi_Minh'
         });
-        const dateStr = d.toLocaleDateString('vi-VN', {
-          day: '2-digit',
-          month: '2-digit',
-          timeZone: 'Asia/Ho_Chi_Minh'
-        });
-        const layoutBox = $('tanvuBerthsLayout');
-        if (layoutBox && layoutBox.innerHTML.includes('Đồng bộ tự động ePort')) {
-          layoutBox.innerHTML = layoutBox.innerHTML.replace(
-            'Đồng bộ tự động ePort',
-            `Đồng bộ tự động ePort (Cập nhật: ${timeStr} ${dateStr})`
-          );
-        }
+        const curText = $('tanvuCount').textContent.split('· ePort')[0].trim();
+        $('tanvuCount').textContent = `${curText} · ePort ${timeStr}`;
       }
     }
   } catch (e) {
@@ -11097,7 +11087,6 @@ async function refreshEportTanVuRealtime() {
   }
 }
 
-// Chạy ngay khi mở trang và tự động kiểm tra bản mới mỗi 60 giây
 setTimeout(refreshEportTanVuRealtime, 500);
 setInterval(refreshEportTanVuRealtime, 60000);
 
