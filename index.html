@@ -6166,53 +6166,66 @@ function getPriorityBerthsByPortRule(callOrSpecs, portContext = { hasRoRo: false
   let info = classifyVesselForBerth(callOrSpecs);
   let { term, loa, isRoRo, isBulk, isCont } = info;
   const ALL_5_BERTHS = ['B1', 'B2', 'B3', 'B4', 'B5'];
+  const ALL_3_BERTHS = ['B1', 'B2', 'B3'];
 
+  // 1. CẢNG EURO ĐÌNH VŨ: Chỉ có 3 cầu bến B1, B2, B3
+  if (term.includes('EURO')) {
+    return {
+      preferred: ALL_3_BERTHS,
+      fallback: ALL_3_BERTHS,
+      maxBerths: ALL_3_BERTHS,
+      allowKeepOriginalIfNoConflict: true,
+      ruleName: 'Euro Đình Vũ: Chỉ phân bổ trong 3 cầu bến B1, B2, B3'
+    };
+  }
+
+  // 2. CẢNG TÂN VŨ (5 bến: B1 - B5)
   if (term.includes('TÂN VŨ') || term.includes('TAN VU')) {
     if (isRoRo) {
-      return { preferred: ['B5', 'B4'], fallback: ['B3', 'B2', 'B1'], allowKeepOriginalIfNoConflict: false, ruleName: 'Tân Vũ: Tàu Ro-Ro/Ô tô ưu tiên Cầu 5, 4' };
+      return { preferred: ['B5', 'B4'], fallback: ['B3', 'B2', 'B1'], maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: false, ruleName: 'Tân Vũ: Tàu Ro-Ro/Ô tô ưu tiên Cầu 5, 4' };
     }
     if (loa > 170) {
-      return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], allowKeepOriginalIfNoConflict: !portContext.hasRoRo, ruleName: `Tân Vũ: Tàu LOA ${loa}m (>170m) ưu tiên Cầu 1, 2, 3` };
+      return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !portContext.hasRoRo, ruleName: `Tân Vũ: Tàu LOA ${loa}m (>170m) ưu tiên Cầu 1, 2, 3` };
     }
-    return { preferred: portContext.hasRoRo ? ['B3', 'B4', 'B2', 'B1'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: true, ruleName: 'Tân Vũ: Xếp linh hoạt B1 - B5' };
+    return { preferred: portContext.hasRoRo ? ['B3', 'B4', 'B2', 'B1'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: true, ruleName: 'Tân Vũ: Xếp linh hoạt B1 - B5' };
   }
 
+  // 3. CẢNG CHÙA VẼ (5 bến: B1 - B5)
   if (term.includes('CHÙA VẼ') || term.includes('CHUA VE')) {
     if (isBulk) {
-      return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], allowKeepOriginalIfNoConflict: !portContext.hasCont, ruleName: 'Chùa Vẽ: Tàu hàng rời ưu tiên Bến 1, 2, 3' };
+      return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !portContext.hasCont, ruleName: 'Chùa Vẽ: Tàu hàng rời ưu tiên Bến 1, 2, 3' };
     }
     if (isCont) {
-      return { preferred: portContext.hasBulk ? ['B4', 'B5'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !portContext.hasBulk, ruleName: portContext.hasBulk ? 'Chùa Vẽ: Tàu Cont ưu tiên Bến 4, 5' : 'Chùa Vẽ: Xếp linh hoạt B1 - B5' };
+      return { preferred: portContext.hasBulk ? ['B4', 'B5'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !portContext.hasBulk, ruleName: portContext.hasBulk ? 'Chùa Vẽ: Tàu Cont ưu tiên Bến 4, 5' : 'Chùa Vẽ: Xếp linh hoạt B1 - B5' };
     }
-    return { preferred: ALL_5_BERTHS, fallback: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: true, ruleName: 'Chùa Vẽ: Phân bổ B1 - B5' };
+    return { preferred: ALL_5_BERTHS, fallback: ALL_5_BERTHS, maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: true, ruleName: 'Chùa Vẽ: Phân bổ B1 - B5' };
   }
 
-  if ((term.includes('ĐÌNH VŨ') || term.includes('DINH VU')) && !term.includes('NAM')) {
+  // 4. CẢNG ĐÌNH VŨ (5 bến: B1 - B5, không bao gồm Euro Đình Vũ & Nam Đình Vũ)
+  if ((term.includes('ĐÌNH VŨ') || term.includes('DINH VU')) && !term.includes('NAM') && !term.includes('EURO')) {
     if (isBulk || isRoRo) {
-      return { preferred: ['B1'], fallback: ['B2', 'B3', 'B4', 'B5'], allowKeepOriginalIfNoConflict: false, ruleName: 'Đình Vũ: Hàng rời / Ô tô ưu tiên Bến 1 (B1)' };
+      return { preferred: ['B1'], fallback: ['B2', 'B3', 'B4', 'B5'], maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: false, ruleName: 'Đình Vũ: Hàng rời / Ô tô ưu tiên Bến 1 (B1)' };
     }
     let hasSpecialAtDV = portContext.hasBulk || portContext.hasRoRo;
-    return { preferred: hasSpecialAtDV ? ['B2', 'B3', 'B4', 'B5'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !hasSpecialAtDV, ruleName: 'Đình Vũ: Phân bổ linh hoạt B1 - B5' };
+    return { preferred: hasSpecialAtDV ? ['B2', 'B3', 'B4', 'B5'] : ALL_5_BERTHS, fallback: ALL_5_BERTHS, maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: !hasSpecialAtDV, ruleName: 'Đình Vũ: Phân bổ linh hoạt B1 - B5' };
   }
 
   return null;
-}
-
-function normalizeBerthCode(rawBerth) {
-  let s = String(rawBerth || '').trim().toUpperCase();
-  if (!s) return '';
-  let m = s.match(/([1-5])$/);
-  if (m && (s.startsWith('B') || s.startsWith('TV') || s.startsWith('CV') || s.startsWith('DV') || s.startsWith('CẦU') || s.startsWith('BẾN') || s.length === 1)) {
-    return 'B' + m[1];
-  }
-  return s;
 }
 
 function pickBestBerthWithoutOverlap(ruleObj, tStart, tEnd, terminalScheduleMap, currentBerth) {
   let normCur = normalizeBerthCode(currentBerth);
   if (!ruleObj || !ruleObj.preferred || ruleObj.preferred.length === 0) return normCur || 'B1';
 
-  let fullOrderedBerths = Array.from(new Set([...ruleObj.preferred, ...(ruleObj.fallback || ['B1', 'B2', 'B3', 'B4', 'B5'])]));
+  let allowedLimit = ruleObj.maxBerths || ['B1', 'B2', 'B3', 'B4', 'B5'];
+  let fullOrderedBerths = Array.from(new Set([...ruleObj.preferred, ...(ruleObj.fallback || allowedLimit)]))
+    .filter(b => allowedLimit.includes(b));
+
+  // Nếu bến gốc từ dữ liệu vượt quá số bến thực tế của cảng (VD: B4/B5 tại Euro Đình Vũ) -> Ép đưa về bến hợp lệ
+  if (normCur && !allowedLimit.includes(normCur)) {
+    normCur = '';
+  }
+
   const getOverlapScoreOnBerth = (berthCode) => {
     let occupiedList = terminalScheduleMap.get(berthCode) || [];
     let overlapCount = 0;
