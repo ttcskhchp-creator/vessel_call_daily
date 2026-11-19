@@ -10786,109 +10786,33 @@ setTimeout(() => {
   loadEportTanVuJobs();
 }, 150);
   
-  /* ==================== TỰ ĐỘNG LẤY SNAPSHOT MỚI NHẤT KHI CHƯA CÓ FILE NGÀY HÔM NAY (TRÁNH VỀ 0) ==================== */
-(function autoRecoverLatestSnapshotOn400() {
-  setTimeout(async () => {
+ /* ==================== TỰ ĐỘNG KÍCH HOẠT ĐỒNG BỘ NGUỒN CHÍNH KHI CHƯA CÓ DỮ LIỆU NGÀY MỚI ==================== */
+(function autoTriggerRealSyncButtonWhenEmpty() {
+  setTimeout(() => {
     try {
-      // Nếu dữ liệu allCalls đang rỗng (do file daily_snapshot_YYYY-MM-DD.json của ngày mới chưa tồn tại)
-      if (!Array.isArray(window.allCalls) || window.allCalls.length === 0) {
-        if (supabaseClient) {
-          // 1. Tìm toàn bộ file daily_snapshot_*.json trong Bucket 'port-documents'
-          const { data: files } = await supabaseClient.storage
-            .from('port-documents')
-            .list('', { search: 'daily_snapshot_' });
+      // Kiểm tra xem hiện tại đã có tàu biển nào khớp với ngày đang chọn chưa
+      let filtered = (typeof getFilteredCalls === 'function') ? getFilteredCalls() : (window.allCalls || []);
+      if (!Array.isArray(filtered) || filtered.length === 0) {
+        console.log('⚡ Chưa có lịch tàu ngày hiện tại -> Kích hoạt trực tiếp nút đồng bộ nguồn chính...');
 
-          if (Array.isArray(files) && files.length > 0) {
-            // Sắp xếp giảm dần theo tên (ngày mới nhất lên đầu)
-            const snapshots = files
-              .filter(f => f.name && f.name.startsWith('daily_snapshot_') && f.name.endsWith('.json'))
-              .sort((a, b) => b.name.localeCompare(a.name));
+        // Tìm đúng nút đồng bộ tự động (nút có biểu tượng ↻ ở cột trái) và gọi hàm onclick thật của nó
+        const allBtns = Array.from(document.querySelectorAll('button'));
+        const autoSyncBtn = allBtns.find(b => b.innerText && b.innerText.includes('↻'));
+        const loadBtn = allBtns.find(b => b.innerText && b.innerText.trim().startsWith('Nạp'));
 
-            if (snapshots.length > 0) {
-              const latestName = snapshots[0].name;
-              console.log('♻️ Tự động khôi phục từ bản lưu Cloud gần nhất:', latestName);
-              const { data: blob, error } = await supabaseClient.storage
-                .from('port-documents')
-                .download(latestName);
-
-              if (blob && !error) {
-                const parsed = JSON.parse(await blob.text());
-                const restoredCalls = Array.isArray(parsed) ? parsed : (parsed.calls || parsed.allCalls || []);
-                if (restoredCalls.length > 0) {
-                  window.allCalls = restoredCalls;
-                  if (typeof renderAll === 'function') renderAll();
-                  if (typeof renderGantt === 'function') renderGantt();
-                  if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
-                }
-              }
-            }
-          }
-        }
-
-        // 2. Kích hoạt đồng bộ ngầm từ nguồn trực tuyến để cập nhật dữ liệu mới nhất
-        if (typeof syncAllSources === 'function') {
-          syncAllSources(true).catch(() => {});
-        } else if (typeof loadData === 'function') {
-          loadData().catch(() => {});
-        }
-      }
-    } catch (err) {
-      console.warn('Lỗi khôi phục snapshot tự động:', err);
-    }
-  }, 1800);
-})();
-
-  /* ==================== TỰ ĐỘNG NẠP TRỰC TIẾP TỪ NGUỒN CHÍNH KHI CHƯA CÓ BẢN LƯU CLOUD ==================== */
-(function autoFetchDirectSourceWhenNoSnapshot() {
-  setTimeout(async () => {
-    try {
-      // Nếu allCalls vẫn đang rỗng do chưa có file snapshot trên Cloud
-      if (!Array.isArray(window.allCalls) || window.allCalls.length === 0) {
-        console.log('🔄 Chưa có bản lưu Cloud -> Tự động kéo dữ liệu trực tiếp từ nguồn chính...');
-
-        // Ưu tiên 1: Gọi hàm đồng bộ trực tiếp từ API nguồn (Google Apps Script / VesselFinder)
-        if (typeof fetchAllSources === 'function') {
-          await fetchAllSources();
-        } else if (typeof syncAllData === 'function') {
-          await syncAllData();
-        } else if (typeof loadData === 'function') {
-          await loadData();
-        } else if (typeof fetchVesselData === 'function') {
-          await fetchVesselData();
-        }
-
-        // Ưu tiên 2: Nếu hàm nguồn chính chưa đẩy vào allCalls, đọc trực tiếp từ bảng 'vessel_calls' trên Supabase
-        if ((!Array.isArray(window.allCalls) || window.allCalls.length === 0) && supabaseClient) {
-          const { data, error } = await supabaseClient
-            .from('vessel_calls')
-            .select('*')
-            .order('etb', { ascending: true });
-
-          if (!error && Array.isArray(data) && data.length > 0) {
-            window.allCalls = data;
-          }
-        }
-
-        // Cập nhật lại toàn bộ giao diện & tự động lưu bản snapshot đầu tiên lên Cloud
-        if (Array.isArray(window.allCalls) && window.allCalls.length > 0) {
-          if (typeof renderAll === 'function') renderAll();
-          if (typeof renderGantt === 'function') renderGantt();
-          if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
-
-          // Tự động tạo bản lưu daily_snapshot_YYYY-MM-DD.json đầu tiên để hết lỗi 400
-          if (supabaseClient) {
-            let todayStr = (typeof getTodayString === 'function') ? getTodayString() : new Date().toISOString().split('T')[0];
-            let fileName = `daily_snapshot_${todayStr}.json`;
-            const blob = new Blob([JSON.stringify(window.allCalls)], { type: 'application/json' });
-            await supabaseClient.storage.from('port-documents').upload(fileName, blob, { upsert: true }).catch(() => {});
-          }
+        if (autoSyncBtn && typeof autoSyncBtn.onclick === 'function') {
+          autoSyncBtn.click();
+        } else if (loadBtn && typeof loadBtn.onclick === 'function') {
+          loadBtn.click();
         }
       }
     } catch (e) {
-      console.error('Lỗi tự động nạp nguồn trực tiếp:', e);
+      console.error('Lỗi kích hoạt đồng bộ tự động:', e);
     }
   }, 1500);
 })();
+
+  
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
