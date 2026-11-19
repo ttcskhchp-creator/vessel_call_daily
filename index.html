@@ -10812,6 +10812,35 @@ setTimeout(() => {
   }, 1500);
 })();
 
+/* ==================== ĐỌC LỊCH TÀU CẢNG VỤ HẢI PHÒNG TỪ SUPABASE (THAY THẾ GOOGLE APPS SCRIPT) ==================== */
+async function loadCangVuCallsFromCloud() {
+  try {
+    const url = `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        window.allCalls = data;
+        if (typeof deduplicateAndEnrichCalls === 'function') {
+          window.allCalls = deduplicateAndEnrichCalls(window.allCalls);
+        }
+        if (typeof renderAll === 'function') renderAll();
+        if (typeof renderGantt === 'function') renderGantt();
+        if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
+        console.log(`✅ Đã nạp thành công ${window.allCalls.length} lượt tàu từ Cảng vụ Hàng hải Hải Phòng.`);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc cangvu_calls.json:', e);
+  }
+  return false;
+}
+
+// Chạy ngay khi mở trang và tự động làm mới mỗi 2 phút
+setTimeout(loadCangVuCallsFromCloud, 300);
+setInterval(loadCangVuCallsFromCloud, 120000);
+
   
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
