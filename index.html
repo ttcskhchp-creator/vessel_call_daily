@@ -10837,7 +10837,58 @@ setTimeout(() => {
     }
   }, 1800);
 })();
-  
+
+  /* ==================== TỰ ĐỘNG NẠP TRỰC TIẾP TỪ NGUỒN CHÍNH KHI CHƯA CÓ BẢN LƯU CLOUD ==================== */
+(function autoFetchDirectSourceWhenNoSnapshot() {
+  setTimeout(async () => {
+    try {
+      // Nếu allCalls vẫn đang rỗng do chưa có file snapshot trên Cloud
+      if (!Array.isArray(window.allCalls) || window.allCalls.length === 0) {
+        console.log('🔄 Chưa có bản lưu Cloud -> Tự động kéo dữ liệu trực tiếp từ nguồn chính...');
+
+        // Ưu tiên 1: Gọi hàm đồng bộ trực tiếp từ API nguồn (Google Apps Script / VesselFinder)
+        if (typeof fetchAllSources === 'function') {
+          await fetchAllSources();
+        } else if (typeof syncAllData === 'function') {
+          await syncAllData();
+        } else if (typeof loadData === 'function') {
+          await loadData();
+        } else if (typeof fetchVesselData === 'function') {
+          await fetchVesselData();
+        }
+
+        // Ưu tiên 2: Nếu hàm nguồn chính chưa đẩy vào allCalls, đọc trực tiếp từ bảng 'vessel_calls' trên Supabase
+        if ((!Array.isArray(window.allCalls) || window.allCalls.length === 0) && supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('vessel_calls')
+            .select('*')
+            .order('etb', { ascending: true });
+
+          if (!error && Array.isArray(data) && data.length > 0) {
+            window.allCalls = data;
+          }
+        }
+
+        // Cập nhật lại toàn bộ giao diện & tự động lưu bản snapshot đầu tiên lên Cloud
+        if (Array.isArray(window.allCalls) && window.allCalls.length > 0) {
+          if (typeof renderAll === 'function') renderAll();
+          if (typeof renderGantt === 'function') renderGantt();
+          if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
+
+          // Tự động tạo bản lưu daily_snapshot_YYYY-MM-DD.json đầu tiên để hết lỗi 400
+          if (supabaseClient) {
+            let todayStr = (typeof getTodayString === 'function') ? getTodayString() : new Date().toISOString().split('T')[0];
+            let fileName = `daily_snapshot_${todayStr}.json`;
+            const blob = new Blob([JSON.stringify(window.allCalls)], { type: 'application/json' });
+            await supabaseClient.storage.from('port-documents').upload(fileName, blob, { upsert: true }).catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Lỗi tự động nạp nguồn trực tiếp:', e);
+    }
+  }, 1500);
+})();
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
