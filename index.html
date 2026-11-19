@@ -6223,7 +6223,15 @@ function getPriorityBerthsByPortRule(callOrSpecs, portContext = { hasRoRo: false
   return null;
 }
 
-function pickBestBerthWithoutOverlap(ruleObj, tStart, tEnd, terminalScheduleMap, currentBerth) {
+function normalizeBerthCode(rawBerth) {
+  const s = String(rawBerth || '').trim().toUpperCase();
+  if (!s) return '';
+  const m = s.match(/(\d+)/);
+  if (m) return 'B' + parseInt(m[1], 10);
+  return s;
+}
+
+  function pickBestBerthWithoutOverlap(ruleObj, tStart, tEnd, terminalScheduleMap, currentBerth) {
   let normCur = normalizeBerthCode(currentBerth);
   if (!ruleObj || !ruleObj.preferred || ruleObj.preferred.length === 0) return normCur || 'B1';
 
