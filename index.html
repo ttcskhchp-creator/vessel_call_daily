@@ -10807,7 +10807,8 @@ setTimeout(() => {
   }, 1500);
 })();
 
-/* ==================== ĐỌC LỊCH TÀU CẢNG VỤ HẢI PHÒNG (CLOUD + TRỰC TIẾP QUA TRÌNH DUYỆT VN) ==================== */
+/* ==================== HỆ THỐNG ĐỒNG BỘ LỊCH TÀU CẢNG VỤ HP & SUPABASE (SẠCH LỖI CÚ PHÁP) ==================== */
+
 function normalizeCangVuTerminalName(raw) {
   const s = String(raw || '').toUpperCase().trim();
   if (!s) return '';
@@ -10834,7 +10835,7 @@ function normalizeCangVuTerminalName(raw) {
 function parseCangVuHtmlDocument(htmlText) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlText, 'text/html');
-  const capText = doc.querySelector('#lblCapShowDate')?.innerText || doc.body?.innerText || '';
+  const capText = (doc.querySelector('#lblCapShowDate') && doc.querySelector('#lblCapShowDate').innerText) || (doc.body && doc.body.innerText) || '';
   const mDate = capText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
   const isoDate = mDate ? `${mDate[3]}-${mDate[2]}-${mDate[1]}` : getTodayString();
 
@@ -10855,7 +10856,7 @@ function parseCangVuHtmlDocument(htmlText) {
         const hhmm = timeStr.padStart(5, '0');
         extracted.push({
           section: currentSection,
-          isoDate,
+          isoDate: isoDate,
           isoDateTime: `${isoDate}T${hhmm}:00+07:00`,
           vessel: (tds[2].innerText || '').trim().toUpperCase(),
           draft: parseFloat((tds[3].innerText || '').trim().replace(',', '.')) || 0,
@@ -10945,7 +10946,6 @@ async function fetchCangVuDirectFromBrowser() {
   for (const dOffset of [-1, 0, 1]) {
     const targetUrl = `https://csdltau.cangvuhaiphong.gov.vn/ship_plan.aspx?d=${dOffset}`;
     try {
-      // Dùng r.jina.ai chế độ trả về HTML gốc (vượt qua CORS 100%, không cần API Vercel)
       const res = await fetch(`https://r.jina.ai/${targetUrl}`, {
         headers: {
           'X-Return-Format': 'html',
@@ -10956,7 +10956,7 @@ async function fetchCangVuDirectFromBrowser() {
         const html = await res.text();
         if (html && (html.includes('lblCapShowDate') || html.includes('TD_ShowShipPlan'))) {
           const parsedRows = parseCangVuHtmlDocument(html);
-          console.log(`📥 Cảng vụ d=${dOffset}: bóc tách được ${parsedRows.length} lượt điều động.`);
+          console.log(`📥 Cảng vụ d=${dOffset}: lấy được ${parsedRows.length} lượt điều động.`);
           allRows.push(...parsedRows);
         }
       }
@@ -10967,22 +10967,64 @@ async function fetchCangVuDirectFromBrowser() {
   return buildCallsFromCangVuRows(allRows);
 }
 
-    // 2. Nếu Cloud chưa có -> Trình duyệt tự lấy trực tiếp từ Cảng vụ Hải Phòng (IP Việt Nam)
-    console.log('🌐 Đang lấy trực tiếp kế hoạch tàu từ Cảng vụ Hàng hải Hải Phòng...');
+function applyNewCallsToApp(rawCallsArray, sourceLabel) {
+  if (!Array.isArray(rawCallsArray) || rawCallsArray.length === 0) return false;
+  let processed = (typeof filterAndDeduplicateCalls === 'function')
+    ? filterAndDeduplicateCalls(rawCallsArray)
+    : rawCallsArray;
+  allCalls = processed;
+  window.allCalls = processed;
+  if ($('sideStatus')) $('sideStatus').textContent = `${sourceLabel} (${allCalls.length} tàu)`;
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderGantt === 'function') renderGantt();
+  if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
+  return true;
+}
+
+async function loadCangVuCallsMaster() {
+  try {
+    // 1. Đọc từ file cangvu_calls.json trên Supabase Storage (nếu đã đồng bộ)
+    const cloudUrl = `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`;
+    const res = await fetch(cloudUrl, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (applyNewCallsToApp(data, 'Cảng vụ Cloud')) {
+        console.log(`✅ Đã nạp ${allCalls.length} tàu từ cangvu_calls.json`);
+      }
+    }
+
+    // 2. Kéo trực tiếp kế hoạch điều động mới nhất từ Cảng vụ Hàng hải Hải Phòng
+    console.log('🌐 Đang đồng bộ trực tiếp kế hoạch tàu từ Cảng vụ Hải Phòng...');
     const directCalls = await fetchCangVuDirectFromBrowser();
     if (directCalls.length > 0) {
-      window.allCalls = (typeof deduplicateAndEnrichCalls === 'function') ? deduplicateAndEnrichCalls(directCalls) : directCalls;
-      if (typeof renderAll === 'function') renderAll();
-      if (typeof renderGantt === 'function') renderGantt();
-      if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
-      console.log(`✅ Nạp trực tiếp từ Cảng vụ HP thành công: ${window.allCalls.length} lượt tàu.`);
+      applyNewCallsToApp(directCalls, 'Cảng vụ HP');
+      console.log(`✅ Đồng bộ trực tiếp Cảng vụ HP thành công: ${allCalls.length} lượt tàu.`);
 
-      // Lưu ngược lên Supabase Storage để chia sẻ cho các thiết bị khác
+      // Lưu ngược lên Supabase Storage để chia sẻ cho mọi thiết bị & ngày hôm nay
       if (supabaseClient) {
-        const blobCalls = new Blob([JSON.stringify(window.allCalls)], { type: 'application/json' });
+        const blobCalls = new Blob([JSON.stringify(allCalls)], { type: 'application/json' });
         await supabaseClient.storage.from('port-documents').upload('cangvu_calls.json', blobCalls, { upsert: true }).catch(() => {});
         const todayStr = getTodayString();
-        await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blobCalls, { upsert: true }).catch(() => {});
+        const snapPayload = JSON.stringify({
+          saved_at: new Date().toLocaleString('vi-VN'),
+          date: todayStr,
+          total_calls: allCalls.length,
+          calls: allCalls
+        });
+        await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, new Blob([snapPayload], { type: 'application/json' }), { upsert: true }).catch(() => {});
+      }
+      return;
+    }
+
+    // 3. Dự phòng từ bảng port_calls_history (259 bản ghi) trên Supabase Database nếu Cảng vụ tạm gián đoạn
+    if (allCalls.length === 0 && supabaseClient) {
+      const { data: histData, error } = await supabaseClient
+        .from('port_calls_history')
+        .select('*')
+        .order('etb', { ascending: false })
+        .limit(120);
+      if (!error && Array.isArray(histData) && histData.length > 0) {
+        applyNewCallsToApp(histData, 'CSDL Lịch sử');
       }
     }
   } catch (e) {
@@ -10990,8 +11032,9 @@ async function fetchCangVuDirectFromBrowser() {
   }
 }
 
-setTimeout(loadCangVuCallsMaster, 300);
+setTimeout(loadCangVuCallsMaster, 400);
 setInterval(loadCangVuCallsMaster, 180000);
+
   
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
