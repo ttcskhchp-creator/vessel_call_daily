@@ -11090,6 +11090,75 @@ async function refreshEportTanVuRealtime() {
 setTimeout(refreshEportTanVuRealtime, 500);
 setInterval(refreshEportTanVuRealtime, 60000);
 
+/* ==================== BỘ BẮT SỰ KIỆN MỞ POPUP TÀU & SÀ LAN CHUẨN XÁC (MOBILE & DESKTOP) ==================== */
+(function attachSafeShipPopupHandler() {
+  document.addEventListener('click', function (e) {
+    // 1. Tìm xem người dùng có vừa bấm vào thẻ tàu/sà lan (.ship-chip hoặc .shipbar) không
+    const chip = e.target.closest('.ship-chip, .shipbar');
+    if (!chip) return;
+
+    e.stopPropagation();
+
+    // 2. Lấy tên tàu sạch (loại bỏ nhãn "SÀ LAN", "%", "Rời trong ngày", "Đã rời"...)
+    let rawTitle = '';
+    const firstSpan = chip.querySelector('span');
+    if (firstSpan) {
+      rawTitle = firstSpan.textContent.trim();
+    } else {
+      rawTitle = chip.textContent.trim();
+    }
+    const cleanName = rawTitle
+      .replace(/^(⛴️\s*)?(SÀ LAN|SA LAN|BARGE)\s*/i, '')
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .trim()
+      .toUpperCase();
+
+    if (!cleanName) return;
+
+    // 3. Tìm bản ghi đầy đủ từ allCalls hoặc từ dữ liệu ePort Tân Vũ
+    let shipObj = (Array.isArray(window.allCalls) ? window.allCalls : []).find(
+      c => String(c.vessel || '').trim().toUpperCase() === cleanName
+    );
+
+    const eportRec = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[cleanName]) || null;
+
+    if (!shipObj) {
+      shipObj = {
+        vessel: cleanName,
+        terminal: 'TÂN VŨ',
+        berth: (eportRec && eportRec.berth) || 'B1',
+        operator: (eportRec && eportRec.cargoType) ? `ePort: ${eportRec.cargoType} (${eportRec.donePlanStr || ''})` : 'Đồng bộ ePort Tân Vũ',
+        loa: 0,
+        dwt: (eportRec && eportRec.contTeuStr) ? `${eportRec.contTeuStr} TEU` : '—',
+        etb: (eportRec && eportRec.atb) || '',
+        etd: (eportRec && eportRec.etd) || '',
+        vessel_type: (eportRec && eportRec.isBarge) ? 'Sà lan nội thủy' : 'Container'
+      };
+    } else if (eportRec) {
+      // Bổ sung tiến độ ePort vào thông tin hiển thị trong popup
+      shipObj = {
+        ...shipObj,
+        operator: `${shipObj.operator || 'Tân Vũ'} · Tiến độ ePort: ${eportRec.donePlanStr || ''} (${eportRec.pct || 0}%)`
+      };
+    }
+
+    // 4. Gọi hàm mở popup chuẩn và định vị lại ngay cạnh vị trí bấm (tránh tràn mép điện thoại)
+    if (typeof showTooltip === 'function') {
+      showTooltip(e, shipObj);
+      const tt = document.getElementById('shipTooltip');
+      if (tt) {
+        tt.style.display = 'block';
+        tt.style.zIndex = '9999';
+        const clickX = e.clientX || (window.innerWidth / 2);
+        const clickY = e.clientY || (window.innerHeight / 2);
+        tt.style.left = Math.max(10, Math.min(clickX - 40, window.innerWidth - 315)) + 'px';
+        tt.style.top = Math.max(10, Math.min(clickY + 12, window.innerHeight - 240)) + 'px';
+      }
+    }
+  }, true); // Dùng capture = true để chặn các lỗi cú pháp onclick cũ trên thẻ
+})();
+
+
 
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
