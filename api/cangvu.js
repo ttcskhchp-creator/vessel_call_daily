@@ -1,8 +1,8 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate');
 
-  const d = req.query.d !== undefined ? req.query.d : '0';
+  const d = (req.query && req.query.d !== undefined) ? req.query.d : '0';
   const targetUrl = `https://csdltau.cangvuhaiphong.gov.vn/ship_plan.aspx?d=${encodeURIComponent(d)}`;
 
   try {
@@ -16,13 +16,13 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: `Cang vu HTTP ${response.status}` });
+      return res.status(response.status).send(`Cang vu HTTP ${response.status}`);
     }
 
     const html = await response.text();
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(html);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send('Server Error: ' + err.message);
   }
-}
+};
