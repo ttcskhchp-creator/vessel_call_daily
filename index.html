@@ -11045,6 +11045,63 @@ async function loadCangVuCallsMaster() {
 setTimeout(loadCangVuCallsMaster, 300);
 setInterval(loadCangVuCallsMaster, 120000);
   
+
+/* ==================== TỰ ĐỘNG LÀM MỚI DỮ LIỆU EPORT TÂN VŨ & HIỂN THỊ MỐC THỜI GIAN CẬP NHẬT ==================== */
+async function refreshEportTanVuRealtime() {
+  try {
+    const url = `${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+
+    const jobsMap = await res.json();
+    if (jobsMap && typeof jobsMap === 'object') {
+      window.eportTanVuJobsMap = jobsMap;
+
+      // Tìm mốc thời gian updatedAt mới nhất trong dữ liệu ePort
+      let latestIso = '';
+      Object.values(jobsMap).forEach(item => {
+        if (item && item.updatedAt && item.updatedAt > latestIso) {
+          latestIso = item.updatedAt;
+        }
+      });
+
+      // Vẽ lại khung Cảng Tân Vũ (Tiêu điểm) với số % làm hàng mới nhất
+      if (typeof renderTanVuLayout === 'function') {
+        renderTanVuLayout(getFilteredCalls());
+      }
+
+      // Gắn giờ cập nhật thực tế lên dòng trạng thái "Đồng bộ tự động ePort"
+      if (latestIso) {
+        const d = new Date(latestIso);
+        const timeStr = d.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Ho_Chi_Minh'
+        });
+        const dateStr = d.toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          timeZone: 'Asia/Ho_Chi_Minh'
+        });
+        const layoutBox = $('tanvuBerthsLayout');
+        if (layoutBox && layoutBox.innerHTML.includes('Đồng bộ tự động ePort')) {
+          layoutBox.innerHTML = layoutBox.innerHTML.replace(
+            'Đồng bộ tự động ePort',
+            `Đồng bộ tự động ePort (Cập nhật: ${timeStr} ${dateStr})`
+          );
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi làm mới ePort Tân Vũ:', e);
+  }
+}
+
+// Chạy ngay khi mở trang và tự động kiểm tra bản mới mỗi 60 giây
+setTimeout(refreshEportTanVuRealtime, 500);
+setInterval(refreshEportTanVuRealtime, 60000);
+
+
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
