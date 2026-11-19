@@ -6163,8 +6163,18 @@ function classifyVesselForBerth(callOrSpecs) {
 }
 
 function getPriorityBerthsByPortRule(callOrSpecs, portContext = { hasRoRo: false, hasBulk: false, hasCont: false, hasLarge170: false }) {
-  let info = classifyVesselForBerth(callOrSpecs);
-  let { term, loa, isRoRo, isBulk, isCont } = info;
+  let specs = (typeof getVesselEnrichedSpecs === 'function' && callOrSpecs && callOrSpecs.vessel)
+    ? getVesselEnrichedSpecs(callOrSpecs.vessel, callOrSpecs)
+    : (callOrSpecs || {});
+  let term = String(callOrSpecs?.terminal || '').toUpperCase();
+  let loa = Number(specs.loa || callOrSpecs?.loa || 0);
+  let vType = String(specs.vessel_type || callOrSpecs?.vessel_type || '').toUpperCase();
+  let unit = String(specs.capacity_unit || '').toUpperCase();
+
+  let isRoRo = vType.includes('RO-RO') || vType.includes('RORO') || vType.includes('Ô TÔ') || unit === 'UNITS';
+  let isBulk = vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP') || unit === 'TẤN';
+  let isCont = vType.includes('CONTAINER') || unit === 'TEU';
+
   const ALL_5_BERTHS = ['B1', 'B2', 'B3', 'B4', 'B5'];
   const ALL_3_BERTHS = ['B1', 'B2', 'B3'];
 
@@ -6201,7 +6211,7 @@ function getPriorityBerthsByPortRule(callOrSpecs, portContext = { hasRoRo: false
     return { preferred: ALL_5_BERTHS, fallback: ALL_5_BERTHS, maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: true, ruleName: 'Chùa Vẽ: Phân bổ B1 - B5' };
   }
 
-  // 4. CẢNG ĐÌNH VŨ (5 bến: B1 - B5, không bao gồm Euro Đình Vũ & Nam Đình Vũ)
+  // 4. CẢNG ĐÌNH VŨ (5 bến: B1 - B5)
   if ((term.includes('ĐÌNH VŨ') || term.includes('DINH VU')) && !term.includes('NAM') && !term.includes('EURO')) {
     if (isBulk || isRoRo) {
       return { preferred: ['B1'], fallback: ['B2', 'B3', 'B4', 'B5'], maxBerths: ALL_5_BERTHS, allowKeepOriginalIfNoConflict: false, ruleName: 'Đình Vũ: Hàng rời / Ô tô ưu tiên Bến 1 (B1)' };
