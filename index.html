@@ -10530,9 +10530,8 @@ setTimeout(() => {
 }, 300);
 setInterval(loadEportTanVuJobs, 60000);
 
-/* ==================== MODULE HIỂN THỊ SÀ LAN TỪ EPORT TẠI CẢNG TÂN VŨ (KHÔNG TÍNH VÀO TÀU BIỂN) ==================== */
+/* ==================== MODULE HIỂN THỊ SÀ LAN TỪ EPORT (PUBLIC NO-CACHE) & BỎ NÚT NẠP EPORT ==================== */
 
-// 1. Tiêm CSS màu riêng cho thẻ Sà lan (Màu xanh ngọc bích phân biệt rõ với tàu biển)
 (function injectBargeCardStyle() {
   if ($('hpBargeCardStyle')) return;
   const st = document.createElement('style');
@@ -10558,23 +10557,52 @@ setInterval(loadEportTanVuJobs, 60000);
   document.head.appendChild(st);
 })();
 
-// 2. Hàm kiểm tra một phương tiện có phải là Sà lan hay không
+// 1. Tải dữ liệu ePort trực tiếp qua Public URL kèm tham số ?t=Date.now() (Chống cache 100%)
+async function loadEportTanVuJobs() {
+  try {
+    let localRaw = localStorage.getItem('hp_eport_tanvu_jobs');
+    if (localRaw) {
+      let obj = JSON.parse(localRaw);
+      eportTanVuJobsMap.clear();
+      Object.entries(obj).forEach(([k, v]) => eportTanVuJobsMap.set(k.toUpperCase(), v));
+    }
+  } catch (e) {}
+
+  try {
+    const publicJsonUrl = `${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`;
+    const res = await fetch(publicJsonUrl, { cache: 'no-store' });
+    if (res.ok) {
+      const obj = await res.json();
+      if (obj && typeof obj === 'object') {
+        eportTanVuJobsMap.clear();
+        Object.entries(obj).forEach(([k, v]) => eportTanVuJobsMap.set(k.toUpperCase(), v));
+        localStorage.setItem('hp_eport_tanvu_jobs', JSON.stringify(obj));
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc eport_tanvu_jobs.json:', e);
+  }
+
+  if (typeof renderTanVuLayout === 'function' && Array.isArray(allCalls)) {
+    renderTanVuLayout(getFilteredCalls());
+  }
+}
+window.loadEportTanVuJobs = loadEportTanVuJobs;
+
+// 2. Nhận diện Sà lan từ ePort BerthMap
 function isBargeVesselEntry(name, eportRec, shipNamesSet) {
   let v = String(name || '').trim().toUpperCase();
   if (!v) return false;
   if (eportRec && eportRec.isBarge === true) return true;
-  // Các đầu số đăng kiểm sà lan nội thủy phổ biến (BV, HP, NB, HD, QN, TB, SG, ĐN, SL...) hoặc từ khóa BARGE/SA LAN
   if (/^(BV|SL|BARGE|SA\s*LAN)\s*\d*/i.test(v) || /\b(BARGE|SÀ LAN|SA LAN)\b/i.test(v)) {
     return true;
   }
-  // Nếu xuất hiện trong bảng khai thác ePort Tân Vũ nhưng không có trong lịch tàu biển quốc tế/nội địa (allCalls) -> Chính là sà lan
   if (shipNamesSet && !shipNamesSet.has(v)) {
     return true;
   }
   return false;
 }
 
-// 3. Chuyển đổi chuỗi ngày giờ ePort ("19/11/2026 06:30") sang ISO để đồng bộ Popup
 function parseEportDateTimeToIso(dtStr) {
   let s = String(dtStr || '').trim();
   let m = s.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
@@ -10584,18 +10612,17 @@ function parseEportDateTimeToIso(dtStr) {
   return '';
 }
 
-// 4. Ghi đè hàm renderTanVuLayout để hiển thị cả Tàu biển lẫn Sà lan (tách biệt bộ đếm, không cộng sà lan vào lượt tàu)
+// 3. Render thẻ Cảng Tân Vũ (Tiêu điểm): Hiển thị cả Tàu biển & Sà lan, bỏ hoàn toàn nút "Nạp ePort"
 function renderTanVuLayout(list) {
   try {
     let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
     let todayStr = getTodayString();
 
-    // Tập hợp toàn bộ tên tàu biển có trong lịch tàu chính thức (allCalls) để phân biệt với sà lan
     let officialShipNames = new Set(
       (Array.isArray(allCalls) ? allCalls : []).map(c => (c.vessel || '').trim().toUpperCase()).filter(Boolean)
     );
 
-    // Lọc các tàu biển tại Tân Vũ theo ngày chọn
+    // Lọc các tàu biển tại Tân Vũ
     let tanVuShips = list.filter(c => {
       let term = (c.terminal || '').toUpperCase();
       if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
@@ -10606,7 +10633,7 @@ function renderTanVuLayout(list) {
       return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
     });
 
-    // Tập hợp các sà lan đang khai thác từ dữ liệu ePort BerthMap (chỉ hiển thị khi xem ngày hôm nay hoặc ngày khớp ATB)
+    // Tập hợp các sà lan đang khai thác từ bot ePort BerthMap
     let tanVuBarges = [];
     if (typeof eportTanVuJobsMap !== 'undefined' && eportTanVuJobsMap instanceof Map) {
       eportTanVuJobsMap.forEach((rec, vKey) => {
@@ -10617,7 +10644,7 @@ function renderTanVuLayout(list) {
           let etdIso = parseEportDateTimeToIso(rec.etd) || '';
           let atbDate = atbIso.split('T')[0];
 
-          // Hiển thị sà lan nếu đang xem ngày hôm nay hoặc trùng ngày cập của sà lan
+          // Hiển thị sà lan khi đang xem ngày hôm nay hoặc ngày trùng ATB của sà lan
           if (selectedDateStr === todayStr || atbDate === selectedDateStr) {
             tanVuBarges.push({
               vessel: upName,
@@ -10637,21 +10664,16 @@ function renderTanVuLayout(list) {
       });
     }
 
-    // Cập nhật bộ đếm góc phải: Tách bạch rõ "X lượt tàu · Y sà lan" (không cộng sà lan vào tàu)
+    // Bộ đếm góc phải: Hiển thị "X lượt tàu · Y sà lan" và đã BỎ NÚT NẠP EPORT
     let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
     if ($('tanvuCount')) {
       let bargeCountHtml = tanVuBarges.length > 0
         ? ` · <span style="color:#0d9488;font-weight:850;">⛴️ ${tanVuBarges.length} sà lan</span>`
         : '';
-      $('tanvuCount').innerHTML = `
-        <span><b>${tanVuShips.length}</b> ${d.shipsUnit || 'lượt tàu'}${bargeCountHtml}</span>
-        <button type="button" class="tk-calc-btn" style="margin-left:6px;padding:2px 7px!important;font-size:10px!important;" onclick="quickImportFromEportBerthMap()" title="Nạp nhanh tiến độ làm hàng từ ePort BerthMap">
-          ⚡ Nạp ePort
-        </button>
-      `;
+      $('tanvuCount').innerHTML = `<span><b>${tanVuShips.length}</b> ${d.shipsUnit || 'lượt tàu'}${bargeCountHtml}</span>`;
     }
 
-    // Gom cả Tàu biển và Sà lan vào đúng Cầu bến (B1 - B5)
+    // Gom Tàu biển và Sà lan vào đúng Cầu bến (B1 - B5)
     let berthMap = {};
     ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
 
@@ -10669,7 +10691,6 @@ function renderTanVuLayout(list) {
       berthMap[b].push(barge);
     });
 
-    // Thanh chú thích màu sắc (bổ sung thêm chú thích màu Sà lan)
     let legendHtml = `
       <div class="berth-color-legend">
         <span style="color:var(--muted);margin-right:2px;">🎨 Phân loại:</span>
@@ -10685,11 +10706,10 @@ function renderTanVuLayout(list) {
       <div class="berth-group">
         <div class="berth-group-head">
           <span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span>
-          <span class="muted tiny">👆 Nhấp vào thẻ tàu / sà lan để xem chi tiết tiến độ làm hàng</span>
+          <span class="muted tiny">🟢 Đồng bộ tự động ePort · Nhấp vào thẻ để xem chi tiết</span>
         </div>`;
 
     Object.keys(berthMap).sort().forEach(bName => {
-      // Sắp xếp tàu biển lên trước, sà lan xếp liền sau trên cùng cầu bến
       let itemsOnBerth = berthMap[bName].sort((a, b) => {
         if (Boolean(a.isBarge) !== Boolean(b.isBarge)) return a.isBarge ? 1 : -1;
         return new Date(a.etb || 0) - new Date(b.etb || 0);
@@ -10738,10 +10758,10 @@ function renderTanVuLayout(list) {
 }
 window.renderTanVuLayout = renderTanVuLayout;
 
-// Nạp lại ngay dữ liệu ePort từ Supabase để hiển thị sà lan BV0189 ngay lập tức
+// Gọi tải ngay dữ liệu ePort qua Public URL no-cache và tự làm mới mỗi 60 giây
 setTimeout(() => {
-  if (typeof loadEportTanVuJobs === 'function') loadEportTanVuJobs();
-}, 250);
+  loadEportTanVuJobs();
+}, 150);
   
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
