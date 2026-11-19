@@ -10812,35 +10812,205 @@ setTimeout(() => {
   }, 1500);
 })();
 
-/* ==================== ĐỌC LỊCH TÀU CẢNG VỤ HẢI PHÒNG TỪ SUPABASE (THAY THẾ GOOGLE APPS SCRIPT) ==================== */
-async function loadCangVuCallsFromCloud() {
+/* ==================== ĐỌC LỊCH TÀU CẢNG VỤ HẢI PHÒNG (CLOUD + TRỰC TIẾP QUA TRÌNH DUYỆT VN) ==================== */
+function normalizeCangVuTerminalName(raw) {
+  const s = String(raw || '').toUpperCase().trim();
+  if (!s) return '';
+  if (s.includes('TAN VU') || s.includes('TÂN VŨ')) return 'TÂN VŨ';
+  if (s.includes('NAM DINH VU') || s.includes('NAM ĐÌNH VŨ')) return 'NAM ĐÌNH VŨ';
+  if (s.includes('EURO')) return 'EURO ĐÌNH VŨ';
+  if (s.includes('DINH VU') || s.includes('ĐÌNH VŨ')) return 'ĐÌNH VŨ';
+  if (s.includes('CHUA VE') || s.includes('CHÙA VẼ')) return 'CHÙA VẼ';
+  if (s.includes('HOANG DIEU') || s.includes('HOÀNG DIỆU')) return 'HOÀNG DIỆU';
+  if (s.includes('HTIT') || s.includes('HICT') || s.includes('LACH HUYEN') || s.includes('LẠCH HUYỆN')) return 'HTIT';
+  if (s.includes('MIPEC')) return 'MIPEC';
+  if (s.includes('VIP GREEN') || s.includes('VIP')) return 'VIP GREENPORT';
+  if (s.includes('GREEN PORT') || s.includes('GREENPORT')) return 'GREENPORT';
+  if (s.includes('NAM HAI DINH VU') || s.includes('NHDV')) return 'NAM HẢI ĐÌNH VŨ';
+  if (s.includes('NAM HAI') || s.includes('NAM HẢI')) return 'NAM HẢI';
+  if (s.includes('189')) return 'TÂN CẢNG 189';
+  if (s.includes('128')) return 'CẢNG 128';
+  if (s.includes('DOAN XA') || s.includes('ĐOẠN XÁ')) return 'ĐOẠN XÁ';
+  if (s.includes('HAI AN') || s.includes('HẢI AN')) return 'HẢI AN';
+  if (s.includes('PTS')) return 'PTS ĐÌNH VŨ';
+  return s;
+}
+
+function parseCangVuHtmlDocument(htmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  const capText = doc.querySelector('#lblCapShowDate')?.innerText || doc.body?.innerText || '';
+  const mDate = capText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  const isoDate = mDate ? `${mDate[3]}-${mDate[2]}-${mDate[1]}` : getTodayString();
+
+  const extracted = [];
+  let currentSection = 'VAO';
+
+  doc.querySelectorAll('table tr').forEach(tr => {
+    const txt = (tr.innerText || '').trim().toUpperCase();
+    if (txt.includes('KẾ HOẠCH TÀU VÀO') || txt.includes('TÀU ĐẾN')) currentSection = 'VAO';
+    else if (txt.includes('KẾ HOẠCH TÀU RỜI') || tr.closest('#TD_ShowShipPlan_Roi')) currentSection = 'ROI';
+    else if (txt.includes('DỊCH CHUYỂN')) currentSection = 'DC';
+
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 11) {
+      const stt = (tds[0].innerText || '').trim();
+      const timeStr = (tds[1].innerText || '').trim();
+      if (/^\d+$/.test(stt) && /^\d{1,2}:\d{2}$/.test(timeStr)) {
+        const hhmm = timeStr.padStart(5, '0');
+        extracted.push({
+          section: currentSection,
+          isoDate,
+          isoDateTime: `${isoDate}T${hhmm}:00+07:00`,
+          vessel: (tds[2].innerText || '').trim().toUpperCase(),
+          draft: parseFloat((tds[3].innerText || '').trim().replace(',', '.')) || 0,
+          loa: parseFloat((tds[4].innerText || '').trim().replace(',', '.')) || 0,
+          dwt: (tds[5].innerText || '').trim(),
+          gt: (tds[6].innerText || '').trim(),
+          tug: (tds[7].innerText || '').trim(),
+          channel: (tds[8].innerText || '').trim(),
+          fromPort: (tds[9].innerText || '').trim().toUpperCase(),
+          toPort: (tds[10].innerText || '').trim().toUpperCase(),
+          agent: tds[11] ? (tds[11].innerText || '').trim() : '',
+          pilot: tds[12] ? (tds[12].innerText || '').trim() : ''
+        });
+      }
+    }
+  });
+  return extracted;
+}
+
+function buildCallsFromCangVuRows(allPlanRows) {
+  const callsList = [];
+  allPlanRows.forEach(r => {
+    if (r.section === 'VAO' || r.section === 'DC') {
+      const term = normalizeCangVuTerminalName(r.toPort);
+      if (!term || term === 'P.0' || term === 'PHAO 0' || term === 'ANCHOR') return;
+      callsList.push({
+        vessel: r.vessel,
+        terminal: term,
+        berth: 'B1',
+        loa: r.loa,
+        dwt: r.dwt,
+        gt: r.gt,
+        draft: r.draft,
+        etb: r.isoDateTime,
+        etd: '',
+        from_port: r.fromPort,
+        to_port: r.toPort,
+        operator: r.agent,
+        pilot: r.pilot,
+        tug: r.tug,
+        channel: r.channel,
+        source: 'Cảng vụ HP'
+      });
+    }
+  });
+
+  allPlanRows.forEach(r => {
+    if (r.section === 'ROI') {
+      const term = normalizeCangVuTerminalName(r.fromPort);
+      if (!term) return;
+      const matched = callsList.find(c =>
+        c.vessel === r.vessel &&
+        c.terminal === term &&
+        !c.etd &&
+        new Date(r.isoDateTime) >= new Date(c.etb)
+      );
+      if (matched) {
+        matched.etd = r.isoDateTime;
+      } else {
+        const etdMs = new Date(r.isoDateTime).getTime();
+        callsList.push({
+          vessel: r.vessel,
+          terminal: term,
+          berth: 'B1',
+          loa: r.loa,
+          dwt: r.dwt,
+          gt: r.gt,
+          draft: r.draft,
+          etb: new Date(etdMs - 18 * 3600000).toISOString(),
+          etd: r.isoDateTime,
+          from_port: r.fromPort,
+          to_port: r.toPort,
+          operator: r.agent,
+          pilot: r.pilot,
+          tug: r.tug,
+          channel: r.channel,
+          source: 'Cảng vụ HP (Rời)'
+        });
+      }
+    }
+  });
+  return callsList;
+}
+
+async function fetchCangVuDirectFromBrowser() {
+  const allRows = [];
+  for (const dOffset of [-1, 0, 1]) {
+    const target = `https://csdltau.cangvuhaiphong.gov.vn/ship_plan.aspx?d=${dOffset}`;
+    const proxyUrls = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+      `https://corsproxy.io/?${encodeURIComponent(target)}`
+    ];
+    for (const pUrl of proxyUrls) {
+      try {
+        const res = await fetch(pUrl, { cache: 'no-store' });
+        if (res.ok) {
+          const html = await res.text();
+          if (html && html.includes('lblCapShowDate')) {
+            allRows.push(...parseCangVuHtmlDocument(html));
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+  }
+  return buildCallsFromCangVuRows(allRows);
+}
+
+async function loadCangVuCallsMaster() {
   try {
-    const url = `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`;
-    const res = await fetch(url, { cache: 'no-store' });
+    // 1. Thử đọc nhanh từ Supabase Cloud (nếu Bot đã đồng bộ)
+    const cloudUrl = `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`;
+    const res = await fetch(cloudUrl, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        window.allCalls = data;
-        if (typeof deduplicateAndEnrichCalls === 'function') {
-          window.allCalls = deduplicateAndEnrichCalls(window.allCalls);
-        }
+        window.allCalls = (typeof deduplicateAndEnrichCalls === 'function') ? deduplicateAndEnrichCalls(data) : data;
         if (typeof renderAll === 'function') renderAll();
         if (typeof renderGantt === 'function') renderGantt();
         if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
-        console.log(`✅ Đã nạp thành công ${window.allCalls.length} lượt tàu từ Cảng vụ Hàng hải Hải Phòng.`);
-        return true;
+        console.log(`✅ Nạp từ Cloud: ${window.allCalls.length} lượt tàu.`);
+        return;
+      }
+    }
+
+    // 2. Nếu Cloud chưa có -> Trình duyệt tự lấy trực tiếp từ Cảng vụ Hải Phòng (IP Việt Nam)
+    console.log('🌐 Đang lấy trực tiếp kế hoạch tàu từ Cảng vụ Hàng hải Hải Phòng...');
+    const directCalls = await fetchCangVuDirectFromBrowser();
+    if (directCalls.length > 0) {
+      window.allCalls = (typeof deduplicateAndEnrichCalls === 'function') ? deduplicateAndEnrichCalls(directCalls) : directCalls;
+      if (typeof renderAll === 'function') renderAll();
+      if (typeof renderGantt === 'function') renderGantt();
+      if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
+      console.log(`✅ Nạp trực tiếp từ Cảng vụ HP thành công: ${window.allCalls.length} lượt tàu.`);
+
+      // Lưu ngược lên Supabase Storage để chia sẻ cho các thiết bị khác
+      if (supabaseClient) {
+        const blobCalls = new Blob([JSON.stringify(window.allCalls)], { type: 'application/json' });
+        await supabaseClient.storage.from('port-documents').upload('cangvu_calls.json', blobCalls, { upsert: true }).catch(() => {});
+        const todayStr = getTodayString();
+        await supabaseClient.storage.from('port-documents').upload(`daily_snapshot_${todayStr}.json`, blobCalls, { upsert: true }).catch(() => {});
       }
     }
   } catch (e) {
-    console.warn('Lỗi đọc cangvu_calls.json:', e);
+    console.error('Lỗi đồng bộ Cảng vụ:', e);
   }
-  return false;
 }
 
-// Chạy ngay khi mở trang và tự động làm mới mỗi 2 phút
-setTimeout(loadCangVuCallsFromCloud, 300);
-setInterval(loadCangVuCallsFromCloud, 120000);
-
+setTimeout(loadCangVuCallsMaster, 300);
+setInterval(loadCangVuCallsMaster, 180000);
   
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
