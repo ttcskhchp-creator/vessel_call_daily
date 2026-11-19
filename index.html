@@ -10786,6 +10786,58 @@ setTimeout(() => {
   loadEportTanVuJobs();
 }, 150);
   
+  /* ==================== TỰ ĐỘNG LẤY SNAPSHOT MỚI NHẤT KHI CHƯA CÓ FILE NGÀY HÔM NAY (TRÁNH VỀ 0) ==================== */
+(function autoRecoverLatestSnapshotOn400() {
+  setTimeout(async () => {
+    try {
+      // Nếu dữ liệu allCalls đang rỗng (do file daily_snapshot_YYYY-MM-DD.json của ngày mới chưa tồn tại)
+      if (!Array.isArray(window.allCalls) || window.allCalls.length === 0) {
+        if (supabaseClient) {
+          // 1. Tìm toàn bộ file daily_snapshot_*.json trong Bucket 'port-documents'
+          const { data: files } = await supabaseClient.storage
+            .from('port-documents')
+            .list('', { search: 'daily_snapshot_' });
+
+          if (Array.isArray(files) && files.length > 0) {
+            // Sắp xếp giảm dần theo tên (ngày mới nhất lên đầu)
+            const snapshots = files
+              .filter(f => f.name && f.name.startsWith('daily_snapshot_') && f.name.endsWith('.json'))
+              .sort((a, b) => b.name.localeCompare(a.name));
+
+            if (snapshots.length > 0) {
+              const latestName = snapshots[0].name;
+              console.log('♻️ Tự động khôi phục từ bản lưu Cloud gần nhất:', latestName);
+              const { data: blob, error } = await supabaseClient.storage
+                .from('port-documents')
+                .download(latestName);
+
+              if (blob && !error) {
+                const parsed = JSON.parse(await blob.text());
+                const restoredCalls = Array.isArray(parsed) ? parsed : (parsed.calls || parsed.allCalls || []);
+                if (restoredCalls.length > 0) {
+                  window.allCalls = restoredCalls;
+                  if (typeof renderAll === 'function') renderAll();
+                  if (typeof renderGantt === 'function') renderGantt();
+                  if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
+                }
+              }
+            }
+          }
+        }
+
+        // 2. Kích hoạt đồng bộ ngầm từ nguồn trực tuyến để cập nhật dữ liệu mới nhất
+        if (typeof syncAllSources === 'function') {
+          syncAllSources(true).catch(() => {});
+        } else if (typeof loadData === 'function') {
+          loadData().catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi khôi phục snapshot tự động:', err);
+    }
+  }, 1800);
+})();
+  
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
