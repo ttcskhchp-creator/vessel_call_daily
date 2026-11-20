@@ -11046,117 +11046,413 @@ setTimeout(loadCangVuCallsMaster, 300);
 setInterval(loadCangVuCallsMaster, 120000);
 
 
+/* ==================== HỆ THỐNG ĐỒNG BỘ CLOUD & POPUP TÀU/SÀ LAN ĐA NỀN TẢNG (DESKTOP + MOBILE) ==================== */
 
-/* ==================== TỰ ĐỘNG LÀM MỚI DỮ LIỆU EPORT TÂN VŨ (AN TOÀN POPUP 100%) ==================== */
-async function refreshEportTanVuRealtime() {
+window.eportTanVuJobsMap = window.eportTanVuJobsMap || {};
+
+// 1. Nhận diện sà lan nội thủy qua mã đăng kiểm (tránh nhận nhầm tàu biển)
+function isBargeVesselEntry(name, eportRec) {
+  const v = String(name || '').trim().toUpperCase();
+  if (!v) return false;
+  if (eportRec && eportRec.isBarge === true) return true;
+  return /^(BV|BN|HP|SG|NB|HD|QN|TB|ĐN|DN|SL|BARGE|SA\s*LAN)[\s\-]*\d+/i.test(v) || /\b(BARGE|SÀ LAN|SA LAN)\b/i.test(v);
+}
+
+// 2. Giải nén dữ liệu lịch tàu rút gọn từ Supabase Storage
+function expandCallsFromStorage(rawArray) {
+  if (!Array.isArray(rawArray)) return [];
+  return rawArray.map(item => {
+    if (item.vessel) return item;
+    return {
+      vessel: item.v || '',
+      terminal: item.t || '',
+      berth: item.b || 'B1',
+      loa: Number(item.l) || 0,
+      etb: item.eb || '',
+      etd: item.ed || '',
+      operator: item.op || '',
+      dwt: item.dw || '',
+      draft: item.dr || 0,
+      from_port: item.fp || '',
+      to_port: item.tp || '',
+      pilot: item.pl || '',
+      tug: item.tg || '',
+      source: 'Cảng vụ HP (Cloud)'
+    };
+  });
+}
+
+// 3. Vẽ lại khu vực Cảng Tân Vũ (Tiêu điểm) kết hợp Cảng vụ + ePort + Sà lan (Gắn data-vessel sạch, không lỗi onclick)
+function renderTanVuLayout(list) {
+  const container = $('tanvuBerthsLayout');
+  if (!container) return;
+
   try {
-    const url = `${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`;
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return;
+    const now = Date.now();
+    const selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
+    const todayStr = getTodayString();
+    const eportMap = window.eportTanVuJobsMap || {};
 
-    const jobsMap = await res.json();
-    if (jobsMap && typeof jobsMap === 'object') {
-      window.eportTanVuJobsMap = jobsMap;
+    // Lọc tàu Tân Vũ từ lịch tàu chính
+    const tanVuCalls = (Array.isArray(list) ? list : []).filter(c => {
+      const term = (c.terminal || '').toUpperCase();
+      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
+      if (!c.etb) return false;
+      const etbDate = c.etb.split('T')[0];
+      const etdDate = c.etd ? c.etd.split('T')[0] : '';
+      const shipEnd = etdDate || '9999-12-31';
+      return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
+    });
 
-      // Vẽ lại khung Cảng Tân Vũ bằng hàm gốc để giữ nguyên vẹn sự kiện click mở Popup
-      if (typeof renderTanVuLayout === 'function') {
-        renderTanVuLayout(getFilteredCalls());
-      }
+    // Hợp nhất thêm các tàu/sà lan đang có mặt trên ePort Tân Vũ (nếu xem ngày hôm nay)
+    const mergedMap = new Map();
+    tanVuCalls.forEach(c => {
+      const k = (c.vessel || '').trim().toUpperCase();
+      if (k) mergedMap.set(k, { ...c });
+    });
 
-      // Tìm mốc thời gian updatedAt mới nhất để hiển thị lên góc phải (không đụng vào innerHTML thẻ tàu)
-      let latestIso = '';
-      Object.values(jobsMap).forEach(item => {
-        if (item && item.updatedAt && item.updatedAt > latestIso) {
-          latestIso = item.updatedAt;
+    if (selectedDateStr === todayStr) {
+      Object.entries(eportMap).forEach(([vKey, ep]) => {
+        const upName = vKey.trim().toUpperCase();
+        if (!upName) return;
+        if (mergedMap.has(upName)) {
+          const cur = mergedMap.get(upName);
+          if (ep.berth) cur.berth = normalizeBerthCode(ep.berth);
+          cur._eport = ep;
+        } else {
+          mergedMap.set(upName, {
+            vessel: upName,
+            terminal: 'TÂN VŨ',
+            berth: normalizeBerthCode(ep.berth || 'B1'),
+            loa: 0,
+            dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
+            etb: ep.atb || new Date(now - 3600000).toISOString(),
+            etd: ep.etd || '',
+            operator: ep.cargoType || 'ePort Tân Vũ',
+            _eport: ep
+          });
         }
       });
-
-      if (latestIso && $('tanvuCount')) {
-        const d = new Date(latestIso);
-        const timeStr = d.toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Asia/Ho_Chi_Minh'
-        });
-        const curText = $('tanvuCount').textContent.split('· ePort')[0].trim();
-        $('tanvuCount').textContent = `${curText} · ePort ${timeStr}`;
-      }
     }
-  } catch (e) {
-    console.warn('Lỗi làm mới ePort Tân Vũ:', e);
+
+    let shipCount = 0;
+    let bargeCount = 0;
+    const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
+
+    mergedMap.forEach(item => {
+      const ep = item._eport || eportMap[item.vessel] || null;
+      const isBarge = isBargeVesselEntry(item.vessel, ep);
+      item._isBarge = isBarge;
+      item._eport = ep;
+      if (isBarge) bargeCount++;
+      else shipCount++;
+
+      const b = normalizeBerthCode(item.berth || 'B1') || 'B1';
+      if (!berthMap[b]) berthMap[b] = [];
+      berthMap[b].push(item);
+    });
+
+    if ($('tanvuCount')) {
+      const oldSuffix = $('tanvuCount').textContent.includes('· ePort')
+        ? ' · ePort' + $('tanvuCount').textContent.split('· ePort')[1]
+        : '';
+      $('tanvuCount').textContent = `${shipCount} lượt tàu · ${bargeCount} sà lan${oldSuffix}`;
+    }
+
+    // Lưu cache để tra cứu nhanh khi click/hover
+    window._tanVuRenderedMap = mergedMap;
+
+    let html = `
+      <div class="berth-group">
+        <div class="berth-group-head" style="flex-wrap:wrap;gap:6px;">
+          <span class="berth-group-title">CẢNG TÂN VŨ</span>
+          <span style="font-size:10px;color:#10b981;font-weight:700;">🟢 Đồng bộ tự động ePort · Nhấp vào thẻ để xem chi tiết</span>
+        </div>
+    `;
+
+    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(bName => {
+      const ships = (berthMap[bName] || []).sort((a, b) => new Date(a.etb || 0) - new Date(b.etb || 0));
+      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
+
+      if (ships.length === 0) {
+        html += `<span class="empty-berth">Trống</span>`;
+      } else {
+        ships.forEach(s => {
+          const ep = s._eport;
+          const t1 = s.etb ? new Date(s.etb).getTime() : 0;
+          const t2 = s.etd ? new Date(s.etd).getTime() : 0;
+          const etdDate = s.etd ? s.etd.split('T')[0] : '';
+
+          let statusLabel = '';
+          let bgStyle = '';
+
+          if (s._isBarge) {
+            statusLabel = (ep && ep.pct >= 100) ? '✔️ Xong hàng' : '🚩 Rời trong ngày';
+            bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
+          } else if ((ep && ep.pct >= 100) || (t2 > 0 && t2 <= now)) {
+            statusLabel = '✔️ Đã rời';
+            bgStyle = 'background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; opacity: 0.9;';
+          } else if (etdDate === todayStr && t2 > now) {
+            statusLabel = '🚩 Rời trong ngày';
+            bgStyle = 'background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #7dd3fc;';
+          } else if (t1 <= now && (t2 === 0 || t2 > now)) {
+            statusLabel = '🏗️ Đang làm hàng';
+            bgStyle = 'background: linear-gradient(135deg, #059669, #047857); color: #fff; border: 1px solid #34d399;';
+          } else {
+            statusLabel = '⏳ Sắp cập';
+            bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
+          }
+
+          const pctHtml = ep && typeof ep.pct === 'number'
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;">
+                 <span style="width:36px;height:5px;background:rgba(0,0,0,0.3);border-radius:3px;overflow:hidden;display:inline-block;">
+                   <span style="display:block;height:100%;width:${ep.pct}%;background:#fde047;"></span>
+                 </span>
+                 <b style="font-size:9.5px;">${ep.pct}%</b>
+               </span>`
+            : '';
+
+          const bargeTag = s._isBarge
+            ? `<span style="background:rgba(255,255,255,0.2);padding:1px 4px;border-radius:3px;font-size:8.5px;">⛴️ SÀ LAN</span>`
+            : '';
+
+          // Gắn data-vessel-key sạch sẽ, không dùng inline onclick dễ vỡ cú pháp
+          html += `
+            <div class="ship-chip"
+                 data-vessel-key="${esc(s.vessel)}"
+                 style="${bgStyle}; user-select:none; -webkit-tap-highlight-color:transparent;">
+              ${bargeTag}
+              <span style="font-size:10.5px;font-weight:800;">${esc(s.vessel)}</span>
+              ${pctHtml}
+              <span class="chip-time" style="font-size:9px;padding:2px 5px;background:rgba(0,0,0,0.28);border-radius:4px;font-weight:700;">${statusLabel}</span>
+            </div>
+          `;
+        });
+      }
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Lỗi renderTanVuLayout:', err);
   }
 }
 
-setTimeout(refreshEportTanVuRealtime, 500);
-setInterval(refreshEportTanVuRealtime, 60000);
+// 4. Bộ mở Popup thông minh hỗ trợ cả Click/Touch trên Điện thoại & Hover/Click trên Máy tính
+(function initUniversalShipPopup() {
+  // Tạo lớp nền mờ cho Mobile để chạm ra ngoài là đóng popup dễ dàng
+  let backdrop = document.getElementById('shipTooltipBackdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'shipTooltipBackdrop';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,35,0.45);z-index:9990;display:none;backdrop-filter:blur(1px);';
+    backdrop.addEventListener('click', () => {
+      hideTooltip();
+      backdrop.style.display = 'none';
+    });
+    document.body.appendChild(backdrop);
+  }
 
-/* ==================== BỘ BẮT SỰ KIỆN MỞ POPUP TÀU & SÀ LAN CHUẨN XÁC (MOBILE & DESKTOP) ==================== */
-(function attachSafeShipPopupHandler() {
+  // Bổ sung nút Đóng [✕] vào góc trên bên phải của #shipTooltip nếu chưa có
+  const tt = document.getElementById('shipTooltip');
+  if (tt && !document.getElementById('ttCloseBtn')) {
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'ttCloseBtn';
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = '✕';
+    closeBtn.title = 'Đóng';
+    closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;width:24px;height:24px;padding:0;border-radius:6px;background:rgba(148,163,184,0.2);color:inherit;font-size:12px;line-height:1;';
+    closeBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      hideTooltip();
+      backdrop.style.display = 'none';
+    });
+    tt.style.position = 'fixed';
+    tt.style.zIndex = '9999';
+    tt.style.paddingRight = '32px';
+    tt.appendChild(closeBtn);
+
+    // Giữ popup mở khi di chuột vào bên trong popup trên máy tính
+    tt.addEventListener('mouseenter', () => {
+      if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+    });
+    tt.addEventListener('mouseleave', () => {
+      if (window.innerWidth >= 768) scheduleHideTooltip();
+    });
+  }
+
+  function resolveShipByKey(vKey) {
+    const cleanKey = String(vKey || '').trim().toUpperCase();
+    if (!cleanKey) return null;
+
+    const fromRendered = window._tanVuRenderedMap && window._tanVuRenderedMap.get(cleanKey);
+    const fromAll = (Array.isArray(window.allCalls) ? window.allCalls : []).find(
+      c => String(c.vessel || '').trim().toUpperCase() === cleanKey
+    );
+    const ep = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[cleanKey]) || (fromRendered && fromRendered._eport) || null;
+
+    const base = fromAll || fromRendered || {
+      vessel: cleanKey,
+      terminal: 'TÂN VŨ',
+      berth: (ep && ep.berth) || 'B1',
+      loa: 0,
+      dwt: '—',
+      etb: (ep && ep.atb) || '',
+      etd: (ep && ep.etd) || ''
+    };
+
+    const specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(cleanKey, base) : base;
+    const isBarge = isBargeVesselEntry(cleanKey, ep);
+
+    let opText = base.operator || specs.operator || 'Cảng Tân Vũ';
+    if (ep) {
+      opText = `${opText} · ePort: ${ep.donePlanStr || ''} (${ep.pct || 0}%)`;
+    }
+
+    return {
+      ...base,
+      ...specs,
+      vessel: cleanKey,
+      operator: opText,
+      vessel_type: isBarge ? 'Sà lan (ePort)' : (specs.vessel_type || 'Container'),
+      dwt: (ep && ep.contTeuStr && isBarge) ? `${ep.contTeuStr} TEU` : (specs.dwt || base.dwt || '—')
+    };
+  }
+
+  function openResponsiveShipPopup(clientX, clientY, shipObj) {
+    if (!shipObj || typeof showTooltip !== 'function') return;
+    if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+
+    showTooltip({ clientX: clientX || 100, clientY: clientY || 100 }, shipObj);
+
+    const tooltipEl = document.getElementById('shipTooltip');
+    if (!tooltipEl) return;
+
+    tooltipEl.style.display = 'block';
+    tooltipEl.style.zIndex = '9999';
+
+    // Cập nhật thêm Hành trình & Năm SX nếu có
+    if ($('ttYearAge')) {
+      $('ttYearAge').textContent = shipObj.year_built ? `${shipObj.year_built} (${shipObj.vessel_age || 0}t)` : '—';
+    }
+    if ($('ttRoute')) {
+      $('ttRoute').textContent = (shipObj.last_port || shipObj.destination)
+        ? `${shipObj.last_port || '?'} → ${shipObj.destination || '?'}`
+        : `${shipObj.terminal || 'HP'} (${shipObj.berth || 'B1'})`;
+    }
+
+    // Định vị chuẩn xác theo kích thước màn hình (Mobile căn giữa, Desktop bám theo chuột)
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      backdrop.style.display = 'block';
+      tooltipEl.style.width = 'min(340px, 92vw)';
+      tooltipEl.style.maxWidth = '92vw';
+      tooltipEl.style.left = '50%';
+      tooltipEl.style.top = '50%';
+      tooltipEl.style.transform = 'translate(-50%, -50%)';
+    } else {
+      backdrop.style.display = 'none';
+      tooltipEl.style.width = '300px';
+      tooltipEl.style.maxWidth = '300px';
+      tooltipEl.style.transform = 'none';
+      const leftPos = Math.max(12, Math.min((clientX || 200) + 12, window.innerWidth - 320));
+      const topPos = Math.max(12, Math.min((clientY || 200) + 12, window.innerHeight - 250));
+      tooltipEl.style.left = leftPos + 'px';
+      tooltipEl.style.top = topPos + 'px';
+    }
+  }
+
+  // Bắt sự kiện CLICK / TAP (Capture phase) trên cả Điện thoại & Máy tính
   document.addEventListener('click', function (e) {
-    // 1. Tìm xem người dùng có vừa bấm vào thẻ tàu/sà lan (.ship-chip hoặc .shipbar) không
     const chip = e.target.closest('.ship-chip, .shipbar');
     if (!chip) return;
 
+    e.preventDefault();
     e.stopPropagation();
 
-    // 2. Lấy tên tàu sạch (loại bỏ nhãn "SÀ LAN", "%", "Rời trong ngày", "Đã rời"...)
-    let rawTitle = '';
-    const firstSpan = chip.querySelector('span');
-    if (firstSpan) {
-      rawTitle = firstSpan.textContent.trim();
-    } else {
-      rawTitle = chip.textContent.trim();
-    }
-    const cleanName = rawTitle
-      .replace(/^(⛴️\s*)?(SÀ LAN|SA LAN|BARGE)\s*/i, '')
-      .replace(/\s*\([^)]*\)\s*$/, '')
-      .trim()
-      .toUpperCase();
-
-    if (!cleanName) return;
-
-    // 3. Tìm bản ghi đầy đủ từ allCalls hoặc từ dữ liệu ePort Tân Vũ
-    let shipObj = (Array.isArray(window.allCalls) ? window.allCalls : []).find(
-      c => String(c.vessel || '').trim().toUpperCase() === cleanName
-    );
-
-    const eportRec = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[cleanName]) || null;
-
-    if (!shipObj) {
-      shipObj = {
-        vessel: cleanName,
-        terminal: 'TÂN VŨ',
-        berth: (eportRec && eportRec.berth) || 'B1',
-        operator: (eportRec && eportRec.cargoType) ? `ePort: ${eportRec.cargoType} (${eportRec.donePlanStr || ''})` : 'Đồng bộ ePort Tân Vũ',
-        loa: 0,
-        dwt: (eportRec && eportRec.contTeuStr) ? `${eportRec.contTeuStr} TEU` : '—',
-        etb: (eportRec && eportRec.atb) || '',
-        etd: (eportRec && eportRec.etd) || '',
-        vessel_type: (eportRec && eportRec.isBarge) ? 'Sà lan nội thủy' : 'Container'
-      };
-    } else if (eportRec) {
-      // Bổ sung tiến độ ePort vào thông tin hiển thị trong popup
-      shipObj = {
-        ...shipObj,
-        operator: `${shipObj.operator || 'Tân Vũ'} · Tiến độ ePort: ${eportRec.donePlanStr || ''} (${eportRec.pct || 0}%)`
-      };
+    let vKey = chip.getAttribute('data-vessel-key') || '';
+    if (!vKey) {
+      const spans = chip.querySelectorAll('span');
+      vKey = spans.length > 1 ? spans[1].textContent : chip.textContent;
+      vKey = vKey.replace(/^(⛴️\s*)?(SÀ LAN|SA LAN|BARGE)\s*/i, '').trim();
     }
 
-    // 4. Gọi hàm mở popup chuẩn và định vị lại ngay cạnh vị trí bấm (tránh tràn mép điện thoại)
-    if (typeof showTooltip === 'function') {
-      showTooltip(e, shipObj);
-      const tt = document.getElementById('shipTooltip');
-      if (tt) {
-        tt.style.display = 'block';
-        tt.style.zIndex = '9999';
-        const clickX = e.clientX || (window.innerWidth / 2);
-        const clickY = e.clientY || (window.innerHeight / 2);
-        tt.style.left = Math.max(10, Math.min(clickX - 40, window.innerWidth - 315)) + 'px';
-        tt.style.top = Math.max(10, Math.min(clickY + 12, window.innerHeight - 240)) + 'px';
+    const shipObj = resolveShipByKey(vKey);
+    if (shipObj) {
+      openResponsiveShipPopup(e.clientX, e.clientY, shipObj);
+    }
+  }, true);
+
+  // Hỗ trợ Hover trên máy tính (Desktop)
+  document.addEventListener('mouseover', function (e) {
+    if (window.innerWidth < 768) return; // Bỏ qua hover giả trên màn hình cảm ứng
+    const chip = e.target.closest('.ship-chip');
+    if (!chip) return;
+    const vKey = chip.getAttribute('data-vessel-key');
+    if (!vKey) return;
+    const shipObj = resolveShipByKey(vKey);
+    if (shipObj) openResponsiveShipPopup(e.clientX, e.clientY, shipObj);
+  });
+})();
+
+// 5. Đồng bộ liên tục từ Supabase Storage (cangvu_calls.json + eport_tanvu_jobs.json)
+async function syncAllCloudDataRealtime() {
+  try {
+    // Tải lịch tàu Cảng vụ HP từ cangvu_calls.json
+    const callsRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (callsRes.ok) {
+      const rawCalls = await callsRes.json();
+      const expanded = expandCallsFromStorage(rawCalls);
+      if (expanded.length > 0) {
+        allCalls = (typeof filterAndDeduplicateCalls === 'function') ? filterAndDeduplicateCalls(expanded) : expanded;
+        window.allCalls = allCalls;
+        if ($('sideStatus')) $('sideStatus').textContent = `Cloud (${allCalls.length} tàu)`;
+        if (typeof renderAll === 'function') renderAll();
       }
     }
-  }, true); // Dùng capture = true để chặn các lỗi cú pháp onclick cũ trên thẻ
-})();
+
+    // Tải tiến độ làm hàng ePort Tân Vũ từ eport_tanvu_jobs.json
+    const eportRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (eportRes.ok) {
+      const jobsMap = await eportRes.json();
+      if (jobsMap && typeof jobsMap === 'object') {
+        window.eportTanVuJobsMap = jobsMap;
+        renderTanVuLayout(getFilteredCalls());
+
+        let latestIso = '';
+        Object.values(jobsMap).forEach(item => {
+          if (item && item.updatedAt && item.updatedAt > latestIso) latestIso = item.updatedAt;
+        });
+        if (latestIso && $('tanvuCount')) {
+          const d = new Date(latestIso);
+          const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+          const baseTxt = $('tanvuCount').textContent.split('· ePort')[0].trim();
+          $('tanvuCount').textContent = `${baseTxt} · ePort ${timeStr}`;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi đồng bộ Cloud:', e);
+  }
+}
+
+// 6. Hàm kiểm thử giả lập (Chạy trong Console hoặc tự kích hoạt nếu Bucket chưa có dữ liệu)
+window.testSimulateTanVuPopup = function () {
+  const today = getTodayString();
+  window.eportTanVuJobsMap = {
+    'MAERSK NORESUND': { berth: 'B1', cargoType: 'Container Xuất/Nhập', contTeuStr: '1,420', donePlanStr: '752/1420', pct: 53, atb: `${today}T02:30:00+07:00`, etd: `${today}T18:00:00+07:00`, isBarge: false, updatedAt: new Date().toISOString() },
+    'BN2602': { berth: 'B3', cargoType: 'Sà lan Nội thủy', contTeuStr: '128', donePlanStr: '73/128', pct: 57, atb: `${today}T04:00:00+07:00`, etd: `${today}T15:00:00+07:00`, isBarge: true, updatedAt: new Date().toISOString() },
+    'BN2603': { berth: 'B3', cargoType: 'Sà lan Nội thủy', contTeuStr: '96', donePlanStr: '50/96', pct: 52, atb: `${today}T05:15:00+07:00`, etd: `${today}T16:30:00+07:00`, isBarge: true, updatedAt: new Date().toISOString() },
+    'BN-2086': { berth: 'B5', cargoType: 'Sà lan Nội thủy', contTeuStr: '144', donePlanStr: '72/144', pct: 50, atb: `${today}T03:45:00+07:00`, etd: `${today}T17:00:00+07:00`, isBarge: true, updatedAt: new Date().toISOString() }
+  };
+  renderTanVuLayout(getFilteredCalls());
+  console.log('✅ Đã nạp dữ liệu giả lập Tân Vũ. Hãy click/chạm vào thẻ tàu hoặc sà lan để kiểm tra Popup!');
+};
+
+setTimeout(syncAllCloudDataRealtime, 300);
+setInterval(syncAllCloudDataRealtime, 60000);
+
 
 
 
