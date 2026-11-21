@@ -11203,12 +11203,33 @@ function renderTanVuLayout(list) {
             bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
           }
 
-          const pctHtml = ep && typeof ep.pct === 'number'
+          // Tính toán % làm hàng: Nếu tàu Đã rời -> Chốt 100%; nếu đang làm hàng -> Lấy % ePort + nội suy tốc độ mỗi 5 phút
+          let displayPct = null;
+          const isDeparted = !s._isBarge && ((ep && ep.pct >= 100) || (t2 > 0 && t2 <= now));
+
+          if (isDeparted) {
+            displayPct = 100;
+          } else if (ep && typeof ep.pct === 'number') {
+            displayPct = ep.pct;
+            // Nội suy tiến độ mượt mỗi 5 phút kể từ lúc Bot ePort cập nhật gần nhất (updatedAt)
+            if (ep.updatedAt && displayPct < 99 && t1 > 0 && t2 > t1) {
+              const lastSyncMs = new Date(ep.updatedAt).getTime();
+              const elapsedSinceSync = Math.max(0, now - lastSyncMs);
+              const fiveMinSteps = Math.floor(elapsedSinceSync / 300000); // Mỗi bước = 5 phút (300.000ms)
+              if (fiveMinSteps > 0) {
+                const totalStayMs = t2 - t1;
+                const pctGainPer5Min = (100 / Math.max(1, totalStayMs / 300000));
+                displayPct = Math.min(99, Math.round(ep.pct + fiveMinSteps * pctGainPer5Min));
+              }
+            }
+          }
+
+          const pctHtml = displayPct !== null
             ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;">
                  <span style="width:36px;height:5px;background:rgba(0,0,0,0.3);border-radius:3px;overflow:hidden;display:inline-block;">
-                   <span style="display:block;height:100%;width:${ep.pct}%;background:#fde047;"></span>
+                   <span style="display:block;height:100%;width:${displayPct}%;background:${displayPct >= 100 ? '#4ade80' : '#fde047'};"></span>
                  </span>
-                 <b style="font-size:9.5px;">${ep.pct}%</b>
+                 <b style="font-size:9.5px;">${displayPct}%</b>
                </span>`
             : '';
 
@@ -11223,7 +11244,7 @@ function renderTanVuLayout(list) {
                  style="${bgStyle}; user-select:none; -webkit-tap-highlight-color:transparent;">
               ${bargeTag}
               <span style="font-size:10.5px;font-weight:800;">${esc(s.vessel)}</span>
-              ${pctHtml}
+              ${l}
               <span class="chip-time" style="font-size:9px;padding:2px 5px;background:rgba(0,0,0,0.28);border-radius:4px;font-weight:700;">${statusLabel}</span>
             </div>
           `;
@@ -11450,8 +11471,14 @@ window.testSimulateTanVuPopup = function () {
   console.log('✅ Đã nạp dữ liệu giả lập Tân Vũ. Hãy click/chạm vào thẻ tàu hoặc sà lan để kiểm tra Popup!');
 };
 
+// Tự động kéo dữ liệu mới nhất từ Supabase Storage & cập nhật hiển thị mỗi 05 phút (300.000ms)
 setTimeout(syncAllCloudDataRealtime, 300);
-setInterval(syncAllCloudDataRealtime, 60000);
+setInterval(() => {
+  syncAllCloudDataRealtime();
+  if (typeof renderTanVuLayout === 'function') {
+    renderTanVuLayout(getFilteredCalls());
+  }
+}, 300000);
 
 
 
