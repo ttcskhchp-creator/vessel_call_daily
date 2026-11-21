@@ -11203,36 +11203,7 @@ function renderTanVuLayout(list) {
             bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
           }
 
-          // Tính toán % làm hàng: Nếu tàu Đã rời -> Chốt 100%; nếu đang làm hàng -> Lấy % ePort + nội suy tốc độ mỗi 5 phút
-          let displayPct = null;
-          const isDeparted = !s._isBarge && ((ep && ep.pct >= 100) || (t2 > 0 && t2 <= now));
-
-          if (isDeparted) {
-            displayPct = 100;
-          } else if (ep && typeof ep.pct === 'number') {
-            displayPct = ep.pct;
-            // Nội suy tiến độ mượt mỗi 5 phút kể từ lúc Bot ePort cập nhật gần nhất (updatedAt)
-            if (ep.updatedAt && displayPct < 99 && t1 > 0 && t2 > t1) {
-              const lastSyncMs = new Date(ep.updatedAt).getTime();
-              const elapsedSinceSync = Math.max(0, now - lastSyncMs);
-              const fiveMinSteps = Math.floor(elapsedSinceSync / 300000); // Mỗi bước = 5 phút (300.000ms)
-              if (fiveMinSteps > 0) {
-                const totalStayMs = t2 - t1;
-                const pctGainPer5Min = (100 / Math.max(1, totalStayMs / 300000));
-                displayPct = Math.min(99, Math.round(ep.pct + fiveMinSteps * pctGainPer5Min));
-              }
-            }
-          }
-
-          const pctHtml = displayPct !== null
-            ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;">
-                 <span style="width:36px;height:5px;background:rgba(0,0,0,0.3);border-radius:3px;overflow:hidden;display:inline-block;">
-                   <span style="display:block;height:100%;width:${displayPct}%;background:${displayPct >= 100 ? '#4ade80' : '#fde047'};"></span>
-                 </span>
-                 <b style="font-size:9.5px;">${displayPct}%</b>
-               </span>`
-            : '';
-
+     
           const bargeTag = s._isBarge
             ? `<span style="background:rgba(255,255,255,0.2);padding:1px 4px;border-radius:3px;font-size:8.5px;">⛴️ SÀ LAN</span>`
             : '';
@@ -11541,6 +11512,227 @@ setInterval(() => {
     }catch(e){}
   },8000);
 })();
+/* ==================== BẢN VÁ HOÀN CHỈNH: CHỐT 100% TÀU ĐÃ RỜI, NHẢY % MỖI 05 PHÚT & POPUP AN TOÀN ==================== */
+(function initTanVuRealtimePatch() {
+  window.eportTanVuJobsMap = window.eportTanVuJobsMap || {};
+
+  function checkIsBarge(name, ep) {
+    const v = String(name || '').trim().toUpperCase();
+    if (!v) return false;
+    if (ep && ep.isBarge === true) return true;
+    return /^(BV|BN|HP|SG|NB|HD|QN|TB|ĐN|DN|SL|BARGE|SA\s*LAN)[\s\-]*\d+/i.test(v) || /\b(BARGE|SÀ LAN|SA LAN)\b/i.test(v);
+  }
+
+ window.renderTanVuLayout = function (list) {
+  const container = document.getElementById('tanvuBerthsLayout');
+  if (!container) return;
+
+  try {
+    const now = Date.now();
+    const fromEl = document.getElementById('fromDate');
+    const selectedDateStr = (fromEl && fromEl.value) ? fromEl.value : getTodayString();
+    const todayStr = getTodayString();
+    const eportMap = window.eportTanVuJobsMap || {};
+
+    const tanVuCalls = (Array.isArray(list) ? list : []).filter(c => {
+      const term = (c.terminal || '').toUpperCase();
+      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
+      if (!c.etb) return false;
+      const etbDate = c.etb.split('T')[0];
+      const etdDate = c.etd ? c.etd.split('T')[0] : '';
+      const shipEnd = etdDate || '9999-12-31';
+      return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
+    });
+
+    const mergedMap = new Map();
+    tanVuCalls.forEach(c => {
+      const k = (c.vessel || '').trim().toUpperCase();
+      if (k) mergedMap.set(k, { ...c });
+    });
+
+    if (selectedDateStr === todayStr) {
+      Object.entries(eportMap).forEach(([vKey, ep]) => {
+        const upName = vKey.trim().toUpperCase();
+        if (!upName) return;
+        if (mergedMap.has(upName)) {
+          const cur = mergedMap.get(upName);
+          if (ep.berth && typeof normalizeBerthCode === 'function') {
+            cur.berth = normalizeBerthCode(ep.berth);
+          }
+          cur._eport = ep;
+        } else {
+          mergedMap.set(upName, {
+            vessel: upName,
+            terminal: 'TÂN VŨ',
+            berth: (typeof normalizeBerthCode === 'function') ? normalizeBerthCode(ep.berth || 'B1') : 'B1',
+            loa: 0,
+            dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
+            etb: ep.atb || new Date(now - 3600000).toISOString(),
+            etd: ep.etd || '',
+            operator: ep.cargoType || 'ePort Tân Vũ',
+            _eport: ep
+          });
+        }
+      });
+    }
+
+    let shipCount = 0;
+    let bargeCount = 0;
+    const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
+
+    mergedMap.forEach(item => {
+      const ep = item._eport || eportMap[item.vessel] || null;
+      const isBarge = (ep && ep.isBarge === true)
+        || /^(BV|BN|HP|SG|NB|HD|QN|TB|ĐN|DN|SL|BARGE|SA\s*LAN)[\s\-]*\d+/i.test(item.vessel)
+        || /\b(BARGE|SÀ LAN|SA LAN)\b/i.test(item.vessel);
+      item._isBarge = isBarge;
+      item._eport = ep;
+      if (isBarge) bargeCount++;
+      else shipCount++;
+
+      const b = (typeof normalizeBerthCode === 'function') ? (normalizeBerthCode(item.berth || 'B1') || 'B1') : 'B1';
+      if (!berthMap[b]) berthMap[b] = [];
+      berthMap[b].push(item);
+    });
+
+    const countEl = document.getElementById('tanvuCount');
+    if (countEl) {
+      const oldSuffix = countEl.textContent.includes('· ePort')
+        ? ' · ePort' + countEl.textContent.split('· ePort')[1]
+        : '';
+      countEl.textContent = `${shipCount} lượt tàu · ${bargeCount} sà lan${oldSuffix}`;
+    }
+
+    window._tanVuRenderedMap = mergedMap;
+
+    let html = `
+      <div class="berth-group">
+        <div class="berth-group-head" style="flex-wrap:wrap;gap:6px;">
+          <span class="berth-group-title">CẢNG TÂN VŨ</span>
+          <span style="font-size:10px;color:#10b981;font-weight:700;">🟢 Đồng bộ tự động · Nhấp vào thẻ để xem chi tiết</span>
+        </div>
+    `;
+
+    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(bName => {
+      const ships = (berthMap[bName] || []).sort((a, b) => new Date(a.etb || 0) - new Date(b.etb || 0));
+      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
+
+      if (ships.length === 0) {
+        html += `<span class="empty-berth">Trống</span>`;
+      } else {
+        ships.forEach(s => {
+          const ep = s._eport;
+          const t1 = s.etb ? new Date(s.etb).getTime() : 0;
+          const t2 = s.etd ? new Date(s.etd).getTime() : 0;
+          const etdDate = s.etd ? s.etd.split('T')[0] : '';
+          const isDeparted = !s._isBarge && ((ep && ep.pct >= 100) || (t2 > 0 && t2 <= now));
+
+          let statusLabel = '';
+          let bgStyle = '';
+
+          if (s._isBarge) {
+            statusLabel = (ep && ep.pct >= 100) ? '✔️ Xong hàng' : '🚩 Rời trong ngày';
+            bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
+          } else if (isDeparted) {
+            statusLabel = '✔️ Đã rời';
+            bgStyle = 'background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; opacity: 0.9;';
+          } else if (etdDate === todayStr && t2 > now) {
+            statusLabel = '🚩 Rời trong ngày';
+            bgStyle = 'background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #7dd3fc;';
+          } else if (t1 <= now && (t2 === 0 || t2 > now)) {
+            statusLabel = '🏗️ Đang làm hàng';
+            bgStyle = 'background: linear-gradient(135deg, #059669, #047857); color: #fff; border: 1px solid #34d399;';
+          } else {
+            statusLabel = '⏳ Sắp cập';
+            bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
+          }
+
+          let displayPct = null;
+          if (isDeparted) {
+            displayPct = 100;
+          } else if (ep && typeof ep.pct === 'number') {
+            displayPct = ep.pct;
+            if (ep.updatedAt && displayPct < 99 && t1 > 0 && t2 > t1) {
+              const lastSyncMs = new Date(ep.updatedAt).getTime();
+              const elapsedSinceSync = Math.max(0, now - lastSyncMs);
+              const fiveMinSteps = Math.floor(elapsedSinceSync / 300000);
+              if (fiveMinSteps > 0) {
+                const pctGainPer5Min = 100 / Math.max(1, (t2 - t1) / 300000);
+                displayPct = Math.min(99, Math.round(ep.pct + fiveMinSteps * pctGainPer5Min));
+              }
+            }
+          }
+
+          const pctHtml = displayPct !== null
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 4px;">
+                 <span style="width:36px;height:5px;background:rgba(0,0,0,0.3);border-radius:3px;overflow:hidden;display:inline-block;">
+                   <span style="display:block;height:100%;width:${displayPct}%;background:${displayPct >= 100 ? '#4ade80' : '#fde047'};"></span>
+                 </span>
+                 <b style="font-size:9.5px;">${displayPct}%</b>
+               </span>`
+            : '';
+
+          const bargeTag = s._isBarge
+            ? `<span style="background:rgba(255,255,255,0.2);padding:1px 4px;border-radius:3px;font-size:8.5px;">⛴️ SÀ LAN</span>`
+            : '';
+
+          html += `
+            <div class="ship-chip"
+                 data-vessel-key="${esc(s.vessel)}"
+                 style="${bgStyle}; user-select:none; -webkit-tap-highlight-color:transparent;">
+              ${bargeTag}
+              <span style="font-size:10.5px;font-weight:800;">${esc(s.vessel)}</span>
+              ${pctHtml}
+              <span class="chip-time" style="font-size:9px;padding:2px 5px;background:rgba(0,0,0,0.28);border-radius:4px;font-weight:700;">${statusLabel}</span>
+            </div>
+          `;
+        });
+      }
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Lỗi renderTanVuLayout:', err);
+  }
+};
+
+  async function pullEportAndRefresh() {
+    try {
+      const eportRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (eportRes.ok) {
+        const jobsMap = await eportRes.json();
+        if (jobsMap && typeof jobsMap === 'object') {
+          window.eportTanVuJobsMap = jobsMap;
+          if (typeof getFilteredCalls === 'function') {
+            window.renderTanVuLayout(getFilteredCalls());
+          }
+          let latestIso = '';
+          Object.values(jobsMap).forEach(item => {
+            if (item && item.updatedAt && item.updatedAt > latestIso) latestIso = item.updatedAt;
+          });
+          const countEl = document.getElementById('tanvuCount');
+          if (latestIso && countEl) {
+            const d = new Date(latestIso);
+            const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+            const baseTxt = countEl.textContent.split('· ePort')[0].trim();
+            countEl.textContent = `${baseTxt} · ePort ${timeStr}`;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  setTimeout(pullEportAndRefresh, 400);
+  setInterval(() => {
+    pullEportAndRefresh();
+    if (typeof getFilteredCalls === 'function') {
+      window.renderTanVuLayout(getFilteredCalls());
+    }
+  }, 300000);
+})();
+  
 </script>
 </body>
 </html>
