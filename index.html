@@ -10982,30 +10982,43 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   };
 
   // 3. TÍNH NĂNG SUẤT GIẢI PHÓNG TÀU: CHỈ ÁP DỤNG CHO TÀU CONTAINER CỦA TÂN VŨ CÓ DỮ LIỆU EPORT
+// Tách chuỗi dạng "A/B" thành hai số [numA, numB]
+  function parseSlashPair(str) {
+    if (!str) return [0, 0];
+    const parts = String(str).split('/').map(x => parseInt(String(x).replace(/[^\d-]/g, ''), 10));
+    return [isNaN(parts[0]) ? 0 : parts[0], isNaN(parts[1]) ? 0 : parts[1]];
+  }
+
+  // Tính sản lượng còn lại & năng suất giải phóng tàu theo cặp [Cont / TEU] từ ePort
   window.calcTanVuEportContainerRate = function (shipObj, epRec) {
     if (!shipObj) return { valid: false };
     const term = normTerminalName(shipObj.terminal || '');
-    // Tuyệt đối chỉ tính cho Cảng Tân Vũ
     if (term !== 'TÂN VŨ') return { valid: false };
-    // Bắt buộc phải có bản ghi thực tế từ ePort Tân Vũ
     if (!epRec || typeof epRec !== 'object') return { valid: false };
-    // Không tính cho sà lan
     if (checkIsBarge(shipObj.vessel, epRec)) return { valid: false };
 
-    const planTotal = Number(epRec.planNum) || 0;
-    const doneTotal = Number(epRec.doneNum) || 0;
     const cargoStr = String(epRec.cargoType || '').toUpperCase();
     const isBulkCargo = /RỜI|THÉP|TẤN|BULK|GENERAL/i.test(cargoStr) && !/CONT/i.test(cargoStr);
+    if (isBulkCargo) return { valid: false };
 
-    // Phải có sản lượng container kế hoạch thực tế trên ePort
-    if (planTotal <= 0 || isBulkCargo) return { valid: false };
+    const [totalCont, totalTeu] = parseSlashPair(epRec.contTeuStr);
+    const [doneCont, doneTeu] = parseSlashPair(epRec.donePlanStr);
 
-    // Bắt buộc phải có đủ ETB (hoặc ATB) và ETD thực tế
+    const planTotal = totalCont > 0 ? totalCont : (Number(epRec.planNum) || 0);
+    const doneTotal = doneCont > 0 ? doneCont : (Number(epRec.doneNum) || 0);
+    if (planTotal <= 0) return { valid: false };
+
     const etbStr = shipObj.etb || epRec.atb || '';
     const etdStr = shipObj.etd || epRec.etd || '';
     const t1 = etbStr ? new Date(etbStr).getTime() : 0;
     const t2 = etdStr ? new Date(etdStr).getTime() : 0;
     if (!t1 || !t2 || t2 <= t1) return { valid: false };
+
+    const remCont = Math.max(0, totalCont - doneCont);
+    const remTeu = Math.max(0, totalTeu - doneTeu);
+    const remainLabel = (totalCont > 0 && totalTeu > 0)
+      ? `${remCont} Cont / ${remTeu} TEU`
+      : `${Math.max(0, planTotal - doneTotal).toLocaleString('vi-VN')} Moves`;
 
     const now = Date.now();
     if (t2 <= now || Number(epRec.pct) >= 100) {
@@ -11013,19 +11026,16 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         valid: true,
         isDone: true,
         reqRate: 0,
-        remainQty: 0,
+        remainLabel,
         remainHrs: 0,
-        planTotal,
-        doneTotal: planTotal,
         badge: '✓ Xong 100%',
         advice: 'Đã hoàn tất xếp dỡ container',
         level: 'done'
       };
     }
 
-    const remainQty = Math.max(0, planTotal - doneTotal);
-    const remainMinutes = Math.max(15, (t2 - now) / 60000);
-    const remainHrs = remainMinutes / 60;
+    const remainQty = remCont > 0 ? remCont : Math.max(0, planTotal - doneTotal);
+    const remainHrs = Math.max(0.25, (t2 - now) / 3600000);
     const reqRate = Math.ceil(remainQty / remainHrs);
 
     const elapsedHrs = now > t1 ? Math.max(0.5, (now - t1) / 3600000) : 0;
@@ -11051,15 +11061,14 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
       reqRate,
       curRate,
       remainQty,
-      planTotal,
-      doneTotal,
+      remainLabel,
       remainHrs: Number(remainHrs.toFixed(1)),
       badge,
       advice,
       level
     };
   };
-
+  
   // 4. VẼ KHUNG CẢNG TÂN VŨ (TIÊU ĐIỂM)
   window.renderTanVuLayout = function (list) {
     const container = document.getElementById('tanvuBerthsLayout');
@@ -11314,18 +11323,18 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
             : { bg: 'rgba(14,165,233,0.12)', bd: '#0284c7', fg: '#0284c7' });
         rateBox.style.background = palette.bg;
         rateBox.style.borderColor = palette.bd;
-        rateBox.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-            <span style="font-weight:800;color:${palette.fg};">⚡ Năng suất cần giải phóng:</span>
-            <b style="font-size:12px;color:${palette.fg};">${rInfo.reqRate} Moves/h</b>
-          </div>
-          <div style="font-size:9.8px;color:var(--ink);">
-            Sản lượng còn lại: <b>${rInfo.remainQty.toLocaleString('vi-VN')}</b> · Quỹ thời gian còn: <b>${rInfo.remainHrs}h</b>
-          </div>
-          <div style="font-size:9.5px;font-weight:700;color:${palette.fg};margin-top:2px;">
-            ➔ ${esc(rInfo.advice)}
-          </div>
-        `;
+       rateBox.innerHTML = `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+    <span style="font-weight:800;color:${palette.fg};">⚡ Năng suất cần giải phóng:</span>
+    <b style="font-size:12px;color:${palette.fg};">${rInfo.reqRate} Moves/h</b>
+  </div>
+  <div style="font-size:9.8px;color:var(--ink);">
+    Sản lượng còn lại: <b>${esc(rInfo.remainLabel)}</b> · Quỹ thời gian còn: <b>${rInfo.remainHrs}h</b>
+  </div>
+  <div style="font-size:9.5px;font-weight:700;color:${palette.fg};margin-top:2px;">
+    ➔ ${esc(rInfo.advice)}
+  </div>
+`;
       }
     }
 
