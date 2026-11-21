@@ -11024,7 +11024,8 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     }
 
     const remainQty = Math.max(0, planTotal - doneTotal);
-    const remainHrs = Math.max(0.25, (t2 - now) / 3600000);
+    const remainMinutes = Math.max(15, (t2 - now) / 60000);
+    const remainHrs = remainMinutes / 60;
     const reqRate = Math.ceil(remainQty / remainHrs);
 
     const elapsedHrs = now > t1 ? Math.max(0.5, (now - t1) / 3600000) : 0;
