@@ -10888,9 +10888,10 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   let tanVuChartMode = 'week';
 
   // 2. Bảng số lượng cầu bến thực tế của các cảng tại Hải Phòng
-  const REAL_HP_PORT_BERTHS = {
+ const REAL_HP_PORT_BERTHS = {
     'TÂN VŨ': ['B1', 'B2', 'B3', 'B4', 'B5'],          // 5 bến
     'HTIT': ['B3', 'B4'],                              // 2 bến số 3 & 4 Lạch Huyện
+    'HHIT': ['B5', 'B6'],                              // 2 bến số 5 & 6
     'HICT': ['B1', 'B2'],                              // 2 bến số 1 & 2 Lạch Huyện
     'ĐÌNH VŨ': ['B1', 'B2'],                           // 2 bến (DVP)
     'NAM ĐÌNH VŨ': ['B1', 'B2', 'B3', 'B4'],           // 4 bến
@@ -10920,6 +10921,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     if (s.includes('GREEN PORT') || s.includes('GREENPORT')) return 'GREENPORT';
     if (s.includes('CHUA VE') || s.includes('CHÙA VẼ')) return 'CHÙA VẼ';
     if (s.includes('HOANG DIEU') || s.includes('HOÀNG DIỆU')) return 'HOÀNG DIỆU';
+    if (s.includes('HHIT')) return 'HHIT';
     if (s.includes('HTIT')) return 'HTIT';
     if (s.includes('HICT')) return 'HICT';
     if (s.includes('MIPEC')) return 'MIPEC';
@@ -10938,6 +10940,16 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     const m = s.match(/(\d+)/);
     return m ? ('B' + parseInt(m[1], 10)) : s;
   }
+
+  function normTanVuBerth(rawBerth) {
+  const s = String(rawBerth || '').trim().toUpperCase();
+  if (!s) return '';
+  const m = s.match(/\b(?:B|CẦU|CAU|C\s*A\s*U)?\s*0*([1-5])\b/i) || s.match(/([1-5])/);
+  if (m && ['1', '2', '3', '4', '5'].includes(m[1])) {
+    return 'B' + parseInt(m[1], 10);
+  }
+  return '';
+}
 
   function checkIsBarge(name, ep) {
     const v = String(name || '').trim().toUpperCase();
@@ -10961,10 +10973,22 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     const isRoRo = vType.includes('RO-RO') || vType.includes('RORO') || vType.includes('Ô TÔ') || unit === 'UNITS';
     const isBulk = vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP') || unit === 'TẤN';
 
-    if (term === 'TÂN VŨ') {
-      if (isRoRo) return { preferred: ['B5', 'B4'], fallback: ['B3', 'B2', 'B1'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: false, ruleName: 'Tân Vũ: Ro-Ro ưu tiên Bến 5, 4' };
-      if (loa > 170) return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: !portContext.hasRoRo, ruleName: 'Tân Vũ: Tàu >170m ưu tiên Bến 1, 2, 3' };
+   if (term === 'TÂN VŨ') {
+    const vKey = String(callOrSpecs?.vessel || callOrSpecs?.vessel_name || '').trim().toUpperCase();
+    const liveEp = vKey && window.eportTanVuJobsMap ? window.eportTanVuJobsMap[vKey] : null;
+    const liveBerth = liveEp ? normTanVuBerth(liveEp.berth) : '';
+    if (liveBerth) {
+      return {
+        preferred: [liveBerth],
+        fallback: realBerths,
+        maxBerths: realBerths,
+        allowKeepOriginalIfNoConflict: true,
+        ruleName: `Tân Vũ: Giữ đúng bến thực tế ePort (${liveBerth})`
+      };
     }
+    if (isRoRo) return { preferred: ['B5', 'B4'], fallback: ['B3', 'B2', 'B1'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: false, ruleName: 'Tân Vũ: Ro-Ro ưu tiên Bến 5, 4' };
+    if (loa > 170) return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: !portContext.hasRoRo, ruleName: 'Tân Vũ: Tàu >170m ưu tiên Bến 1, 2, 3' };
+  }
     if (term === 'CHÙA VẼ' && isBulk) {
       return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: !portContext.hasCont, ruleName: 'Chùa Vẽ: Hàng rời ưu tiên Bến 1, 2, 3' };
     }
@@ -11095,48 +11119,53 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (k) mergedMap.set(k, { ...c, terminal: 'TÂN VŨ' });
       });
 
-      if (selectedDateStr === todayStr) {
-        Object.entries(rawStore).forEach(([vKey, ep]) => {
-          if (!ep || typeof ep !== 'object') return;
-          const upName = vKey.trim().toUpperCase();
-          if (!upName) return;
-          if (mergedMap.has(upName)) {
-            const cur = mergedMap.get(upName);
-            if (ep.berth) cur.berth = normBerth(ep.berth);
-            if (!cur.etd && ep.etd) cur.etd = ep.etd;
-            cur._eport = ep;
-          } else {
-            mergedMap.set(upName, {
-              vessel: upName,
-              terminal: 'TÂN VŨ',
-              berth: normBerth(ep.berth || 'B1'),
-              loa: 0,
-              dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
-              etb: ep.atb || new Date(now - 3600000).toISOString(),
-              etd: ep.etd || '',
-              operator: ep.cargoType || 'ePort Tân Vũ',
-              _eport: ep
-            });
-          }
+     if (selectedDateStr === todayStr) {
+    Object.entries(rawStore).forEach(([vKey, ep]) => {
+      if (!ep || typeof ep !== 'object') return;
+      const upName = vKey.trim().toUpperCase();
+      if (!upName) return;
+      const epBerth = normTanVuBerth(ep.berth);
+
+      if (mergedMap.has(upName)) {
+        const cur = mergedMap.get(upName);
+        cur.terminal = 'TÂN VŨ';
+        if (epBerth) cur.berth = epBerth;
+        else cur.berth = normTanVuBerth(cur.berth) || 'B1';
+        if (!cur.etd && ep.etd) cur.etd = ep.etd;
+        cur._eport = ep;
+      } else {
+        mergedMap.set(upName, {
+          vessel: upName,
+          terminal: 'TÂN VŨ',
+          berth: epBerth || 'B1',
+          loa: 0,
+          dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
+          etb: ep.atb || new Date(now - 3600000).toISOString(),
+          etd: ep.etd || '',
+          operator: ep.cargoType || 'ePort Tân Vũ',
+          _eport: ep
         });
       }
+    });
+  }
 
       let shipCount = 0;
       let bargeCount = 0;
       const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 
-      mergedMap.forEach(item => {
-        const ep = item._eport || rawStore[item.vessel] || null;
-        const isBarge = checkIsBarge(item.vessel, ep);
-        item._isBarge = isBarge;
-        item._eport = ep;
-        if (isBarge) bargeCount++;
-        else shipCount++;
+     mergedMap.forEach(item => {
+    const ep = item._eport || rawStore[item.vessel] || null;
+    const isBarge = checkIsBarge(item.vessel, ep);
+    item._isBarge = isBarge;
+    item._eport = ep;
+    if (isBarge) bargeCount++;
+    else shipCount++;
 
-        const b = normBerth(item.berth || 'B1');
-        if (!berthMap[b]) berthMap[b] = [];
-        berthMap[b].push(item);
-      });
+    const b = normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
+    item.berth = b;
+    if (!berthMap[b]) berthMap[b] = [];
+    berthMap[b].push(item);
+  });
 
       const countEl = document.getElementById('tanvuCount');
       if (countEl) {
@@ -11436,11 +11465,11 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     const searchQuery = (document.getElementById('planningSearch')?.value || '').toLowerCase();
 
     const PORT_DISPLAY_ORDER = [
-      'TÂN VŨ', 'HTIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
+      'TÂN VŨ', 'HTIT', 'HHIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
       'VIP GREENPORT', 'GREENPORT', 'NAM HẢI ĐÌNH VŨ', 'CHÙA VẼ', 'HOÀNG DIỆU',
       'MIPEC', 'ĐOẠN XÁ', 'NAM HẢI', 'PTS ĐÌNH VŨ', 'HẢI AN', 'TÂN CẢNG 189', 'CẢNG 128'
     ];
-
+    
     const portGroups = new Map();
 
     Object.entries(REAL_HP_PORT_BERTHS).forEach(([pName, bList]) => {
@@ -11842,6 +11871,8 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   // Ghi đè hàm cũ để không bao giờ phát sinh lỗi khi reload
   window.loadEportTanVuJobs = syncEportTanVuImmediateAndPeriodic;
 
+ 
+  
   // Chạy ngay lập tức khi trang tải/reload xong & tự động lặp lại mỗi 05 phút (300.000ms)
   syncEportTanVuImmediateAndPeriodic();
   if (document.readyState === 'loading') {
