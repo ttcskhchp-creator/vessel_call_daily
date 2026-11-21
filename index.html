@@ -11008,42 +11008,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   return true;
 }
 
-async function loadCangVuCallsMaster() {
-  try {
-    // 1. Đọc tức thì từ tệp nén cangvu_calls.json trên Supabase Storage Bucket
-    const cloudUrl = `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_calls.json?t=${Date.now()}`;
-    const res = await fetch(cloudUrl, { cache: 'no-store' });
-    if (res.ok) {
-      const rawJson = await res.json();
-      const expanded = expandCallsFromStorage(rawJson);
-      if (applyNewCallsToApp(expanded, 'Cảng vụ Cloud')) {
-        const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        if ($('sideLastSaved')) {
-          $('sideLastSaved').textContent = `Cloud (${nowTime})`;
-          $('sideLastSaved').style.color = '#10b981';
-        }
-        return;
-      }
-    }
 
-    // 2. Dự phòng từ bảng port_calls_history trên Supabase nếu Bot chưa chạy lần đầu
-    if (allCalls.length === 0 && supabaseClient) {
-      const { data: histData, error } = await supabaseClient
-        .from('port_calls_history')
-        .select('*')
-        .order('etb', { ascending: false })
-        .limit(120);
-      if (!error && Array.isArray(histData) && histData.length > 0) {
-        applyNewCallsToApp(histData, 'CSDL Lịch sử');
-      }
-    }
-  } catch (e) {
-    console.warn('Lỗi đọc dữ liệu từ Bucket:', e);
-  }
-}
-
-setTimeout(loadCangVuCallsMaster, 300);
-setInterval(loadCangVuCallsMaster, 120000);
 
   if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
@@ -11104,11 +11069,63 @@ setInterval(loadCangVuCallsMaster, 120000);
   },8000);
 })();
 
-  /* ==================== MODULE VẬN HÀNH NÂNG CAO: SYNC 5P, NĂNG SUẤT GIẢI PHÓNG TÀU, THỐNG KÊ TÂN VŨ & KẾ HOẠCH CẦU ==================== */
-(function initAdvancedPortOperationsV4() {
-  window.eportTanVuJobsMap = window.eportTanVuJobsMap || {};
+ /* ==================== HỆ THỐNG HỢP NHẤT: EPORT 5P, NĂNG SUẤT TÀU CONT TÂN VŨ, BẾN THỰC TẾ & POPUP ==================== */
+(function initUnifiedPortSystem() {
+  // Đảm bảo tương thích tuyệt đối kể cả khi còn code cũ gọi .clear()
+  window.eportTanVuJobsMap = {};
+  window.eportTanVuJobsMap.clear = function () {
+    Object.keys(window.eportTanVuJobsMap).forEach(k => {
+      if (k !== 'clear') delete window.eportTanVuJobsMap[k];
+    });
+  };
+
   window.tanVuHistoryRecords = window.tanVuHistoryRecords || [];
   let tanVuChartMode = 'week'; // 'week' | 'month'
+
+  // BẢNG QUY CHUẨN SỐ LƯỢNG CẦU BẾN THỰC TẾ CÁC CẢNG KHU VỰC HẢI PHÒNG
+  const REAL_HP_PORT_BERTHS = {
+    'TÂN VŨ': ['B1', 'B2', 'B3', 'B4', 'B5'],          // 5 cầu bến (980.6m)
+    'HTIT': ['B3', 'B4'],                              // 2 cầu bến số 3 & 4 Lạch Huyện (750m)
+    'HICT': ['B1', 'B2'],                              // 2 cầu bến số 1 & 2 Lạch Huyện (750m)
+    'ĐÌNH VŨ': ['B1', 'B2'],                           // 2 cầu bến DVP (425m)
+    'NAM ĐÌNH VŨ': ['B1', 'B2', 'B3', 'B4'],           // 4 cầu bến (880m)
+    'EURO ĐÌNH VŨ': ['B1', 'B2', 'B3'],                // 3 cầu bến (450m)
+    'CHÙA VẼ': ['B1', 'B2', 'B3', 'B4', 'B5'],         // 5 cầu bến (848m)
+    'HOÀNG DIỆU': ['B1', 'B2', 'B3', 'B4', 'B5'],      // 5 cầu bến khai thác
+    'VIP GREENPORT': ['B1', 'B2'],                     // 2 cầu bến (377.5m)
+    'GREENPORT': ['B1', 'B2'],                         // 2 cầu bến (340m)
+    'NAM HẢI ĐÌNH VŨ': ['B1', 'B2'],                   // 2 cầu bến (450m)
+    'MIPEC': ['B1', 'B2'],                             // 2 cầu bến (380m)
+    'ĐOẠN XÁ': ['B1', 'B2'],                           // 2 cầu bến (220m)
+    'NAM HẢI': ['B1'],                                 // 1 cầu bến (145m)
+    'PTS ĐÌNH VŨ': ['B1'],                             // 1 cầu bến (230m)
+    'HẢI AN': ['B1'],                                  // 1 cầu bến (150m)
+    'TÂN CẢNG 189': ['B1'],                            // 1 cầu bến (150m)
+    'CẢNG 128': ['B1']                                 // 1 cầu bến (160m)
+  };
+
+  function normTerminalName(raw) {
+    const s = String(raw || 'KHÁC').trim().toUpperCase();
+    if (s.includes('TAN VU') || s.includes('TÂN VŨ')) return 'TÂN VŨ';
+    if (s.includes('NAM DINH VU') || s.includes('NAM ĐÌNH VŨ')) return 'NAM ĐÌNH VŨ';
+    if (s.includes('EURO')) return 'EURO ĐÌNH VŨ';
+    if (s.includes('NAM HAI DINH VU') || s.includes('NHDV')) return 'NAM HẢI ĐÌNH VŨ';
+    if (s.includes('NAM HAI') || s.includes('NAM HẢI')) return 'NAM HẢI';
+    if (s.includes('VIP GREEN') || s.includes('VIP')) return 'VIP GREENPORT';
+    if (s.includes('GREEN PORT') || s.includes('GREENPORT')) return 'GREENPORT';
+    if (s.includes('CHUA VE') || s.includes('CHÙA VẼ')) return 'CHÙA VẼ';
+    if (s.includes('HOANG DIEU') || s.includes('HOÀNG DIỆU')) return 'HOÀNG DIỆU';
+    if (s.includes('HTIT')) return 'HTIT';
+    if (s.includes('HICT')) return 'HICT';
+    if (s.includes('MIPEC')) return 'MIPEC';
+    if (s.includes('DOAN XA') || s.includes('ĐOẠN XÁ')) return 'ĐOẠN XÁ';
+    if (s.includes('PTS')) return 'PTS ĐÌNH VŨ';
+    if (s.includes('HAI AN') || s.includes('HẢI AN')) return 'HẢI AN';
+    if (s.includes('189')) return 'TÂN CẢNG 189';
+    if (s.includes('128')) return 'CẢNG 128';
+    if (s.includes('DINH VU') || s.includes('ĐÌNH VŨ')) return 'ĐÌNH VŨ';
+    return s;
+  }
 
   function normBerth(b) {
     const s = String(b || '').trim().toUpperCase();
@@ -11124,47 +11141,85 @@ setInterval(loadCangVuCallsMaster, 120000);
     return /^(BV|BN|HP|SG|NB|HD|QN|TB|ĐN|DN|SL|BARGE|SA\s*LAN)[\s\-]*\d+/i.test(v) || /\b(BARGE|SÀ LAN|SA LAN)\b/i.test(v);
   }
 
-  // 1. TÍNH NĂNG SUẤT CẦN ĐỂ GIẢI PHÓNG TÀU (BIẾN THIÊN THEO SẢN LƯỢNG CÒN LẠI & THỜI GIAN CÒN LẠI)
-  window.calcRequiredClearanceRate = function (shipObj, epRec) {
-    const now = Date.now();
-    const t1 = shipObj.etb ? new Date(shipObj.etb).getTime() : 0;
-    const t2 = shipObj.etd ? new Date(shipObj.etd).getTime() : 0;
+  // Ghi đè quy tắc phân bến để bám sát số lượng cầu bến thực tế của từng cảng
+  window.getPriorityBerthsByPortRule = function (callOrSpecs, portContext = { hasRoRo: false, hasBulk: false, hasCont: false }) {
+    const term = normTerminalName(callOrSpecs?.terminal || '');
+    const realBerths = REAL_HP_PORT_BERTHS[term];
+    if (!realBerths) return null;
 
+    const specs = (typeof getVesselEnrichedSpecs === 'function' && callOrSpecs && callOrSpecs.vessel)
+      ? getVesselEnrichedSpecs(callOrSpecs.vessel, callOrSpecs)
+      : (callOrSpecs || {});
+    const loa = Number(specs.loa || callOrSpecs?.loa || 0);
+    const vType = String(specs.vessel_type || callOrSpecs?.vessel_type || '').toUpperCase();
+    const unit = String(specs.capacity_unit || '').toUpperCase();
+    const isRoRo = vType.includes('RO-RO') || vType.includes('RORO') || vType.includes('Ô TÔ') || unit === 'UNITS';
+    const isBulk = vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP') || unit === 'TẤN';
+
+    if (term === 'TÂN VŨ') {
+      if (isRoRo) return { preferred: ['B5', 'B4'], fallback: ['B3', 'B2', 'B1'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: false, ruleName: 'Tân Vũ: Ro-Ro ưu tiên Bến 5, 4' };
+      if (loa > 170) return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: !portContext.hasRoRo, ruleName: 'Tân Vũ: Tàu >170m ưu tiên Bến 1, 2, 3' };
+    }
+    if (term === 'CHÙA VẼ' && isBulk) {
+      return { preferred: ['B1', 'B2', 'B3'], fallback: ['B4', 'B5'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: !portContext.hasCont, ruleName: 'Chùa Vẽ: Hàng rời ưu tiên Bến 1, 2, 3' };
+    }
+    if (term === 'ĐÌNH VŨ' && (isBulk || isRoRo)) {
+      return { preferred: ['B1'], fallback: ['B2'], maxBerths: realBerths, allowKeepOriginalIfNoConflict: false, ruleName: 'Đình Vũ: Hàng rời/Ô tô ưu tiên Bến 1' };
+    }
+
+    return {
+      preferred: realBerths,
+      fallback: realBerths,
+      maxBerths: realBerths,
+      allowKeepOriginalIfNoConflict: true,
+      ruleName: `${term}: Phân bổ trong ${realBerths.length} cầu bến thực tế (${realBerths.join(', ')})`
+    };
+  };
+
+  // 1. TÍNH THỜI GIAN & NĂNG SUẤT CẦN GIẢI PHÓNG TÀU
+  // CHỈ ÁP DỤNG CHO TÀU CỦA TÂN VŨ CÓ DỮ LIỆU CONTAINER THỰC TẾ CÀO TỪ EPORT
+  window.calcTanVuEportContainerRate = function (shipObj, epRec) {
+    const term = normTerminalName(shipObj?.terminal || '');
+    if (term !== 'TÂN VŨ') {
+      return { valid: false, reason: 'not_tan_vu' };
+    }
+    if (!epRec || typeof epRec !== 'object') {
+      return { valid: false, reason: 'no_eport_data' };
+    }
+    if (checkIsBarge(shipObj?.vessel, epRec)) {
+      return { valid: false, reason: 'is_barge' };
+    }
+
+    // Kiểm tra phải có sản lượng Container thực tế từ ePort (planNum > 0 và không phải hàng rời/sắt thép)
+    const planTotal = Number(epRec.planNum) || 0;
+    const doneTotal = Number(epRec.doneNum) || 0;
+    const cargoStr = String(epRec.cargoType || '').toUpperCase();
+    const isBulkCargo = /RỜI|THÉP|TẤN|BULK|GENERAL/i.test(cargoStr) && !/CONT/i.test(cargoStr);
+    if (planTotal <= 0 || isBulkCargo) {
+      return { valid: false, reason: 'not_real_container_eport' };
+    }
+
+    // Phải có đủ ETB (hoặc ATB trên ePort) và ETD
+    const etbStr = shipObj.etb || epRec.atb || '';
+    const etdStr = shipObj.etd || epRec.etd || '';
+    const t1 = etbStr ? new Date(etbStr).getTime() : 0;
+    const t2 = etdStr ? new Date(etdStr).getTime() : 0;
     if (!t1 || !t2 || t2 <= t1) {
-      return { valid: false, badge: '', fullText: 'Chưa đủ ETB/ETD để tính năng suất', level: 'none' };
+      return { valid: false, reason: 'missing_etb_etd' };
     }
 
-    const isBulk = (epRec && /tấn|mt|rời|thép/i.test(epRec.cargoType || '')) ||
-                   /rời|bulk|tấn/i.test(shipObj.vessel_type || '');
-    const unit = isBulk ? 'Tấn/h' : 'Moves/h';
-
-    let planTotal = (epRec && Number(epRec.planNum) > 0) ? Number(epRec.planNum) : 0;
-    let doneTotal = (epRec && Number(epRec.doneNum) >= 0) ? Number(epRec.doneNum) : 0;
-
-    if (planTotal <= 0) {
-      const specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(shipObj.vessel, shipObj) : shipObj;
-      if (isBulk) {
-        const dwtNum = parseInt(String(specs.dwt || shipObj.dwt || '0').replace(/\D/g, ''), 10) || 10000;
-        planTotal = Math.round(dwtNum * 0.75);
-      } else {
-        planTotal = Number(specs.teu) > 0 ? Math.round(Number(specs.teu) * 0.65) : Math.max(250, Math.round((Number(shipObj.loa) || 150) * 3.5));
-      }
-      if (now > t1 && t2 > t1) {
-        const ratio = Math.min(0.95, Math.max(0, (now - t1) / (t2 - t1)));
-        doneTotal = Math.round(planTotal * ratio);
-      }
-    }
-
-    if (t2 <= now || (epRec && epRec.pct >= 100)) {
+    const now = Date.now();
+    if (t2 <= now || Number(epRec.pct) >= 100) {
       return {
         valid: true,
+        isDone: true,
         reqRate: 0,
-        unit,
         remainQty: 0,
         remainHrs: 0,
+        planTotal,
+        doneTotal: planTotal,
         badge: '✓ Xong 100%',
-        fullText: 'Đã hoàn tất xếp dỡ / giải phóng tàu',
-        advice: 'Hoàn thành kế hoạch',
+        advice: 'Đã hoàn tất xếp dỡ container',
         level: 'done'
       };
     }
@@ -11177,39 +11232,35 @@ setInterval(loadCangVuCallsMaster, 120000);
     const curRate = (elapsedHrs > 0 && doneTotal > 0) ? Math.round(doneTotal / elapsedHrs) : 0;
 
     let level = 'safe';
-    let badge = `⚡ ${reqRate} ${unit}`;
-    let advice = `Duy trì tiến độ${curRate > 0 ? ` (Đang đạt ${curRate} ${unit})` : ''}`;
+    let badge = `⚡ Cần ${reqRate} Moves/h`;
+    let advice = `Duy trì tiến độ ổn định${curRate > 0 ? ` (Đang đạt ${curRate} Moves/h)` : ''}`;
 
-    const highThreshold = isBulk ? 280 : 72;
-    const warnThreshold = isBulk ? 210 : 55;
-
-    if (reqRate >= highThreshold || (curRate > 0 && reqRate > curRate * 1.25)) {
+    if (reqRate >= 72 || (curRate > 0 && reqRate > curRate * 1.25)) {
       level = 'danger';
-      badge = `🔥 Cần ${reqRate} ${unit}`;
-      advice = `TĂNG TỐC NGAY (Bổ sung cẩu/xe · Hiện đạt ${curRate || '~'} ${unit})`;
-    } else if (reqRate >= warnThreshold || (curRate > 0 && reqRate > curRate * 1.05)) {
+      badge = `🔥 Tăng tốc: ${reqRate} Moves/h`;
+      advice = `CẦN TĂNG TỐC NGAY (Bổ sung thêm cần trục/đầu kéo · Đang đạt ${curRate || '~'} Moves/h)`;
+    } else if (reqRate >= 55 || (curRate > 0 && reqRate > curRate * 1.05)) {
       level = 'warning';
-      badge = `⚠️ Cần ${reqRate} ${unit}`;
-      advice = `Tăng nhẹ nhịp độ (Hiện đạt ${curRate || '~'} ${unit})`;
+      badge = `⚠️ Cần ${reqRate} Moves/h`;
+      advice = `Tăng nhẹ nhịp độ xếp dỡ (Đang đạt ${curRate || '~'} Moves/h)`;
     }
 
     return {
       valid: true,
+      isDone: false,
       reqRate,
       curRate,
-      unit,
       remainQty,
       planTotal,
       doneTotal,
       remainHrs: Number(remainHrs.toFixed(1)),
       badge,
-      fullText: `${reqRate} ${unit} (Còn ${remainQty.toLocaleString('vi-VN')} / ${remainHrs.toFixed(1)}h)`,
       advice,
       level
     };
   };
 
-  // 2. CẢNG TÂN VŨ (TIÊU ĐIỂM): HIỂN THỊ TIẾN ĐỘ + NĂNG SUẤT GIẢI PHÓNG TÀU + CHỐT 100% TÀU ĐÃ RỜI
+  // 2. VẼ KHUNG CẢNG TÂN VŨ (TIÊU ĐIỂM)
   window.renderTanVuLayout = function (list) {
     const container = document.getElementById('tanvuBerthsLayout');
     if (!container) return;
@@ -11222,8 +11273,7 @@ setInterval(loadCangVuCallsMaster, 120000);
       const eportMap = window.eportTanVuJobsMap || {};
 
       const tanVuCalls = (Array.isArray(list) ? list : []).filter(c => {
-        const term = (c.terminal || '').toUpperCase();
-        if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
+        if (normTerminalName(c.terminal) !== 'TÂN VŨ') return false;
         if (!c.etb) return false;
         const etbDate = c.etb.split('T')[0];
         const etdDate = c.etd ? c.etd.split('T')[0] : '';
@@ -11234,11 +11284,12 @@ setInterval(loadCangVuCallsMaster, 120000);
       const mergedMap = new Map();
       tanVuCalls.forEach(c => {
         const k = (c.vessel || '').trim().toUpperCase();
-        if (k) mergedMap.set(k, { ...c });
+        if (k) mergedMap.set(k, { ...c, terminal: 'TÂN VŨ' });
       });
 
       if (selectedDateStr === todayStr) {
         Object.entries(eportMap).forEach(([vKey, ep]) => {
+          if (vKey === 'clear' || !ep || typeof ep !== 'object') return;
           const upName = vKey.trim().toUpperCase();
           if (!upName) return;
           if (mergedMap.has(upName)) {
@@ -11292,8 +11343,8 @@ setInterval(loadCangVuCallsMaster, 120000);
       let html = `
         <div class="berth-group">
           <div class="berth-group-head" style="flex-wrap:wrap;gap:6px;">
-            <span class="berth-group-title">CẢNG TÂN VŨ (BẾN 1 – BẾN 5)</span>
-            <span style="font-size:10px;color:#10b981;font-weight:700;">🟢 Tự động ePort 5p/lần · Kèm năng suất cần giải phóng tàu</span>
+            <span class="berth-group-title">CẢNG TÂN VŨ (5 CẦU BẾN: B1 – B5)</span>
+            <span style="font-size:10px;color:#10b981;font-weight:700;">🟢 Auto ePort 5p/lần · Chạm/nhấp vào thẻ để xem chi tiết</span>
           </div>
       `;
 
@@ -11331,7 +11382,7 @@ setInterval(loadCangVuCallsMaster, 120000);
               bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
             }
 
-            let displayPct = isDeparted ? 100 : (ep && typeof ep.pct === 'number' ? ep.pct : null);
+            const displayPct = isDeparted ? 100 : (ep && typeof ep.pct === 'number' ? ep.pct : null);
             const pctHtml = displayPct !== null
               ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 3px;">
                    <span style="width:32px;height:5px;background:rgba(0,0,0,0.3);border-radius:3px;overflow:hidden;display:inline-block;">
@@ -11341,12 +11392,12 @@ setInterval(loadCangVuCallsMaster, 120000);
                  </span>`
               : '';
 
-            // Nhãn năng suất cần giải phóng tàu khi có đủ ETB & ETD
-            const rateInfo = window.calcRequiredClearanceRate(s, ep);
+            // CHỈ hiển thị năng suất giải phóng tàu cho tàu Container Tân Vũ có dữ liệu thực tế từ ePort
+            const rateInfo = window.calcTanVuEportContainerRate(s, ep);
             let rateHtml = '';
-            if (rateInfo.valid && !isDeparted && rateInfo.level !== 'done') {
-              const rateBg = rateInfo.level === 'danger' ? '#dc2626' : (rateInfo.level === 'warning' ? '#d97706' : 'rgba(15,23,42,0.45)');
-              rateHtml = `<span style="background:${rateBg};color:#fff;padding:1.5px 5px;border-radius:4px;font-size:8.8px;font-weight:800;" title="${esc(rateInfo.advice)}">${rateInfo.badge}</span>`;
+            if (rateInfo.valid && !rateInfo.isDone && !isDeparted) {
+              const rateBg = rateInfo.level === 'danger' ? '#dc2626' : (rateInfo.level === 'warning' ? '#d97706' : 'rgba(15,23,42,0.48)');
+              rateHtml = `<span style="background:${rateBg};color:#fff;padding:1.5px 5px;border-radius:4px;font-size:8.8px;font-weight:800;">${rateInfo.badge}</span>`;
             }
 
             const bargeTag = s._isBarge
@@ -11376,60 +11427,193 @@ setInterval(loadCangVuCallsMaster, 120000);
     }
   };
 
-  // 3. BỔ SUNG TRƯỜNG "NĂNG SUẤT CẦN GIẢI PHÓNG TÀU" VÀO POPUP CHI TIẾT TÀU (#shipTooltip)
-  const origShowTooltip = window.showTooltip;
-  window.showTooltip = function (e, s) {
-    if (typeof origShowTooltip === 'function') {
-      origShowTooltip(e, s);
+  // 3. KHÔI PHỤC POPUP ĐA NỀN TẢNG (MOBILE TOUCH + DESKTOP CLICK/HOVER)
+  (function setupUniversalShipPopup() {
+    let backdrop = document.getElementById('shipTooltipBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'shipTooltipBackdrop';
+      backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,35,0.48);z-index:9990;display:none;backdrop-filter:blur(1px);';
+      backdrop.addEventListener('click', () => {
+        if (typeof hideTooltip === 'function') hideTooltip();
+        backdrop.style.display = 'none';
+      });
+      document.body.appendChild(backdrop);
     }
+
     const tt = document.getElementById('shipTooltip');
-    if (!tt || !s) return;
+    if (tt && !document.getElementById('ttCloseBtn')) {
+      const closeBtn = document.createElement('button');
+      closeBtn.id = 'ttCloseBtn';
+      closeBtn.type = 'button';
+      closeBtn.innerHTML = '✕';
+      closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;width:24px;height:24px;padding:0;border-radius:6px;background:rgba(148,163,184,0.25);color:inherit;font-size:12px;line-height:1;';
+      closeBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (typeof hideTooltip === 'function') hideTooltip();
+        backdrop.style.display = 'none';
+      });
+      tt.style.position = 'fixed';
+      tt.style.zIndex = '9999';
+      tt.style.paddingRight = '32px';
+      tt.appendChild(closeBtn);
 
-    let rateBox = document.getElementById('ttReqRateBox');
-    if (!rateBox) {
-      rateBox = document.createElement('div');
-      rateBox.id = 'ttReqRateBox';
-      rateBox.style.cssText = 'margin-top:8px;padding:7px 9px;border-radius:7px;font-size:10.5px;border:1px solid var(--line);';
-      const actionsEl = tt.querySelector('.tt-actions');
-      if (actionsEl) tt.insertBefore(rateBox, actionsEl);
-      else tt.appendChild(rateBox);
+      tt.addEventListener('mouseenter', () => {
+        if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+      });
+      tt.addEventListener('mouseleave', () => {
+        if (window.innerWidth >= 768 && typeof scheduleHideTooltip === 'function') scheduleHideTooltip();
+      });
     }
 
-    const ep = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[(s.vessel || '').toUpperCase()]) || s._eport || null;
-    const rInfo = window.calcRequiredClearanceRate(s, ep);
+    function resolveShipByKey(vKey) {
+      const cleanKey = String(vKey || '').trim().toUpperCase();
+      if (!cleanKey) return null;
 
-    if (!rInfo.valid) {
-      rateBox.style.background = 'rgba(148,163,184,0.1)';
-      rateBox.innerHTML = `<div style="color:var(--muted);font-weight:700;">⚡ Năng suất giải phóng tàu: <span>Cần đủ ETB & ETD</span></div>`;
-    } else if (rInfo.level === 'done') {
-      rateBox.style.background = 'rgba(16,185,129,0.12)';
-      rateBox.style.borderColor = '#10b981';
-      rateBox.innerHTML = `<div style="color:#059669;font-weight:800;">✅ Giải phóng tàu: ${esc(rInfo.fullText)}</div>`;
-    } else {
-      const palette = rInfo.level === 'danger'
-        ? { bg: 'rgba(239,68,68,0.13)', bd: '#ef4444', fg: '#dc2626' }
-        : (rInfo.level === 'warning'
-          ? { bg: 'rgba(245,158,11,0.14)', bd: '#f59e0b', fg: '#d97706' }
-          : { bg: 'rgba(14,165,233,0.12)', bd: '#0284c7', fg: '#0284c7' });
+      const fromRendered = window._tanVuRenderedMap && window._tanVuRenderedMap.get(cleanKey);
+      const fromAll = (Array.isArray(window.allCalls) ? window.allCalls : []).find(
+        c => String(c.vessel || '').trim().toUpperCase() === cleanKey
+      );
+      const ep = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[cleanKey]) || (fromRendered && fromRendered._eport) || null;
 
-      rateBox.style.background = palette.bg;
-      rateBox.style.borderColor = palette.bd;
-      rateBox.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-          <span style="font-weight:800;color:${palette.fg};">⚡ Năng suất cần giải phóng:</span>
-          <b style="font-size:12px;color:${palette.fg};">${esc(rInfo.reqRate + ' ' + rInfo.unit)}</b>
-        </div>
-        <div style="font-size:9.8px;color:var(--ink);">
-          Còn lại: <b>${rInfo.remainQty.toLocaleString('vi-VN')}</b> · Quỹ thời gian còn: <b>${rInfo.remainHrs} giờ</b>
-        </div>
-        <div style="font-size:9.5px;font-weight:700;color:${palette.fg};margin-top:2px;">
-          ➔ ${esc(rInfo.advice)}
-        </div>
-      `;
+      const base = fromAll || fromRendered || {
+        vessel: cleanKey,
+        terminal: 'TÂN VŨ',
+        berth: (ep && ep.berth) || 'B1',
+        loa: 0,
+        dwt: '—',
+        etb: (ep && ep.atb) || '',
+        etd: (ep && ep.etd) || ''
+      };
+
+      const specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(cleanKey, base) : base;
+      const isBarge = checkIsBarge(cleanKey, ep);
+
+      let opText = base.operator || specs.operator || 'Cảng Hải Phòng';
+      if (ep && ep.donePlanStr) {
+        opText = `${opText} · ePort: ${ep.donePlanStr} (${ep.pct || 0}%)`;
+      }
+
+      return {
+        ...base,
+        ...specs,
+        vessel: cleanKey,
+        operator: opText,
+        vessel_type: isBarge ? 'Sà lan (ePort)' : (specs.vessel_type || 'Container'),
+        dwt: (ep && ep.contTeuStr && isBarge) ? `${ep.contTeuStr} TEU` : (specs.dwt || base.dwt || '—'),
+        _eport: ep
+      };
     }
-  };
 
-  // 4. KẾ HOẠCH CẦU (GANTT): SẮP XẾP THEO TỪNG CẢNG -> XUỐNG DÒNG BẾN 1, BẾN 2, BẾN 3...
+    function openShipPopupResponsive(clientX, clientY, shipObj) {
+      if (!shipObj || typeof showTooltip !== 'function') return;
+      if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+
+      showTooltip({ clientX: clientX || 120, clientY: clientY || 120 }, shipObj);
+
+      const tooltipEl = document.getElementById('shipTooltip');
+      if (!tooltipEl) return;
+
+      if (document.getElementById('ttYearAge')) {
+        document.getElementById('ttYearAge').textContent = shipObj.year_built ? `${shipObj.year_built} (${shipObj.vessel_age || 0}t)` : '—';
+      }
+      if (document.getElementById('ttRoute')) {
+        document.getElementById('ttRoute').textContent = (shipObj.last_port || shipObj.destination)
+          ? `${shipObj.last_port || '?'} → ${shipObj.destination || '?'}`
+          : `${shipObj.terminal || 'HP'} (${shipObj.berth || 'B1'})`;
+      }
+
+      // Chỉ hiển thị khung Năng suất giải phóng tàu khi là tàu Container Tân Vũ có dữ liệu ePort
+      let rateBox = document.getElementById('ttReqRateBox');
+      if (!rateBox) {
+        rateBox = document.createElement('div');
+        rateBox.id = 'ttReqRateBox';
+        const actionsEl = tooltipEl.querySelector('.tt-actions');
+        if (actionsEl) tooltipEl.insertBefore(rateBox, actionsEl);
+        else tooltipEl.appendChild(rateBox);
+      }
+
+      const rInfo = window.calcTanVuEportContainerRate(shipObj, shipObj._eport);
+      if (!rInfo.valid) {
+        rateBox.style.display = 'none';
+      } else {
+        rateBox.style.display = 'block';
+        rateBox.style.cssText = 'display:block;margin-top:8px;padding:7px 9px;border-radius:7px;font-size:10.5px;border:1px solid var(--line);';
+        if (rInfo.isDone) {
+          rateBox.style.background = 'rgba(16,185,129,0.12)';
+          rateBox.style.borderColor = '#10b981';
+          rateBox.innerHTML = `<div style="color:#059669;font-weight:800;">✅ Hoàn tất xếp dỡ container (${rInfo.planTotal} Moves)</div>`;
+        } else {
+          const palette = rInfo.level === 'danger'
+            ? { bg: 'rgba(239,68,68,0.13)', bd: '#ef4444', fg: '#dc2626' }
+            : (rInfo.level === 'warning'
+              ? { bg: 'rgba(245,158,11,0.14)', bd: '#f59e0b', fg: '#d97706' }
+              : { bg: 'rgba(14,165,233,0.12)', bd: '#0284c7', fg: '#0284c7' });
+          rateBox.style.background = palette.bg;
+          rateBox.style.borderColor = palette.bd;
+          rateBox.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-weight:800;color:${palette.fg};">⚡ Năng suất cần giải phóng:</span>
+              <b style="font-size:12px;color:${palette.fg};">${rInfo.reqRate} Moves/h</b>
+            </div>
+            <div style="font-size:9.8px;color:var(--ink);">
+              Sản lượng còn lại: <b>${rInfo.remainQty.toLocaleString('vi-VN')}</b> · Quỹ thời gian còn: <b>${rInfo.remainHrs}h</b>
+            </div>
+            <div style="font-size:9.5px;font-weight:700;color:${palette.fg};margin-top:2px;">
+              ➔ ${esc(rInfo.advice)}
+            </div>
+          `;
+        }
+      }
+
+      tooltipEl.style.display = 'block';
+      tooltipEl.style.zIndex = '9999';
+
+      if (window.innerWidth < 768) {
+        backdrop.style.display = 'block';
+        tooltipEl.style.width = 'min(340px, 92vw)';
+        tooltipEl.style.maxWidth = '92vw';
+        tooltipEl.style.left = '50%';
+        tooltipEl.style.top = '50%';
+        tooltipEl.style.transform = 'translate(-50%, -50%)';
+      } else {
+        backdrop.style.display = 'none';
+        tooltipEl.style.width = '305px';
+        tooltipEl.style.maxWidth = '305px';
+        tooltipEl.style.transform = 'none';
+        tooltipEl.style.left = Math.max(12, Math.min((clientX || 200) + 12, window.innerWidth - 325)) + 'px';
+        tooltipEl.style.top = Math.max(12, Math.min((clientY || 200) + 12, window.innerHeight - 270)) + 'px';
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      const chip = e.target.closest('.ship-chip, .shipbar');
+      if (!chip) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      let vKey = chip.getAttribute('data-vessel-key') || '';
+      if (!vKey) {
+        const spans = chip.querySelectorAll('span');
+        vKey = spans.length > 1 ? spans[1].textContent : chip.textContent;
+        vKey = vKey.replace(/^(⛴️\s*)?(SÀ LAN|SA LAN|BARGE)\s*/i, '').trim();
+      }
+      const shipObj = resolveShipByKey(vKey);
+      if (shipObj) openShipPopupResponsive(e.clientX, e.clientY, shipObj);
+    }, true);
+
+    document.addEventListener('mouseover', function (e) {
+      if (window.innerWidth < 768) return;
+      const chip = e.target.closest('.ship-chip');
+      if (!chip) return;
+      const vKey = chip.getAttribute('data-vessel-key');
+      if (!vKey) return;
+      const shipObj = resolveShipByKey(vKey);
+      if (shipObj) openShipPopupResponsive(e.clientX, e.clientY, shipObj);
+    });
+  })();
+
+  // 4. KẾ HOẠCH CẦU: SẮP XẾP THEO CẢNG -> XUỐNG DÒNG BẾN 1, BẾN 2, BẾN 3... ĐÚNG SỐ BẾN THỰC TẾ
   window.renderGantt = function () {
     const ganttEl = document.getElementById('fullGantt');
     if (!ganttEl) return;
@@ -11441,42 +11625,45 @@ setInterval(loadCangVuCallsMaster, 120000);
     const list = (typeof getFilteredCalls === 'function') ? getFilteredCalls() : [];
     const searchQuery = (document.getElementById('planningSearch')?.value || '').toLowerCase();
 
-    const PORT_ORDER = ['TÂN VŨ', 'HTIT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ', 'CHÙA VẼ', 'HOÀNG DIỆU'];
-    const DEFAULT_BERTHS = {
-      'TÂN VŨ': ['B1', 'B2', 'B3', 'B4', 'B5'],
-      'EURO ĐÌNH VŨ': ['B1', 'B2', 'B3'],
-      'ĐÌNH VŨ': ['B1', 'B2', 'B3', 'B4', 'B5'],
-      'CHÙA VẼ': ['B1', 'B2', 'B3', 'B4', 'B5']
-    };
+    const PORT_DISPLAY_ORDER = [
+      'TÂN VŨ', 'HTIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
+      'VIP GREENPORT', 'GREENPORT', 'NAM HẢI ĐÌNH VŨ', 'CHÙA VẼ', 'HOÀNG DIỆU',
+      'MIPEC', 'ĐOẠN XÁ', 'NAM HẢI', 'PTS ĐÌNH VŨ', 'HẢI AN', 'TÂN CẢNG 189', 'CẢNG 128'
+    ];
 
     const portGroups = new Map();
 
-    // Khởi tạo sẵn các bến chuẩn theo thứ tự 1, 2, 3... nếu đang xem Tất cả hoặc đúng cảng đó
-    Object.entries(DEFAULT_BERTHS).forEach(([pName, bList]) => {
-      if (planningAreaFilter === 'ALL' || pName.includes(planningAreaFilter) || (planningAreaFilter === 'TAN VU' && pName === 'TÂN VŨ') || (planningAreaFilter === 'CHUA VE' && pName === 'CHÙA VẼ') || (planningAreaFilter === 'DINH VU' && pName.includes('ĐÌNH VŨ'))) {
-        if (!searchQuery) {
-          const bMap = new Map();
-          bList.forEach(b => bMap.set(b, []));
-          portGroups.set(pName, bMap);
-        }
+    // Khởi tạo sẵn các bến theo đúng thực tế của từng cảng
+    Object.entries(REAL_HP_PORT_BERTHS).forEach(([pName, bList]) => {
+      const matchFilter = planningAreaFilter === 'ALL'
+        || pName.includes(planningAreaFilter)
+        || (planningAreaFilter === 'TAN VU' && pName === 'TÂN VŨ')
+        || (planningAreaFilter === 'CHUA VE' && pName === 'CHÙA VẼ')
+        || (planningAreaFilter === 'HOANG DIEU' && pName === 'HOÀNG DIỆU')
+        || (planningAreaFilter === 'DINH VU' && pName.includes('ĐÌNH VŨ'));
+
+      if (matchFilter && !searchQuery) {
+        const bMap = new Map();
+        bList.forEach(b => bMap.set(b, []));
+        portGroups.set(pName, bMap);
       }
     });
 
     list.forEach(c => {
       if (!c.etb) return;
-      const rawTerm = String(c.terminal || 'KHÁC').trim().toUpperCase();
-      const normTerm = rawTerm.includes('TAN VU') ? 'TÂN VŨ'
-        : rawTerm.includes('CHUA VE') ? 'CHÙA VẼ'
-        : rawTerm.includes('HOANG DIEU') ? 'HOÀNG DIỆU'
-        : (rawTerm.includes('DINH VU') && !rawTerm.includes('NAM') && !rawTerm.includes('EURO')) ? 'ĐÌNH VŨ'
-        : rawTerm;
+      const rawTerm = String(c.terminal || '').toUpperCase();
+      const pName = normTerminalName(c.terminal);
 
-      if (planningAreaFilter !== 'ALL' && !rawTerm.includes(planningAreaFilter) && !normTerm.includes(planningAreaFilter)) return;
-      if (searchQuery && ![c.vessel, c.operator, normTerm, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
+      const matchFilter = planningAreaFilter === 'ALL'
+        || rawTerm.includes(planningAreaFilter)
+        || pName.includes(planningAreaFilter);
+      if (!matchFilter) return;
+
+      if (searchQuery && ![c.vessel, c.operator, pName, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
 
       const bCode = normBerth(c.berth || 'B1');
-      if (!portGroups.has(normTerm)) portGroups.set(normTerm, new Map());
-      const bMap = portGroups.get(normTerm);
+      if (!portGroups.has(pName)) portGroups.set(pName, new Map());
+      const bMap = portGroups.get(pName);
       if (!bMap.has(bCode)) bMap.set(bCode, []);
       bMap.get(bCode).push(c);
     });
@@ -11493,8 +11680,8 @@ setInterval(loadCangVuCallsMaster, 120000);
     headerHtml += `</div></div>`;
 
     const sortedPorts = Array.from(portGroups.keys()).sort((a, b) => {
-      const ia = PORT_ORDER.indexOf(a);
-      const ib = PORT_ORDER.indexOf(b);
+      const ia = PORT_DISPLAY_ORDER.indexOf(a);
+      const ib = PORT_DISPLAY_ORDER.indexOf(b);
       if (ia !== -1 && ib !== -1) return ia - ib;
       if (ia !== -1) return -1;
       if (ib !== -1) return 1;
@@ -11507,7 +11694,6 @@ setInterval(loadCangVuCallsMaster, 120000);
 
     sortedPorts.forEach(portName => {
       const bMap = portGroups.get(portName);
-      // Sắp xếp cầu bến theo thứ tự số học: B1 -> B2 -> B3 -> B4 -> B5
       const sortedBerths = Array.from(bMap.keys()).sort((a, b) => {
         const na = parseInt(a.replace(/\D/g, ''), 10) || 99;
         const nb = parseInt(b.replace(/\D/g, ''), 10) || 99;
@@ -11517,15 +11703,13 @@ setInterval(loadCangVuCallsMaster, 120000);
       let portShipTotal = 0;
       sortedBerths.forEach(b => { portShipTotal += (bMap.get(b) || []).length; });
 
-      // Dòng tiêu đề Cảng (VD: CẢNG TÂN VŨ)
       out += `
         <div style="background:linear-gradient(90deg, rgba(24,84,148,0.14), rgba(0,168,232,0.06)); padding:6px 10px; font-weight:900; font-size:11.5px; color:var(--navy2); border-top:2px solid var(--cyan); display:flex; justify-content:space-between; align-items:center; min-width:840px;">
           <span>🏢 CẢNG ${esc(portName)}</span>
-          <span class="badge">${sortedBerths.length} cầu bến · ${portShipTotal} lượt tàu</span>
+          <span class="badge">${sortedBerths.length} cầu bến thực tế · ${portShipTotal} lượt tàu</span>
         </div>
       `;
 
-      // Xuống dòng từng Bến 1, Bến 2, Bến 3...
       sortedBerths.forEach(bCode => {
         totalBerthRows++;
         const berthNum = bCode.replace(/\D/g, '') || bCode;
@@ -11542,13 +11726,12 @@ setInterval(loadCangVuCallsMaster, 120000);
             const left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
             const right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
             const ep = (window.eportTanVuJobsMap && window.eportTanVuJobsMap[c.vessel]) || null;
-            const rInfo = window.calcRequiredClearanceRate(c, ep);
-            const rateShort = (rInfo.valid && rInfo.level !== 'done') ? ` [${rInfo.reqRate} ${rInfo.unit}]` : '';
+            const rInfo = window.calcTanVuEportContainerRate(c, ep);
+            const rateShort = (rInfo.valid && !rInfo.isDone) ? ` [${rInfo.reqRate} Moves/h]` : '';
 
             out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}"
                          data-vessel-key="${esc(c.vessel)}"
                          style="left:${left}%;width:${right - left}%;z-index:${2 + idx}"
-                         onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})"
                          onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})"
                          onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}${rateShort}</div>`;
           }
@@ -11557,9 +11740,7 @@ setInterval(loadCangVuCallsMaster, 120000);
       });
     });
 
-    if (sortedPorts.length === 0) {
-      out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
-    }
+    if (sortedPorts.length === 0) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
     ganttEl.innerHTML = out;
     if (document.getElementById('planningCount')) {
       document.getElementById('planningCount').textContent = `${sortedPorts.length} cảng · ${totalBerthRows} cầu bến`;
@@ -11601,13 +11782,15 @@ setInterval(loadCangVuCallsMaster, 120000);
 
     const eportMap = window.eportTanVuJobsMap || {};
     const filteredList = (typeof getFilteredCalls === 'function') ? getFilteredCalls() : [];
-    const tanVuCurrent = filteredList.filter(c => {
-      const t = (c.terminal || '').toUpperCase();
-      return t.includes('TÂN VŨ') || t.includes('TAN VU');
-    });
+    const tanVuCurrent = filteredList.filter(c => normTerminalName(c.terminal) === 'TÂN VŨ');
 
-    // Tổng hợp theo Cầu bến (B1-B5) & Hãng tàu/Đại lý kèm sản lượng thực tế
-    const byBerth = { B1: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 }, B2: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 }, B3: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 }, B4: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 }, B5: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 } };
+    const byBerth = {
+      B1: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 },
+      B2: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 },
+      B3: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 },
+      B4: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 },
+      B5: { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 }
+    };
     const byOperator = new Map();
     let totalActualVol = 0;
 
@@ -11620,10 +11803,7 @@ setInterval(loadCangVuCallsMaster, 120000);
       const bCode = normBerth(c.berth || (ep && ep.berth) || 'B1');
       const specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(vName, c) : c;
 
-      // Sản lượng thực tế khai thác (ưu tiên số liệu thực từ ePort doneNum; nếu chưa có trên ePort thì tính từ sức chở khai thác thực tế)
-      const actualVol = (ep && Number(ep.doneNum) > 0)
-        ? Number(ep.doneNum)
-        : (Number(specs.teu) > 0 ? Math.round(Number(specs.teu) * 0.55) : Math.round((Number(c.loa) || 140) * 2.5));
+      const actualVol = (ep && Number(ep.doneNum) > 0) ? Number(ep.doneNum) : 0;
       const planVol = (ep && Number(ep.planNum) > 0) ? Number(ep.planNum) : actualVol;
 
       if (!byBerth[bCode]) byBerth[bCode] = { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 };
@@ -11643,8 +11823,8 @@ setInterval(loadCangVuCallsMaster, 120000);
       totalActualVol += actualVol;
     });
 
-    // Bổ sung thêm các sà lan/tàu đang làm hàng trên ePort nhưng chưa nằm trong bộ lọc Cảng vụ
     Object.entries(eportMap).forEach(([vName, ep]) => {
+      if (vName === 'clear' || !ep || typeof ep !== 'object') return;
       const up = vName.toUpperCase();
       if (processedVessels.has(up)) return;
       const isBarge = checkIsBarge(up, ep);
@@ -11659,14 +11839,10 @@ setInterval(loadCangVuCallsMaster, 120000);
       totalActualVol += actualVol;
     });
 
-    // Dữ liệu biểu đồ so sánh qua các Tuần và Tháng (Kết hợp lịch sử Supabase + allCalls hiện tại)
     const combinedHistory = [
       ...(Array.isArray(window.tanVuHistoryRecords) ? window.tanVuHistoryRecords : []),
       ...(Array.isArray(window.allCalls) ? window.allCalls : [])
-    ].filter(c => {
-      const t = (c.terminal || '').toUpperCase();
-      return t.includes('TÂN VŨ') || t.includes('TAN VU');
-    });
+    ].filter(c => normTerminalName(c.terminal) === 'TÂN VŨ');
 
     const trendMap = new Map();
     const seenTripKeys = new Set();
@@ -11685,10 +11861,7 @@ setInterval(loadCangVuCallsMaster, 120000);
         : `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}`;
 
       const ep = eportMap[(c.vessel || '').toUpperCase()];
-      const specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(c.vessel, c) : c;
-      const vol = (ep && Number(ep.doneNum) > 0)
-        ? Number(ep.doneNum)
-        : (Number(c.actual_vol) > 0 ? Number(c.actual_vol) : (Number(specs.teu) > 0 ? Math.round(Number(specs.teu) * 0.55) : Math.round((Number(c.loa) || 140) * 2.5)));
+      const vol = (ep && Number(ep.doneNum) > 0) ? Number(ep.doneNum) : (Number(c.actual_vol) || 0);
 
       if (!trendMap.has(bucketKey)) trendMap.set(bucketKey, { label: bucketKey, sortKey, calls: 0, volume: 0 });
       const rec = trendMap.get(bucketKey);
@@ -11699,43 +11872,45 @@ setInterval(loadCangVuCallsMaster, 120000);
     const trendList = Array.from(trendMap.values())
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
       .slice(tanVuChartMode === 'week' ? -8 : -6);
-    const maxTrendVol = Math.max(1, ...trendList.map(x => x.volume));
+    const maxTrendCalls = Math.max(1, ...trendList.map(x => x.volume > 0 ? x.volume : x.calls));
 
     const berthRowsHtml = ['B1', 'B2', 'B3', 'B4', 'B5'].map(bCode => {
       const st = byBerth[bCode] || { calls: 0, barges: 0, actualMoves: 0, planMoves: 0 };
-      const pct = st.planMoves > 0 ? Math.min(100, Math.round((st.actualMoves / st.planMoves) * 100)) : (st.actualMoves > 0 ? 100 : 0);
+      const pct = st.planMoves > 0 ? Math.min(100, Math.round((st.actualMoves / st.planMoves) * 100)) : 0;
       return `
         <tr>
           <td><b>Bến ${bCode.replace('B', '')} (${bCode})</b></td>
           <td style="text-align:center;"><b>${st.calls}</b> tàu · <span style="color:#0d9488;">${st.barges} sà lan</span></td>
-          <td style="text-align:right;font-weight:800;color:#059669;">${st.actualMoves.toLocaleString('vi-VN')} <small class="muted">Moves/TEU</small></td>
-          <td style="text-align:center;"><span class="badge">${pct}%</span></td>
+          <td style="text-align:right;font-weight:800;color:#059669;">${st.actualMoves > 0 ? st.actualMoves.toLocaleString('vi-VN') + ' Moves' : '—'}</td>
+          <td style="text-align:center;"><span class="badge">${pct > 0 ? pct + '%' : '—'}</span></td>
         </tr>
       `;
     }).join('');
 
     const opEntries = Array.from(byOperator.entries())
-      .sort((a, b) => b[1].actualMoves - a[1].actualMoves)
+      .sort((a, b) => (b[1].actualMoves - a[1].actualMoves) || (b[1].calls - a[1].calls))
       .slice(0, 8);
 
     const opRowsHtml = opEntries.length > 0 ? opEntries.map(([opName, st]) => {
-      const share = totalActualVol > 0 ? ((st.actualMoves / totalActualVol) * 100).toFixed(1) : '0.0';
+      const share = totalActualVol > 0 ? ` (${((st.actualMoves / totalActualVol) * 100).toFixed(1)}%)` : '';
       return `
         <tr>
           <td><b>${esc(opName)}</b></td>
           <td style="text-align:center;">${Array.from(st.berths).sort().join(', ')}</td>
           <td style="text-align:center;">${st.calls} tàu${st.barges > 0 ? ` + ${st.barges} sà lan` : ''}</td>
-          <td style="text-align:right;font-weight:800;color:#0284c7;">${st.actualMoves.toLocaleString('vi-VN')} <small class="muted">(${share}%)</small></td>
+          <td style="text-align:right;font-weight:800;color:#0284c7;">${st.actualMoves > 0 ? st.actualMoves.toLocaleString('vi-VN') + ' Moves' + share : '—'}</td>
         </tr>
       `;
     }).join('') : `<tr><td colspan="4" class="empty">Chưa có dữ liệu hãng tàu tại Tân Vũ trong khoảng ngày lọc</td></tr>`;
 
     const chartBarsHtml = trendList.length > 0 ? trendList.map(item => {
-      const heightPct = Math.max(8, Math.round((item.volume / maxTrendVol) * 100));
+      const metricVal = item.volume > 0 ? item.volume : item.calls;
+      const heightPct = Math.max(8, Math.round((metricVal / maxTrendCalls) * 100));
       return `
-        <div style="flex:1;min-width:54px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="flex:1;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:4px;">
           <div style="font-size:9.5px;font-weight:800;color:var(--navy2);text-align:center;line-height:1.15;">
-            ${item.volume.toLocaleString('vi-VN')}<br><span style="font-size:8.5px;color:var(--muted);font-weight:600;">(${item.calls} lượt)</span>
+            ${item.volume > 0 ? item.volume.toLocaleString('vi-VN') + ' Mv' : item.calls + ' lượt'}<br>
+            <span style="font-size:8.5px;color:var(--muted);font-weight:600;">(${item.calls} lượt)</span>
           </div>
           <div style="width:100%;height:130px;background:rgba(148,163,184,0.14);border-radius:6px;display:flex;align-items:flex-end;justify-content:center;padding:3px;">
             <div style="width:72%;height:${heightPct}%;background:linear-gradient(180deg, #00a8e8, #185494);border-radius:4px;transition:height .3s ease;"></div>
@@ -11747,9 +11922,9 @@ setInterval(loadCangVuCallsMaster, 120000);
 
     card.innerHTML = `
       <div class="panel-head" style="background:linear-gradient(90deg, rgba(24,84,148,0.12), rgba(0,168,232,0.08));">
-        <h3 style="color:var(--navy2);font-size:13px;">⚓ Thống kê Khai thác Cảng Tân Vũ (Theo Bến, Hãng & Sản lượng thực tế)</h3>
+        <h3 style="color:var(--navy2);font-size:13px;">⚓ Thống kê Khai thác Cảng Tân Vũ (Theo Bến, Hãng & Sản lượng thực tế ePort)</h3>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span class="badge" style="background:#059669;color:#fff;">Tổng SL thực tế: ${totalActualVol.toLocaleString('vi-VN')} Moves/TEU</span>
+          <span class="badge" style="background:#059669;color:#fff;">SL Thực tế ePort: ${totalActualVol.toLocaleString('vi-VN')} Moves</span>
           <button type="button" class="tiny ${tanVuChartMode === 'week' ? 'primary' : ''}" onclick="switchTanVuTrendChart('week')">So sánh Tuần</button>
           <button type="button" class="tiny ${tanVuChartMode === 'month' ? 'primary' : ''}" onclick="switchTanVuTrendChart('month')">So sánh Tháng</button>
         </div>
@@ -11763,7 +11938,7 @@ setInterval(loadCangVuCallsMaster, 120000);
                 <tr>
                   <th>Cầu bến</th>
                   <th style="text-align:center;">Lượt tàu / Sà lan</th>
-                  <th style="text-align:right;">SL Thực tế khai thác</th>
+                  <th style="text-align:right;">SL Thực tế (ePort)</th>
                   <th style="text-align:center;">Tiến độ</th>
                 </tr>
               </thead>
@@ -11777,7 +11952,7 @@ setInterval(loadCangVuCallsMaster, 120000);
                   <th>Hãng tàu / Đại lý</th>
                   <th style="text-align:center;">Bến cập</th>
                   <th style="text-align:center;">Số lượt</th>
-                  <th style="text-align:right;">SL Thực tế (Tỷ trọng)</th>
+                  <th style="text-align:right;">SL Thực tế (ePort)</th>
                 </tr>
               </thead>
               <tbody>${opRowsHtml}</tbody>
@@ -11787,13 +11962,10 @@ setInterval(loadCangVuCallsMaster, 120000);
           <div style="display:flex;flex-direction:column;justify-content:space-between;background:rgba(24,84,148,0.03);border:1px solid var(--line);border-radius:10px;padding:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <b style="font-size:11.5px;color:var(--navy2);">📊 Biểu đồ so sánh Sản lượng & Lượt tàu Tân Vũ (${tanVuChartMode === 'week' ? 'Theo Tuần' : 'Theo Tháng'})</b>
-              <span class="muted tiny">Đơn vị: Moves / TEU</span>
+              <span class="muted tiny">Đơn vị: Moves / Lượt</span>
             </div>
             <div style="display:flex;align-items:flex-end;gap:8px;overflow-x:auto;padding:8px 4px 4px;">
               ${chartBarsHtml}
-            </div>
-            <div style="font-size:10px;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px;margin-top:8px;">
-              * Dữ liệu tổng hợp tự động từ tiến độ xếp dỡ thực tế ePort Tân Vũ và lịch sử tàu thông qua cảng.
             </div>
           </div>
         </div>
@@ -11807,7 +11979,7 @@ setInterval(loadCangVuCallsMaster, 120000);
     renderTanVuStatsCard();
   };
 
-  // 6. TỰ ĐỘNG KÉO DỮ LIỆU EPORT 5 PHÚT/LẦN ĐÈ VÀO DỮ LIỆU CŨ (NO-CACHE) & NẠP LỊCH SỬ TÂN VŨ
+  // 6. TỰ ĐỘNG KÉO DỮ LIỆU EPORT 5 PHÚT/LẦN ĐÈ VÀO DỮ LIỆU CŨ
   async function pullEportEvery5MinsOverwrite() {
     try {
       const eportUrl = `${SUPABASE_URL}/storage/v1/object/public/port-documents/eport_tanvu_jobs.json?t=${Date.now()}`;
@@ -11819,8 +11991,8 @@ setInterval(loadCangVuCallsMaster, 120000);
       if (res.ok) {
         const freshJobsMap = await res.json();
         if (freshJobsMap && typeof freshJobsMap === 'object') {
-          // Ghi đè hoàn toàn dữ liệu cũ bằng bản mới nhất từ ePort
-          window.eportTanVuJobsMap = freshJobsMap;
+          window.eportTanVuJobsMap.clear();
+          Object.assign(window.eportTanVuJobsMap, freshJobsMap);
 
           const filtered = (typeof getFilteredCalls === 'function') ? getFilteredCalls() : [];
           window.renderTanVuLayout(filtered);
@@ -11841,7 +12013,6 @@ setInterval(loadCangVuCallsMaster, 120000);
         }
       }
 
-      // Nạp thêm lịch sử từ bảng port_calls_history để làm giàu biểu đồ Tuần/Tháng
       if (supabaseClient && window.tanVuHistoryRecords.length === 0) {
         const { data: histRows } = await supabaseClient
           .from('port_calls_history')
@@ -11858,8 +12029,10 @@ setInterval(loadCangVuCallsMaster, 120000);
     }
   }
 
-  // Chạy ngay khi mở trang và lặp lại chính xác mỗi 05 phút (300.000ms)
-  setTimeout(pullEportEvery5MinsOverwrite, 400);
+  // Ánh xạ luôn tên hàm cũ để không bao giờ phát sinh lỗi gọi nhầm
+  window.loadEportTanVuJobs = pullEportEvery5MinsOverwrite;
+
+  setTimeout(pullEportEvery5MinsOverwrite, 350);
   setInterval(pullEportEvery5MinsOverwrite, 300000);
 })();
   
