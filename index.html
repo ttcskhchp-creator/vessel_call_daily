@@ -10849,8 +10849,41 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
           </div>
       `;
 
-      ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(bName => {
-        const ships = (berthMap[bName] || []).sort((a, b) => parsePortDateTimeMs(a.etb) - parsePortDateTimeMs(b.etb));
+     const getShipTimeMs = (v) =>
+     typeof parsePortDateTimeMs === 'function'
+       ? parsePortDateTimeMs(v)
+       : (v ? new Date(v).getTime() || 0 : 0);
+
+   // Thứ tự ưu tiên sát mép trái: 0 = Đang làm hàng / Rời trong ngày | 1 = Sắp cập | 2 = Đã rời / Xong hàng
+   // Thứ tự từ trái sang phải:
+      // 0: Tàu đang làm / rời trong ngày | 1: Sà lan đang làm / rời trong ngày
+      // 2: Tàu sắp cập                   | 3: Sà lan sắp cập
+      // 4: Tàu đã rời                    | 5: Sà lan đã xong hàng
+      const getTanVuDisplayRank = (s) => {
+        const ep = s._eport;
+        const bargeOffset = s._isBarge ? 1 : 0;
+        const t1 = getShipTimeMs((ep && ep.atb) || s.etb);
+        const rawT2 = getShipTimeMs((ep && ep.etd) || s.etd);
+        const t2 = (rawT2 > t1) ? rawT2 : 0;
+
+        const isBargeDone = s._isBarge && ep && Number(ep.pct) >= 100;
+        const isDeparted = !s._isBarge && ((ep && Number(ep.pct) >= 100) || (t2 > 0 && t2 <= now));
+        if (isDeparted || isBargeDone) return 4 + bargeOffset;
+
+        const hasEportProgress = ep && (Number(ep.doneNum) > 0 || Number(ep.pct) > 0 || Boolean(ep.atb));
+        if (s._isBarge || hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now))) {
+          return 0 + bargeOffset;
+        }
+
+        return 2 + bargeOffset;
+      };
+
+   ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(bName => {
+     const ships = (berthMap[bName] || []).sort((a, b) => {
+       const rankDiff = getTanVuDisplayRank(a) - getTanVuDisplayRank(b);
+       if (rankDiff !== 0) return rankDiff;
+       return getShipTimeMs((a._eport && a._eport.atb) || a.etb) - getShipTimeMs((b._eport && b._eport.atb) || b.etb);
+     });
         html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
 
         if (ships.length === 0) {
