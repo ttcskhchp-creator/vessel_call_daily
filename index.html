@@ -5631,9 +5631,20 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let lastPort = ov.last_port || rawCall.last_port || cat.last_port || '';
   let destination = ov.destination || rawCall.destination || cat.destination || '';
 
-  let vType = ov.vessel_type || rawCall.vessel_type || cat.vessel_type || cat.type || 'Container'
-  let capUnit = ov.capacity_unit || rawCall.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(vType);
-  let rawCap = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
+  let ovType = (ov.vessel_type && String(ov.vessel_type).trim()) || '';
+  let catType = (cat.vessel_type && String(cat.vessel_type).trim()) || (cat.type && String(cat.type).trim()) || '';
+  let rawType = (rawCall.vessel_type && String(rawCall.vessel_type).trim()) || '';
+  let vType = (ovType && !(ovType === 'Container' && catType && catType !== 'Container'))
+    ? ovType
+    : (catType || rawType || ovType || 'Container');
+
+  let ovUnit = (ov.capacity_unit && String(ov.capacity_unit).trim()) || '';
+  let catUnit = (cat.capacity_unit && String(cat.capacity_unit).trim()) || '';
+  let capUnit = (ovUnit && !(ovUnit === 'TEU' && catUnit && catUnit !== 'TEU'))
+    ? ovUnit
+    : (catUnit || rawCall.capacity_unit || getDefaultCapacityUnitByType(vType));
+
+  let rawCap = Number(ov.teu) || Number(cat.teu) || Number(rawCall.teu) || 0;
 
   let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
   let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && capUnit === 'TEU');
@@ -6031,26 +6042,41 @@ function filterAndDeduplicateCalls(rawList) {
 // 3. Truy xuất dữ liệu SIÊU TỐC: Hiển thị ngay Cache (0ms) + Tải song song API & Supabase
 async function loadVesselCatalog() {
   ensureVesselTypeSelectOptions();
+
+  const mergeCatalogEntry = (key, incoming) => {
+    if (!key || !incoming || typeof incoming !== 'object') return;
+    const k = String(key).trim().toUpperCase();
+    const cur = vesselCatalogMap.get(k);
+    if (!cur) {
+      vesselCatalogMap.set(k, incoming);
+      return;
+    }
+    const curTs = cur.updated_at ? new Date(cur.updated_at).getTime() : 0;
+    const incTs = incoming.updated_at ? new Date(incoming.updated_at).getTime() : 0;
+    if (incTs >= curTs) {
+      vesselCatalogMap.set(k, { ...cur, ...incoming });
+    }
+  };
+
   try {
     let saved = localStorage.getItem('hp_vessel_catalog');
     if (saved) {
       let obj = JSON.parse(saved);
-      Object.entries(obj).forEach(([k, v]) => vesselCatalogMap.set(k.toUpperCase(), v));
+      Object.entries(obj).forEach(([k, v]) => mergeCatalogEntry(k, v));
     }
   } catch (e) {}
 
-  if (supabaseClient) {
+  if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) {
     try {
-      const { data: files, error: listErr } = await supabaseClient.storage
-        .from('port-documents')
-        .list('', { search: 'vessel_catalog.json' });
-      const fileExists = Array.isArray(files) && files.some(f => f.name === 'vessel_catalog.json');
-      if (!listErr && fileExists) {
-        const { data, error } = await supabaseClient.storage.from('port-documents').download('vessel_catalog.json');
-        if (data && !error) {
-          let obj = JSON.parse(await data.text());
-          Object.entries(obj).forEach(([k, v]) => vesselCatalogMap.set(k.toUpperCase(), v));
-          localStorage.setItem('hp_vessel_catalog', JSON.stringify(obj));
+      const res = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/public/port-documents/vessel_catalog.json?t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      if (res.ok) {
+        let obj = await res.json();
+        if (obj && typeof obj === 'object') {
+          Object.entries(obj).forEach(([k, v]) => mergeCatalogEntry(k, v));
+          localStorage.setItem('hp_vessel_catalog', JSON.stringify(Object.fromEntries(vesselCatalogMap)));
         }
       }
     } catch (e) {}
@@ -6066,21 +6092,14 @@ async function loadVesselOverrides() {
       vesselOverridesMap.clear();
       data.forEach(item => {
         let key = (item.vessel_name || '').trim().toUpperCase();
-        if (key) {
-          let cat = vesselCatalogMap.get(key) || {};
-          vesselOverridesMap.set(key, {
-            ...item,
-            vessel_type: item.vessel_type || cat.type || 'Container',
-            beam: item.beam || cat.beam || 0,
-            teu: item.teu !== undefined ? item.teu : cat.teu,
-            capacity_unit: item.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(item.vessel_type || cat.type),
-            year_built: item.year_built || cat.year_built || '',
-            last_port: item.last_port || cat.last_port || '',
-            destination: item.destination || cat.destination || '',
-            gt: item.gt || cat.gt || '',
-            imo: item.imo || cat.imo || ''
-          });
-        }
+        if (!key) return;
+        const clean = {};
+        Object.entries(item).forEach(([k, v]) => {
+          if (v !== null && v !== undefined && v !== '') clean[k] = v;
+        });
+        clean.vessel_name = key;
+        clean.is_hidden = Boolean(item.is_hidden);
+        vesselOverridesMap.set(key, clean);
       });
     }
   } catch (e) {}
@@ -6843,7 +6862,7 @@ async function saveVesselOverrideProtected() {
       const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
       const { error: stErr } = await supabaseClient.storage
         .from('port-documents')
-        .upload('vessel_catalog.json', blob, { upsert: true });
+        .upload('vessel_catalog.json', blob, { upsert: true, cacheControl: '0' });
       if (stErr) cloudWarnings.push('vessel_catalog.json: ' + stErr.message);
     }
   } catch (err) {
@@ -9446,67 +9465,6 @@ resetDraftFormulaConfig = async function() {
   if (typeof saveDraftFormulaConfig === 'function') await saveDraftFormulaConfig(true);
 };
 window.resetDraftFormulaConfig = resetDraftFormulaConfig;
-
-saveVesselOverrideProtected = async function() {
-  if (!(await verifyAdminPinPrompt('lưu / cập nhật thông tin tàu'))) return;
-
-  let vName = ($('editVesselName').value || '').trim().toUpperCase();
-  if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
-
-  let vType = $('editVesselType')?.value || 'Container';
-  let capUnit = $('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType);
-  let yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
-
-  let payload = {
-    vessel_name: vName,
-    imo: ($('editVesselImo')?.value || '').trim(),
-    vessel_type: vType,
-    year_built: yearBuilt,
-    operator: $('editVesselOperator').value.trim(),
-    last_port: ($('editVesselLastPort')?.value || '').trim().toUpperCase(),
-    destination: ($('editVesselDestination')?.value || '').trim().toUpperCase(),
-    terminal: $('editVesselTerminal').value.trim(),
-    berth: $('editVesselBerth').value.trim(),
-    loa: Number($('editVesselLoa').value) || 0,
-    beam: Number($('editVesselBeam')?.value) || 0,
-    teu: Number($('editVesselTeu')?.value) || 0,
-    capacity_unit: capUnit,
-    dwt: $('editVesselDwt').value.trim(),
-    gt: ($('editVesselGt')?.value || '').trim(),
-    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
-    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
-    updated_at: new Date().toISOString()
-  };
-
-  vesselOverridesMap.set(vName, payload);
-  vesselCatalogMap.set(vName, {
-    type: payload.vessel_type, year_built: payload.year_built, last_port: payload.last_port, destination: payload.destination,
-    loa: payload.loa, beam: payload.beam, teu: payload.teu, capacity_unit: payload.capacity_unit,
-    dwt: payload.dwt, gt: payload.gt, imo: payload.imo, agent: payload.operator
-  });
-
-  let catalogObj = Object.fromEntries(vesselCatalogMap);
-  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
-
-  try {
-    if (supabaseClient) {
-      await supabaseClient.from('vessel_overrides').upsert({
-        vessel_name: payload.vessel_name, operator: payload.operator, terminal: payload.terminal, berth: payload.berth,
-        loa: payload.loa, dwt: payload.dwt, etb: payload.etb, etd: payload.etd, updated_at: payload.updated_at
-      }, { onConflict: 'vessel_name' });
-      const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
-      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
-    }
-    updateCatalogBadgeCount();
-    allCalls = filterAndDeduplicateCalls(allCalls);
-    renderAll();
-    renderOverrideTable();
-    alert(`✅ Đã lưu tàu "${vName}" thành công!`);
-  } catch (err) {
-    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
-  }
-};
-window.saveVesselOverrideProtected = saveVesselOverrideProtected;
 
 deleteVesselOverrideProtected = async function() {
   if (!(await verifyAdminPinPrompt('xóa / ẩn bản ghi chuyến tàu'))) return;
