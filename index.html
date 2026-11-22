@@ -9358,24 +9358,21 @@ saveDraftFormulaConfig = async function(skipPinPrompt = false) {
 };
 window.saveDraftFormulaConfig = saveDraftFormulaConfig;
 
-resetDraftFormulaConfig = function() {
-  if (!(await verifyAdminPinPrompt('khôi phục cấu hình luồng mớn về mặc định'))) return;
-  if (!confirm('Xác nhận khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
-
-  let keepPin = getCurrentAdminPin();
+resetDraftFormulaConfig = async function() {
+  if (!(await verifyAdminPinPrompt('khôi phục cấu hình luồng & bến mặc định'))) return;
+  if (!confirm('Khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
   localStorage.removeItem('hp_draft_config');
   draftConfig = {
     berthDepth: 9.0,
     channelDepth: 8.0,
     draftMarginRatio: 0.10,
-    adminPin: keepPin,
     benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
   };
   if ($('cfg_berthDepth')) $('cfg_berthDepth').value = 9.0;
   if ($('cfg_channelDepth')) $('cfg_channelDepth').value = 8.0;
   if ($('cfg_draftMarginRatio')) $('cfg_draftMarginRatio').value = 0.10;
   if (typeof renderDraftEditTable === 'function') renderDraftEditTable();
-  saveDraftFormulaConfig(true);
+  if (typeof saveDraftFormulaConfig === 'function') await saveDraftFormulaConfig(true);
 };
 window.resetDraftFormulaConfig = resetDraftFormulaConfig;
 
