@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <!-- Tích hợp Supabase JS Client SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Thư viện đọc trực tiếp file Excel Tàu_thông_qua_HP.xlsx -->
@@ -651,7 +652,7 @@ tbody tr:hover{background:rgba(38,189,200,0.04)}
 #statsVesselPopover .pop-head strong{
   font-size:12px;color:var(--navy2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;
 }
-:root[data-theme="dark"] .statsVesselPopover .pop-head strong{color:var(--cyan)}
+:root[data-theme="dark"] #statsVesselPopover .pop-head strong{color:var(--cyan)}
 #statsVesselPopover .pop-list{
   max-height:175px;overflow-y:auto;display:grid;gap:6px;padding-right:2px;scrollbar-width:thin;
 }
@@ -1592,7 +1593,7 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
   </tr>
 </thead>
               <tbody id="rows">
-                <tr><td colspan="8" class="empty">Đang tải dữ liệu…</td></tr>
+                <tr><td colspan="12" class="empty">Đang tải dữ liệu…</td></tr>
               </tbody>
             </table>
           </div>
@@ -2262,7 +2263,7 @@ const dict = {
     hpPort: "CẢNG HẢI PHÒNG",
     navWorkspace: "Không gian làm việc",
     menuOverview: "Toàn cảnh",
-    menuOpsreport: "Báo cáo khai thác",
+    menuOpsReport: "Báo cáo khai thác",
     menuPlanning: "Kế hoạch cầu",
     menuSearch: "Tra cứu tàu",
     menuStats: "Thống kê",
@@ -2421,7 +2422,7 @@ const dict = {
     hpPort: "PORT OF HAI PHONG",
     navWorkspace: "Workspace",
     menuOverview: "Overview",
-    menuOpsreport: "Daily Ops Report",
+    menuOpsReport: "Daily Ops Report",
     menuPlanning: "Berth Planning",
     menuSearch: "Vessel Schedule",
     menuStats: "Statistics",
@@ -2629,8 +2630,9 @@ function applyLanguage(lang) {
     if ($('planningSearch')) $('planningSearch').placeholder = lang === 'vi' ? '🔍 Tìm kiếm tàu, hãng, bến...' : '🔍 Search vessel, operator, berth...';
 
     // Dịch Breadcrumb trên Topbar
-    let activePage = localStorage.getItem('hp_last_page') || 'overview';
-    let pName = d['menu' + activePage.charAt(0).toUpperCase() + activePage.slice(1).replace('-','')] || activePage.toUpperCase();
+   let activePage = localStorage.getItem('hp_last_page') || 'overview';
+    let camelActive = activePage.replace(/-([a-z])/g, (_, ch) => ch.toUpperCase());
+    let pName = d['menu' + camelActive.charAt(0).toUpperCase() + camelActive.slice(1)] || activePage.toUpperCase();
     if ($('crumb')) $('crumb').textContent = pName.toUpperCase();
 
     // Gọi lại các hàm render để cập nhật toàn bộ bảng và loa thông báo
@@ -2758,14 +2760,22 @@ function closeMailAuthModal() {
   if (m) m.classList.remove('open');
 }
 
-function verifyMailPassword() {
+async function verifyMailPassword() {
   let pwd = $('mailPasswordInput').value;
-  if (pwd === '6868') {
+  let errEl = $('mailAuthError');
+  let res = (typeof window.verifyAdminPinSecure === 'function')
+    ? await window.verifyAdminPinSecure(pwd)
+    : (supabaseClient ? (await supabaseClient.rpc('verify_admin_pin', { p_pin: String(pwd || '').trim() })).data : null);
+
+  if (res && res.ok) {
     closeMailAuthModal();
     renderInboxModal();
     $('inboxModal').classList.add('open');
   } else {
-    $('mailAuthError').style.display = 'block';
+    if (errEl) {
+      errEl.textContent = (res && res.message) || 'Mật khẩu không chính xác!';
+      errEl.style.display = 'block';
+    }
     $('mailPasswordInput').select();
   }
 }
@@ -2902,13 +2912,6 @@ function renderOverrideTable() {
     </tr>`;
   }).join('');
 }
-
-async function deleteVesselOverrideProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') {
-    if (pwd !== null) alert(dict[currentLang].pwdWrong);
-    return;
-  }
 
   let vName = ($('editVesselName').value || '').trim();
   let vEtb = $('editVesselEtb').value; // Lấy thời gian CẬP (ETB) để nhận diện đích danh chuyến tàu này
@@ -3330,12 +3333,8 @@ function updateRealtimeWidgets() {
   renderDailySafeDraftTable();
 }
 
-function openTideConfigPrompt() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') {
-    if (pwd !== null) alert(dict[currentLang].pwdWrong);
-    return;
-  }
+async function openTideConfigPrompt() {
+  if (!(await verifyAdminPinPrompt('chỉnh sửa số liệu thủy triều'))) return;
 
   let activePart = getVNCurrentDateParts(tideViewDayOffset);
   let activeKey = activePart.dateKey;
@@ -3480,7 +3479,8 @@ async function loadDraftFormulaConfig() {
   renderDailySafeDraftTable();
 }
 
-async function saveDraftFormulaConfig() {
+async function saveDraftFormulaConfig(skipPinCheck = false) {
+  if (!skipPinCheck && !(await verifyAdminPinPrompt('lưu cấu hình luồng & bến'))) return;
   draftConfig.berthDepth = parseFloat($('cfg_berthDepth').value) || 9.0;
   draftConfig.channelDepth = parseFloat($('cfg_channelDepth').value) || 8.0;
   draftConfig.draftMarginRatio = parseFloat($('cfg_draftMarginRatio').value) || 0.10;
@@ -3519,7 +3519,8 @@ async function saveDraftFormulaConfig() {
   checkWorkingVesselsLoadingAlert();
 }
 
-function resetDraftFormulaConfig() {
+async function resetDraftFormulaConfig() {
+  if (!(await verifyAdminPinPrompt('khôi phục cấu hình luồng & bến mặc định'))) return;
   if (!confirm('Khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
   localStorage.removeItem('hp_draft_config');
   draftConfig = {
@@ -3528,7 +3529,7 @@ function resetDraftFormulaConfig() {
     draftMarginRatio: 0.10,
     benchmarks: JSON.parse(JSON.stringify(DEFAULT_HP_CONTAINER_BENCHMARKS))
   };
-  saveDraftFormulaConfig();
+  await saveDraftFormulaConfig(true);
 }
 
 function renderDraftEditTable() {
@@ -3761,7 +3762,8 @@ function nav(page, saveState = true){
     x.classList.toggle('active', x.dataset.page === page);
   });
   
-  let pName = dict[currentLang]['menu' + page.charAt(0).toUpperCase() + page.slice(1).replace('-','')] || page.replace('-', ' ').toUpperCase();
+  let camelPage = page.replace(/-([a-z])/g, (_, ch) => ch.toUpperCase());
+  let pName = dict[currentLang]['menu' + camelPage.charAt(0).toUpperCase() + camelPage.slice(1)] || page.replace('-', ' ').toUpperCase();
   if ($('crumb')) $('crumb').textContent = pName.toUpperCase();
   if (page === 'planning') renderGantt();
   if (page === 'stats') renderStats();
@@ -4467,10 +4469,8 @@ function scheduleHideTooltip() {
 function hideTooltip() { if ($('shipTooltip')) $('shipTooltip').style.display = 'none'; }
 
 // --- XUẤT VÀ NẠP EXCEL / CSV, SETUP CA TRỰC ---
-function exportConfigAsCSVProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') exportConfigAsCSV();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+async function exportConfigAsCSVProtected() {
+  if (await verifyAdminPinPrompt('xuất báo cáo Excel/CSV')) exportConfigAsCSV();
 }
 
 function exportConfigAsCSV() {
@@ -4508,13 +4508,11 @@ function exportConfigAsCSV() {
   a.download = `HaiPhongPort_Schedule_${getTodayString()}.csv`;
   document.body.appendChild(a);
   a.click();
-  a.remove();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-function triggerImportConfig() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') $('importFileInput').click();
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+async function triggerImportConfig() {
+  if (await verifyAdminPinPrompt('nạp dữ liệu từ file')) $('importFileInput')?.click();
 }
 
 function handleFileImport(e) {
@@ -4573,21 +4571,19 @@ async function saveCurrentDataToSupabase(isAuto = false) {
   if (!isAuto) alert('Đã lưu dữ liệu Snapshot lên Storage Bucket thành công!');
 }
 
-function handleManualSave() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') saveCurrentDataToSupabase(false);
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+async function handleManualSave() {
+  if (await verifyAdminPinPrompt('lưu Snapshot lên Cloud')) saveCurrentDataToSupabase(false);
 }
 
 async function loadShiftConfigFromSupabase() {
-  if (!supabaseClient) return;
+  if (!supabaseClient || !$('dispShift')) return;
   let today = getTodayString();
   try {
     let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).maybeSingle();
     if (data && !error) {
-      $('dispShift').textContent = data.shift_name || 'Ca 1';
-      $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
-      $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
+      if ($('dispShift')) $('dispShift').textContent = data.shift_name || 'Ca 1';
+      if ($('dispCommander')) $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
+      if ($('dispSafety')) $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
     }
   } catch(e) {}
 }
@@ -4606,26 +4602,10 @@ async function saveShiftConfigToSupabase(shiftData) {
   } catch(err) {}
 }
 
-function openShiftModalWithPassword() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd === '6868') $('modalShade').classList.add('open');
-  else if (pwd !== null) alert(dict[currentLang].pwdWrong);
+async function openShiftModalWithPassword() {
+  if (await verifyAdminPinPrompt('thiết lập ca trực')) $('modalShade')?.classList.add('open');
 }
 
-var generatedPlanRows = window.generatedPlanRows || [];
-
-/* ==================== MODULE TÍNH TOÁN BẢNG MỚN NƯỚC (UKC) AN TOÀN ==================== */
-var generatedPlanRows = window.generatedPlanRows || [];
-
-// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
-/* ==================== MODULE THỦY TRIỀU & TÍNH TOÁN THEO NGÀY CẬP THỰC TẾ ==================== */
-var generatedPlanRows = window.generatedPlanRows || [];
-
-// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị
-/* ==================== MODULE TÍNH TOÁN UKC & TỰ ĐỘNG DÒ TRIỀU 2 NGÀY ==================== */
-var generatedPlanRows = window.generatedPlanRows || [];
-
-// 1. Cập nhật nhãn và tỷ lệ quy đổi khi đổi đơn vị hàng
 /* ==================== MODULE TÍNH TOÁN UKC, HÀNG XUẤT & BẢNG TƯƠNG TÁC EXCEL ==================== */
 var generatedPlanRows = window.generatedPlanRows || [];
 
@@ -6978,12 +6958,12 @@ function populateEditForm(vesselOrName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+async function deleteVesselOverrideProtected() {
+  if (!(await verifyAdminPinPrompt('ẩn/xóa chuyến tàu'))) return;
+
 async function saveVesselOverrideProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') {
-    if (pwd !== null) alert(dict[currentLang].pwdWrong);
-    return;
-  }
+  if (!(await verifyAdminPinPrompt('lưu/cập nhật thông số tàu'))) return;
+  
   let vName = ($('editVesselName').value || '').trim().toUpperCase();
   if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
 
@@ -8760,15 +8740,13 @@ function bindAllEventListeners() {
   if ($('importConfigBtn')) $('importConfigBtn').onclick = triggerImportConfig;
   if ($('importFileInput')) $('importFileInput').onchange = handleFileImport;
 
-  if ($('ttEditBtn')) {
-    $('ttEditBtn').onclick = () => {
+ if ($('ttEditBtn')) {
+    $('ttEditBtn').onclick = async () => {
       if (!selectedShipForReport) return;
-      let pwd = prompt(dict[currentLang].promptPwd);
-      if (pwd === '6868') {
-        populateEditForm(selectedShipForReport);
+      const targetShip = selectedShipForReport;
+      if (await verifyAdminPinPrompt('sửa thông số tàu')) {
+        populateEditForm(targetShip);
         hideTooltip();
-      } else if (pwd !== null) {
-        alert(dict[currentLang].pwdWrong);
       }
     };
   }
