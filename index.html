@@ -1937,6 +1937,19 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
             </table>
           </div>
         </div>
+
+        <!-- THẺ QUẢN TRỊ DỮ LIỆU CHUYỂN TỪ NGUỒN & LIÊN HỆ SANG SETTING -->
+        <div class="panel" style="padding:16px;margin-top:14px">
+          <h3 style="margin:0 0 4px">🗄️ Quản trị dữ liệu <span class="badge">Cần mã PIN</span></h3>
+          <div class="muted" style="margin-bottom:10px">Sao lưu toàn bộ dữ liệu về máy tính, cắt bớt dữ liệu cũ hơn 2 năm (sau khi sao lưu) hoặc khôi phục từ file đã sao lưu.</div>
+          <div class="hp-admin-btns">
+            <button id="hpBackupBtn" class="primary" title="Tải toàn bộ dữ liệu về máy tính (file JSON)">🗄️ Sao lưu</button>
+            <button id="hpTrimBtn" class="primary" title="Cắt bớt dữ liệu cũ hơn 2 năm (hệ thống yêu cầu sao lưu trước)">✂️ Cắt bớt dữ liệu</button>
+            <button id="hpRestoreBtn" class="primary" title="Khôi phục dữ liệu từ file sao lưu">♻️ Khôi phục từ file</button>
+          </div>
+          <div id="hpBackupInfo" class="hp-backup-info" style="text-align:left;margin-top:8px;color:var(--muted)">—</div>
+          <input type="file" id="hpRestoreInput" accept=".json,application/json" style="display:none">
+        </div>
       </section>
 
       <!-- MÀN HÌNH 7: BÁO CÁO & GÓP Ý -->
@@ -1966,7 +1979,7 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
         </div>
       </section>
 
-      <!-- MÀN HÌNH 8: NGUỒN -->
+     <!-- MÀN HÌNH 8: NGUỒN -->
       <section id="page-resources" class="page hidden">
         <div class="page-head">
           <div>
@@ -1978,16 +1991,6 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
           <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
           <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
-        <div class="panel" style="padding:16px;margin-top:12px">
-          <h3 style="margin:0 0 4px">🗄️ Quản trị dữ liệu <span class="badge">Cần mã PIN</span></h3>
-          <div class="muted" style="margin-bottom:10px">Sao lưu toàn bộ dữ liệu về máy tính, cắt bớt dữ liệu cũ (sau khi sao lưu) hoặc khôi phục từ file đã sao lưu.</div>
-          <div class="hp-admin-btns">
-            <button id="hpBackupBtn" class="primary" title="Tải toàn bộ dữ liệu về máy tính (file JSON)">🗄️ Sao lưu</button>
-            <button id="hpTrimBtn" class="primary" title="Cắt bớt dữ liệu cũ (hệ thống yêu cầu sao lưu trước)">✂️ Cắt bớt dữ liệu</button>
-            <button id="hpRestoreBtn" class="primary" title="Khôi phục dữ liệu từ file sao lưu">♻️ Khôi phục từ file</button>
-          </div>
-          <div id="hpBackupInfo" class="hp-backup-info" style="text-align:left;margin-top:8px;color:var(--muted)">—</div>
-          <input type="file" id="hpRestoreInput" accept=".json,application/json" style="display:none">
         </div>
       </section>
     <!-- MÀN HÌNH LẬP PHƯƠNG ÁN AN TOÀN -->
