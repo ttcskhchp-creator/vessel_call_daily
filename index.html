@@ -2884,35 +2884,6 @@ async function submitFeedbackReport() {
 }
 
 // --- DỮ LIỆU TÀU VÀ GHI ĐÈ ---
-
-
-function renderOverrideTable() {
-  let tbody = $('overrideTableRows');
-  if (!tbody) return;
-  let q = ($('catalogFilterInput')?.value || '').trim().toUpperCase();
-
-  // Gộp cả tàu trong Override và tàu trong Catalog Excel
-  let combinedKeys = Array.from(new Set([...vesselOverridesMap.keys(), ...vesselCatalogMap.keys()])).sort();
-  if (q) combinedKeys = combinedKeys.filter(k => k.includes(q));
-
-  if (combinedKeys.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Chưa có dữ liệu. Hãy bấm "📂 Nạp file Tàu_thông_qua_HP.xlsx" ở góc trên!</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = combinedKeys.slice(0, 150).map(key => {
-    let specs = getVesselEnrichedSpecs(key);
-    return `<tr>
-      <td><b>${esc(key)}</b> ${specs.imo ? `<br><small class="muted">IMO: ${esc(specs.imo)}</small>` : ''}</td>
-      <td><span class="badge">${esc(specs.vessel_type || 'Container')}</span></td>
-      <td><b>${specs.loa || '—'}m</b> × <b style="color:#0284c7">${specs.beam || '—'}m</b></td>
-      <td style="color:#059669;font-weight:700">${specs.teu > 0 ? specs.teu.toLocaleString('vi-VN') : '—'}</td>
-      <td>${esc(specs.dwt || '—')}</td>
-      <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa / Chọn</button></td>
-    </tr>`;
-  }).join('');
-}
-
 async function deleteVesselOverrideProtected() {
   if (!(await verifyAdminPinPrompt('ẩn/xóa chuyến tàu'))) return;
   
@@ -3838,102 +3809,6 @@ function renderAll() {
   } catch(e) {}
 }
 
-function renderTanVuLayout(list) {
-  try {
-    let now = Date.now();
-    let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
-    let todayStr = getTodayString();
-
-    // 1. BỘ LỌC HIỂN THỊ TÀU (Giữ lại TẤT CẢ các tàu vắt ngang qua ngày đang chọn)
-    let tanVuShips = list.filter(c => {
-      let term = (c.terminal || '').toUpperCase();
-      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-      if (!c.etb) return false; // Bỏ qua tàu không có giờ cập
-
-      let etbDate = c.etb.split('T')[0];
-      let etdDate = c.etd ? c.etd.split('T')[0] : '';
-      let shipEnd = etdDate || '9999-12-31'; // Nếu chưa có ETD coi như ở vô hạn
-
-      // QUAN TRỌNG: KHÔNG ẨN TÀU ĐÃ RỜI. 
-      // Tàu sẽ hiện lên thẻ miễn là Ngày chọn (selectedDateStr) nằm từ ETB đến ETD.
-      return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
-    });
-
-    let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
-
-    if ($('tanvuCount')) {
-      $('tanvuCount').textContent = `${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}`;
-    }
-
-    let berthMap = {};
-    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
-
-    tanVuShips.forEach(c => {
-      let b = (c.berth || 'B1').trim().toUpperCase();
-      if (!berthMap[b]) berthMap[b] = [];
-      berthMap[b].push(c);
-    });
-
-    let html = `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
-
-    Object.keys(berthMap).sort().forEach(bName => {
-      let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
-      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
-      
-      if (ships.length === 0) {
-        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
-      } else {
-        ships.forEach(s => {
-          let t1 = new Date(s.etb).getTime();
-          let t2 = s.etd ? new Date(s.etd).getTime() : 0;
-          let etdDate = s.etd ? s.etd.split('T')[0] : '';
-
-          // 2. LOGIC PHÂN LOẠI TRẠNG THÁI VÀ GẮN NHÃN TÀU (THỜI GIAN THỰC)
-          let statusLabel = "";
-          let bgStyle = "";
-
-          if (t2 > 0 && t2 <= now) {
-            // TRẠNG THÁI 1: TÀU ĐÃ RỜI BẾN (Màu xám nhạt)
-            statusLabel = "✔️ Đã rời";
-            bgStyle = "background: linear-gradient(135deg, #64748b, #475569); color: #cbd5e1; opacity: 0.85; border: 1px solid #475569;";
-          
-          } else if (etdDate === todayStr && t2 > now) {
-            // TRẠNG THÁI 2: RỜI TRONG NGÀY HÔM NAY (Màu cam/đỏ cảnh báo)
-            statusLabel = "🚩 Rời trong ngày";
-            bgStyle = "background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border: 1px solid #fcd34d;";
-          
-          } else if (t1 <= now && (t2 === 0 || t2 > now)) {
-            // TRẠNG THÁI 3: ĐANG LÀM HÀNG TRÊN BẾN (Màu xanh lá rực)
-            statusLabel = "🏗️ Đang làm hàng";
-            bgStyle = "background: linear-gradient(135deg, #059669, #047857); color: #fff; border: 1px solid #34d399; box-shadow: 0 2px 8px rgba(5,150,105,0.4);";
-          
-          } else if (t1 > now) {
-            // TRẠNG THÁI 4: CHƯA ĐẾN / SẮP CẬP (Màu xanh dương biển gốc)
-            statusLabel = "⏳ Sắp cập";
-            bgStyle = "background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;";
-          }
-
-          html += `
-            <div class="ship-chip" 
-                 style="${bgStyle}"
-                 onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseleave="scheduleHideTooltip()">
-              <span style="font-size: 10.5px; font-weight: 800;">${esc(s.vessel)}</span>
-              <span class="chip-time" style="font-size: 9px; padding: 2px 5px; background: rgba(0,0,0,0.3); border-radius: 4px; font-weight: 700; white-space: nowrap;">${statusLabel}</span>
-            </div>`;
-        });
-      }
-      html += `</div></div>`;
-    });
-    html += `</div>`;
-
-    if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
-  } catch (err) {
-    console.error("Lỗi tại renderTanVuLayout:", err);
-  }
-}
-
   function renderMovement(list) {
   let now = Date.now();
   let todayStr = getTodayString();
@@ -4052,70 +3927,6 @@ function renderTable(list) {
   }
 }
 
-function renderGantt() {
-  let days = +$('days')?.value || 4;
-  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
-  let end = new Date(start.getTime() + days * 86400000);
-  let list = getFilteredCalls();
-  let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
-
-  let headerHtml = `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
-  for (let d = 0; d < days; d++) {
-    let curDate = new Date(start.getTime() + d * 86400000);
-    let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
-    headerHtml += `
-      <div class="gantt-time-slot">${dateStr} <span>00:00 - 12:00</span></div>
-      <div class="gantt-time-slot">${dateStr} <span>12:00 - 24:00</span></div>
-    `;
-  }
-  headerHtml += `</div></div>`;
-
-  let terms = {};
-  list.forEach(c => {
-    // 🛑 BỎ QUA HOÀN TOÀN NẾU TÀU KHÔNG CÓ GIỜ VÀO (ETB)
-    if (!c.etb) return;
-
-    if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
-    if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
-    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
-    if (!terms[key]) terms[key] = [];
-    terms[key].push(c);
-  });
-
-  const DEFAULT_STAY_MS = 20 * 3600000; // Mặc định thời gian làm hàng 20 tiếng nếu chưa có ETD
-
-  let out = headerHtml;
-  let hasData = false;
-  for (let [name, ships] of Object.entries(terms)) {
-    hasData = true;
-    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
-
-    ships.forEach((c, idx) => {
-      let t1 = new Date(c.etb).getTime();
-      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
-
-      let a = t1;
-      let b = (t2 > t1 && (t2 - t1) <= 7 * 86400000) ? t2 : (t1 + DEFAULT_STAY_MS);
-
-      // Chỉ vẽ khi khoảng thời gian tàu nằm bến nằm trong khung nhìn Gantt
-      if (b >= start.getTime() && a <= end.getTime()) {
-        let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
-        let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
-        let zIdx = 2 + idx;
-
-        out += `<div class="shipbar ${c.loa >= 300 ? 'large' : ''}" 
-                     style="left:${left}%;width:${right-left}%;z-index:${zIdx}" 
-                     onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
-                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
-                     onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}</div>`;
-      }
-    });
-    out += `</div></div>`;
-  }
-  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
-  if ($('fullGantt')) $('fullGantt').innerHTML = out;
-  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
-}
 function filterPlanningArea(area, btn) {
   planningAreaFilter = area;
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('primary'));
@@ -4432,38 +4243,6 @@ function clearStatsPopoverTimeout() {
   if (statsPopoverTimeout) { clearTimeout(statsPopoverTimeout); statsPopoverTimeout = null; }
 }
 function hideStatsPopover() { if ($('statsVesselPopover')) $('statsVesselPopover').style.display = 'none'; }
-
-function showTooltip(e, s) {
-  if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
-  selectedShipForReport = s;
-  let tt = $('shipTooltip');
-  $('ttName').textContent = s.vessel;
-  $('ttOperator').textContent = s.operator || '—';
-  if ($('ttVesselType')) $('ttVesselType').textContent = s.vessel_type || 'Container';
-  $('ttLoa').textContent = `${s.loa || '—'}m × ${s.beam ? Number(s.beam).toFixed(1) + 'm' : '—'}`;
-  let teuPart = s.teu > 0 ? `${Number(s.teu).toLocaleString('vi-VN')} TEU · ` : '';
-  $('ttDwt').textContent = teuPart + (s.dwt ? `${s.dwt} T` : '—');
-  $('ttEtb').textContent = dt(s.etb);
-  $('ttEtd').textContent = dt(s.etd);
-
-  let now = Date.now();
-  let t1 = s.etb ? new Date(s.etb).getTime() : 0;
-  let t2 = s.etd ? new Date(s.etd).getTime() : 0;
-  if (t1 > 0 && now >= t1) {
-    let dockedMs = (now > t2 && t2 > 0) ? (t2 - t1) : (now - t1);
-    $('ttDocked').textContent = formatDuration(dockedMs);
-  } else {
-    $('ttDocked').textContent = 'Chưa cập';
-  }
-
-  if (t2 > 0 && t2 > now) $('ttRemaining').textContent = formatDuration(t2 - now);
-  else if (t2 > 0 && now >= t2) $('ttRemaining').textContent = 'Đã rời bến';
-  else $('ttRemaining').textContent = '—';
-
-  tt.style.display = 'block';
-  tt.style.left = Math.min(e.clientX + 10, window.innerWidth - 320) + 'px';
-  tt.style.top = Math.min(e.clientY + 10, window.innerHeight - 220) + 'px';
-}
 
 function scheduleHideTooltip() {
   if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
