@@ -998,6 +998,125 @@ window.hpSkin=(function(){
   return{list:L,get:get,set:set};
 })();
 </script>
+<style id="ux-patch2">
+/* ===================== PATCH 2 — KHUNG ỨNG DỤNG, MENU/HEADER THU GỌN, MÀU LOẠI TÀU, SAO LƯU ===================== */
+html,body{height:100%;overflow:hidden!important}
+.app{height:100vh;height:100dvh;min-height:0}
+.main{display:flex;flex-direction:column;height:100vh;height:100dvh;min-width:0;overflow:hidden}
+#topStack{flex:none;position:relative;z-index:30}
+#topStack .topbar{position:relative;top:auto}
+#topStack .alert-ticker-wrap{position:relative;top:auto}
+#mainScroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;position:relative}
+.app-foot{flex:none;margin:0!important;position:relative;z-index:25;border-top:2px solid var(--cyan)}
+#page-ops-report{height:calc(100vh - var(--chrome-h,170px))!important;height:calc(100dvh - var(--chrome-h,170px))!important}
+#page-ops-report iframe{width:100%;height:100%;border:0}
+.side::after{position:absolute!important;left:0;bottom:0;width:100%!important}
+
+/* ---- Menu trái: dàn trải đều ---- */
+.side .nav-wrap{flex:1 0 auto;display:flex;flex-direction:column}
+.side .nav-wrap .nav{flex:1 0 auto;display:flex;flex-direction:column;justify-content:space-evenly;gap:2px}
+.side .nav-wrap .nav button{flex:1 0 38px;max-height:56px;min-height:38px;align-items:center}
+.side>*{flex-shrink:0}.side .nav-wrap{flex-shrink:0}.side-system-box{margin-top:auto}
+.hp-admin-btns{display:flex;gap:8px;flex-wrap:wrap}.hp-admin-btns button{flex:1 1 150px;padding:10px 12px;font-size:12px}
+.side-tools{display:flex;justify-content:flex-end;gap:6px;flex:none;margin:-4px 0 -2px}
+.side-tools button,.head-toggle{width:30px;height:28px;padding:0;border-radius:8px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.hp-backup-info{font-size:9.5px;line-height:1.35;color:var(--side-mute);text-align:center;padding:2px 4px}
+.hp-backup-info.warn{color:#d35400;font-weight:800}
+
+/* ---- Header thu gọn ---- */
+.head-tools{display:flex;gap:6px;align-items:center;margin-left:auto}
+body.head-mini #topStack .topbar-brand-mini,
+body.head-mini #topStack .topbar-date-filter,
+body.head-mini #topStack .crumb,
+body.head-mini #topStack .chp-brand-ribbon,
+body.head-mini #topStack .alert-ticker-wrap{display:none}
+body.head-mini #topStack .topbar{padding-top:4px;padding-bottom:4px;gap:6px}
+body.head-mini #topStack .topbar h1{font-size:13px}
+body.head-mini #topStack .topbar::before{opacity:calc(var(--art-op)*.5)}
+
+/* ---- Thanh nhắc sao lưu ---- */
+#hpBackupBanner{display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 14px;background:#fff4e5;color:#7a3e00;border-bottom:2px solid #e67e22;font-size:12px;font-weight:700}
+#hpBackupBanner.show{display:flex}
+#hpBackupBanner span.msg{flex:1 1 220px}
+#hpBackupBanner button{padding:5px 10px;font-size:11px;background:#e67e22;color:#fff;box-shadow:none}
+#hpBackupBanner button.ghost{background:transparent;color:#7a3e00;box-shadow:inset 0 0 0 1px #c9822f}
+:root[data-theme="dark"] #hpBackupBanner{background:#3a2410;color:#ffd9a8;border-bottom-color:#e67e22}
+:root[data-theme="dark"] #hpBackupBanner button.ghost{color:#ffd9a8}
+
+/* ---- Màu theo LOẠI TÀU ---- */
+:root{--k-cont:#0284c7;--k-bulk:#059669;--k-general:#d97706;--k-roro:#7c3aed;--k-tank:#e11d48;--k-pax:#c026d3;--k-barge:#78716c;--k-other:#64748b}
+[data-kind="cont"]{--kc:var(--k-cont)}[data-kind="bulk"]{--kc:var(--k-bulk)}[data-kind="general"]{--kc:var(--k-general)}
+[data-kind="roro"]{--kc:var(--k-roro)}[data-kind="tank"]{--kc:var(--k-tank)}[data-kind="pax"]{--kc:var(--k-pax)}
+[data-kind="barge"]{--kc:var(--k-barge)}[data-kind="other"]{--kc:var(--k-other)}
+html body .shipbar[data-kind],html body .tv-compact-chip[data-kind]{background:linear-gradient(135deg,var(--kc),color-mix(in srgb,var(--kc) 68%,#000))!important;border:1px solid color-mix(in srgb,var(--kc) 40%,#fff)!important;color:#fff!important}
+html body .shipbar[data-kind]:hover,html body .tv-compact-chip[data-kind]:hover{filter:brightness(1.15)}
+html body .ship-chip[data-kind]{box-shadow:inset 6px 0 var(--kc),0 1px 3px rgba(0,0,0,.25)!important;padding-left:12px}
+html body [data-big="1"]{outline:2px solid #fde047;outline-offset:-2px}
+#rows tr[data-kind] td:first-child{box-shadow:inset 5px 0 var(--kc)}
+html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--card))!important;color:var(--kc)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--kc) 50%,transparent)}
+.kind-legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:7px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--cyan) 7%,transparent);border:1px dashed var(--line);border-radius:8px;font-size:10.5px;font-weight:700;align-items:center}
+.kind-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+
+/* ---- Thống kê hãng tàu × chuyến (ePort) ---- */
+#hpCarrierPanel .hp-note{font-size:10.5px;color:var(--muted);margin:2px 0 10px}
+#hpCarrierPanel .hp-sorts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+#hpCarrierPanel .hp-sorts button.active{background:var(--cyan);color:#fff;box-shadow:none}
+.hp-kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.hp-kpi-row>div{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--card)}
+.hp-kpi-row small{display:block;color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase}
+.hp-kpi-row b{font-size:17px}
+.hp-car{border-bottom:1px dashed var(--line);padding:5px 0}
+.hp-car>summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:minmax(120px,1.3fr) minmax(90px,1.2fr) minmax(0,2.4fr);gap:8px;align-items:center}
+.hp-car>summary::-webkit-details-marker{display:none}
+.hp-car .nm{font-weight:800;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hp-car .nm::before{content:"▸ ";color:var(--cyan)}.hp-car[open] .nm::before{content:"▾ "}
+.hp-bar{height:7px;border-radius:5px;background:var(--line2,rgba(0,0,0,.08));overflow:hidden}
+.hp-bar i{display:block;height:100%;background:var(--cyan);border-radius:5px}
+.hp-car .meta{font-size:10px;color:var(--muted);line-height:1.35}
+.hp-car .meta b{color:var(--ink)}
+.hp-voy{width:100%;border-collapse:collapse;font-size:10.5px;margin:6px 0 4px}
+.hp-voy th,.hp-voy td{padding:3px 6px;text-align:left;white-space:nowrap}
+.hp-voy td.n,.hp-voy th.n{text-align:right}
+.hp-voy .nodata{color:var(--muted);font-style:italic}
+
+/* ---- Màn hình lớn / máy tính ---- */
+@media(min-width:981px){
+  .app{grid-template-columns:var(--side-col,250px) minmax(0,1fr);transition:grid-template-columns .22s ease}
+  .side{position:relative;top:auto;grid-column:1;grid-row:1;height:100vh;height:100dvh;overflow-x:hidden}
+  .main{grid-column:2;grid-row:1}
+  body.side-rail{--side-col:64px}
+  body.side-rail .side{padding-left:6px;padding-right:6px}
+  body.side-rail .side:not(:hover) .brand,
+  body.side-rail .side:not(:hover) .nav-label,
+  body.side-rail .side:not(:hover) .nav .txt,
+  body.side-rail .side:not(:hover) .side-system-box,
+  body.side-rail .side:not(:hover) .side-shift-card,
+  body.side-rail .side:not(:hover) .side-foot{display:none}
+  body.side-rail .side:not(:hover) .nav button{justify-content:center;padding:6px}
+  body.side-rail .side:not(:hover) .side-tools{justify-content:center}
+  body.side-rail .side:hover{position:fixed;left:0;top:0;bottom:0;width:250px;z-index:1200;box-shadow:8px 0 28px rgba(0,0,0,.3)}
+}
+@media(max-width:1200px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)!important}.hp-kpi-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---- Điện thoại ---- */
+@media(max-width:980px){
+  #mainScroll{scroll-behavior:auto}
+  .side .nav-wrap .nav button{flex:none;min-height:40px}
+  .head-toggle{width:34px;height:34px}
+}
+@media(max-width:760px){
+  .app-foot{padding:6px 10px!important;font-size:10px;gap:2px 8px}
+  .app-foot span:last-child{display:none}
+  .app-foot::before{display:none}
+  .hp-car>summary{grid-template-columns:minmax(0,1fr);gap:3px}
+  .hp-kpi-row b{font-size:15px}
+  .topbar-date-filter{width:100%}
+  #hpBackupBanner{padding:6px 10px;font-size:11px}
+}
+@media(max-width:480px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hp-kpi-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+
+</style>
 </head>
 <body>
 <div class="app">
@@ -1134,20 +1253,13 @@ window.hpSkin=(function(){
       </div>
 
       <div class="side-quick-grid">
-        <button id="manualSaveBtn" class="side-btn save" title="Lưu nhanh Snapshot lên Bucket">
+        <button id="manualSaveBtn" class="side-btn save" style="grid-column:span 2" title="Lưu nhanh Snapshot lên Bucket">
           Lưu 💾
         </button>
-        <button id="exportConfigBtn" class="side-btn export" title="Xuất dữ liệu Excel/CSV">
-          Xuất 📤
-        </button>
+        
       </div>
 
-      <div class="side-quick-grid">
-        <button id="importConfigBtn" class="side-btn import" style="grid-column: span 2;" title="Nạp dữ liệu từ file Excel">
-          Nạp 📥
-        </button>
-      </div>
-      <input type="file" id="importFileInput" accept=".csv, .txt, .xls, .xlsx" style="display:none">
+      
     </div>
 
     <!-- CHÂN TRANG: TINH CHỈNH GỌN GÀNG, KHÔNG BỊ TRÀN HAY MẤT CHỮ KHI ZOOM 100% -->
@@ -1166,6 +1278,7 @@ window.hpSkin=(function(){
 
   <!-- KHU VỰC CHÍNH -->
   <section class="main">
+    <div id="topStack">
     <header class="topbar">
       <div class="topbar-header-left">
         <div class="topbar-brand-mini" title="Cảng Hải Phòng - Since 1874">
@@ -1218,6 +1331,8 @@ window.hpSkin=(function(){
       </div>
     </div>
 
+    </div><!-- /topStack -->
+<div id="mainScroll">
     <main class="content">
       <!-- MÀN HÌNH 1: TOÀN CẢNH -->
       <section id="page-overview" class="page">
@@ -1496,6 +1611,7 @@ window.hpSkin=(function(){
             <span class="badge" id="eodAuditStatusBadge" style="padding:6px 10px;font-size:11px;background:rgba(38,189,200,0.15);color:var(--navy2);">
               🕒 Tự động rà soát lúc 23:55
             </span>
+            <button id="hpStatsExportBtn" class="primary" style="background:#059669;color:#fff;" onclick="exportConfigAsCSVProtected()" title="Xuất dữ liệu thống kê ra Excel/CSV">📤 Xuất Excel</button>
             <button class="primary" style="background:#0284c7;color:#fff;" onclick="runEndOfDayVesselAudit(false)">
               🔄 Rà soát & Bổ sung thông số tàu thiếu ngay
             </button>
@@ -1862,6 +1978,16 @@ window.hpSkin=(function(){
           <p><b id="t_resUnit">Đơn vị:</b> <span id="t_resUnitVal">Trung tâm Khai thác và Dịch vụ khách hàng - Công ty Cổ phần Cảng Hải Phòng</span></p>
           <p><b>Storage Bucket:</b> Supabase Cloud Bucket (`port-documents`)</p>
           <p><b>Hotline:</b> 1800.5555.22 (Nhánh 3) | Email: ttdvkh@haiphongport.com.vn</p>
+        <div class="panel" style="padding:16px;margin-top:12px">
+          <h3 style="margin:0 0 4px">🗄️ Quản trị dữ liệu <span class="badge">Cần mã PIN</span></h3>
+          <div class="muted" style="margin-bottom:10px">Sao lưu toàn bộ dữ liệu về máy tính, cắt bớt dữ liệu cũ (sau khi sao lưu) hoặc khôi phục từ file đã sao lưu.</div>
+          <div class="hp-admin-btns">
+            <button id="hpBackupBtn" class="primary" title="Tải toàn bộ dữ liệu về máy tính (file JSON)">🗄️ Sao lưu</button>
+            <button id="hpTrimBtn" class="primary" title="Cắt bớt dữ liệu cũ (hệ thống yêu cầu sao lưu trước)">✂️ Cắt bớt dữ liệu</button>
+            <button id="hpRestoreBtn" class="primary" title="Khôi phục dữ liệu từ file sao lưu">♻️ Khôi phục từ file</button>
+          </div>
+          <div id="hpBackupInfo" class="hp-backup-info" style="text-align:left;margin-top:8px;color:var(--muted)">—</div>
+          <input type="file" id="hpRestoreInput" accept=".json,application/json" style="display:none">
         </div>
       </section>
     <!-- MÀN HÌNH LẬP PHƯƠNG ÁN AN TOÀN -->
@@ -2026,6 +2152,7 @@ window.hpSkin=(function(){
         </div>
       </section>
     </main>
+</div><!-- /mainScroll -->
 <footer class="app-foot"><span>© <b>Trung tâm Khai thác &amp; Dịch vụ khách hàng</b> — Công ty Cổ phần Cảng Hải Phòng</span><span>Vessel Call Daily · Since 1874</span></footer>
   </section>
 </div>
@@ -11144,7 +11271,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (k) mergedMap.set(k, { ...c, terminal: 'TÂN VŨ' });
       });
 
-    if (selectedDateStr === todayStr) {
+     if (selectedDateStr === todayStr) {
         Object.entries(rawStore).forEach(([vKey, ep]) => {
           if (!ep || typeof ep !== 'object') return;
           const upName = vKey.trim().toUpperCase();
@@ -11922,6 +12049,323 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   setInterval(syncEportTanVuImmediateAndPeriodic, 300000);
 })();
   
+</script>
+<script id="ux-patch2-js">
+/* ===================== PATCH 2 — LOGIC BỔ SUNG (không sửa mã cũ, chỉ thêm) ===================== */
+(function hpPatch2(){
+  'use strict';
+  var $q=function(s,r){return (r||document).querySelector(s)};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  var LS={get:function(k,d){try{var v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+  var DAY=864e5;
+  function calls(){try{return (typeof allCalls!=='undefined'&&Array.isArray(allCalls))?allCalls:(window.allCalls||[])}catch(e){return []}}
+  function sb(){try{return (typeof supabaseClient!=='undefined')?supabaseClient:null}catch(e){return null}}
+  function escH(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function fmt(n){return Number(n||0).toLocaleString('vi-VN')}
+  function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+  /* ---------- 1. KHUNG: đo chiều cao header+footer, cuộn về đầu khi đổi trang ---------- */
+  var stack=$q('#topStack'),sc=$q('#mainScroll'),foot=$q('.app-foot');
+  function measure(){if(!stack)return;var h=stack.offsetHeight+(foot?foot.offsetHeight:0);document.documentElement.style.setProperty('--chrome-h',h+'px')}
+  if(window.ResizeObserver&&stack){var ro=new ResizeObserver(measure);ro.observe(stack);if(foot)ro.observe(foot)}
+  addEventListener('resize',measure);setTimeout(measure,300);
+  $$('.nav button').forEach(function(b){b.addEventListener('click',function(){if(sc)sc.scrollTop=0;document.body.classList.remove('nav-open')})});
+
+  /* ---------- 2. MENU TRÁI: dàn đều + thu gọn (Mở cố định / Tự động thu gọn) ---------- */
+  var side=$q('#sidebarNav');
+  var nav=$q('.side .nav');if(nav&&nav.parentElement)nav.parentElement.classList.add('nav-wrap');
+  if(side){
+    var tools=document.createElement('div');tools.className='side-tools';
+    var sbtn=document.createElement('button');sbtn.className='no-mq';sbtn.id='sideCollapseBtn';tools.appendChild(sbtn);
+    side.insertBefore(tools,side.firstChild);
+    var setSide=function(rail){document.body.classList.toggle('side-rail',rail);sbtn.textContent=rail?'»':'«';
+      sbtn.title=rail?'Menu đang tự thu gọn (rê chuột vào để mở). Bấm để ghim mở':'Menu đang ghim mở. Bấm để tự thu gọn';LS.set('hp_side',rail?'rail':'open')};
+    setSide(LS.get('hp_side','open')==='rail');
+    sbtn.onclick=function(){setSide(!document.body.classList.contains('side-rail'))};
+  }
+
+  /* ---------- 3. HEADER: Tự động / Luôn mở / Luôn thu gọn ---------- */
+  var topbar=$q('.topbar');
+  if(topbar){
+    var ht=document.createElement('div');ht.className='head-tools';
+    var hb=document.createElement('button');hb.className='head-toggle no-mq';hb.id='headToggle';ht.appendChild(hb);topbar.appendChild(ht);
+    var modes=['auto','open','mini'],lab={auto:['⇅','Header: TỰ ĐỘNG thu gọn khi cuộn xuống, mở lại khi cuộn lên'],open:['▾','Header: LUÔN MỞ'],mini:['▴','Header: LUÔN THU GỌN']};
+    var hmode=LS.get('hp_head','auto');if(modes.indexOf(hmode)<0)hmode='auto';
+    var lastToggle=0,lastY=0;
+    var setMini=function(m){if(document.body.classList.contains('head-mini')===m)return;document.body.classList.toggle('head-mini',m);lastToggle=Date.now();setTimeout(measure,260)};
+    var applyHead=function(){hb.textContent=lab[hmode][0];hb.title=lab[hmode][1];LS.set('hp_head',hmode);
+      if(hmode==='mini')setMini(true);else if(hmode==='open')setMini(false);else setMini(!!(sc&&sc.scrollTop>80))};
+    hb.onclick=function(){hmode=modes[(modes.indexOf(hmode)+1)%3];applyHead()};
+    if(sc)sc.addEventListener('scroll',function(){
+      if(hmode!=='auto'||Date.now()-lastToggle<400)return;
+      var y=sc.scrollTop;
+      if(y>90&&y>lastY+6)setMini(true);else if(y<lastY-8||y<24)setMini(false);
+      lastY=y;
+    },{passive:true});
+    applyHead();
+  }
+
+  /* ---------- 4. MÀU THEO LOẠI TÀU ---------- */
+  var KINDS=[['cont','Container','#0284c7'],['bulk','Hàng rời','#059669'],['general','Tổng hợp','#d97706'],['roro','Ro-Ro / PCTC / Ô tô','#7c3aed'],['tank','Dầu / Khí / Hóa chất','#e11d48'],['pax','Tàu khách','#c026d3'],['barge','Sà lan','#78716c'],['other','Chưa rõ','#64748b']];
+  function kindFromText(t,n){
+    t=String(t||'').toUpperCase();var full=t+' '+String(n||'').toUpperCase();
+    if(/S[ÀA]\s*LAN|BARGE/.test(full))return'barge';
+    if(/DẦU|FSO|FPSO|KHÍ|TANKER|LPG|LNG|HÓA CHẤT|CHEMICAL|XĂNG/.test(t))return'tank';
+    if(/KHÁCH|PASSENGER|CRUISE/.test(t))return'pax';
+    if(/RO-?RO|PCTC|VEHICLE|Ô TÔ|CAR CARRIER/.test(t))return'roro';
+    if(/HÀNG RỜI|BULK/.test(t))return'bulk';
+    if(/TỔNG HỢP|GENERAL|MULTI|HÀNG KHÁC|THIẾT BỊ|HEAVY|PROJECT/.test(t))return'general';
+    if(/CONT|FEEDER/.test(t))return'cont';
+    return'';
+  }
+  var callIdx=null,callIdxN=-1;
+  function findCall(name){
+    var a=calls();if(callIdxN!==a.length||!callIdx){callIdx={};a.forEach(function(c){var k=String(c.vessel||'').trim().toUpperCase();if(k)callIdx[k]=c});callIdxN=a.length}
+    return callIdx[String(name||'').trim().toUpperCase()]||null;
+  }
+  function kindOf(name,call){
+    try{
+      call=call||findCall(name)||{};
+      var sp=(typeof getVesselEnrichedSpecs==='function')?getVesselEnrichedSpecs(name,call):call;
+      var k=kindFromText(sp.vessel_type||call.vessel_type,name);if(k)return k;
+      var u=String(sp.capacity_unit||call.capacity_unit||'');
+      if(u==='TEU'||Number(sp.teu||0)>0)return'cont';
+      if(u==='Units')return'roro';if(u==='m³')return'tank';if(u==='Pax')return'pax';if(u==='Tấn')return'bulk';
+    }catch(e){}
+    return'other';
+  }
+  function decorate(){
+    $$('.shipbar:not([data-kind]),.tv-compact-chip:not([data-kind]),.ship-chip:not([data-kind])').forEach(function(el){
+      var nm=el.getAttribute('data-vessel-key')||(($q('.tv-chip-vname',el)||el).textContent||'').replace(/\s+/g,' ').trim();
+      var c=findCall(nm);el.setAttribute('data-kind',kindOf(nm,c));
+      try{var sp=(typeof getVesselEnrichedSpecs==='function')?getVesselEnrichedSpecs(nm,c||{}):{};if(Number(sp.loa||(c&&c.loa)||0)>=300)el.setAttribute('data-big','1')}catch(e){}
+    });
+    $$('#rows tr').forEach(function(tr){
+      if(tr.getAttribute('data-kind'))return;
+      var tds=tr.children;if(tds.length<4)return;
+      var nm=(tds[1].childNodes[0]&&tds[1].childNodes[0].textContent||'').trim();
+      var bd=tds[2].querySelector('.badge');var k=kindFromText(bd&&bd.textContent,nm)||kindOf(nm);
+      tr.setAttribute('data-kind',k);if(bd)bd.setAttribute('data-kind',k);
+    });
+  }
+  window.buildVesselColorLegendHtml=function(){
+    return '<div class="kind-legend"><span style="color:var(--muted)">🎨 Màu theo loại tàu:</span>'+
+      KINDS.map(function(k){return'<span><i style="background:'+k[2]+'"></i>'+k[1]+'</span>'}).join('')+
+      '<span><i style="background:transparent;outline:2px solid #fde047;outline-offset:-2px"></i>Viền vàng = tàu ≥ 300m</span></div>';
+  };
+  var dt1;function schedDecor(){clearTimeout(dt1);dt1=setTimeout(function(){try{decorate()}catch(e){}},120)}
+  if(sc)new MutationObserver(schedDecor).observe(sc,{childList:true,subtree:true});
+  setTimeout(decorate,800);
+
+  /* ---------- 5. SỔ SẢN LƯỢNG THỰC TẾ TỪNG CHUYẾN (từ ePort BerthMap) ---------- */
+  var LEDGER_KEY='hp_trip_ledger',ledger={},ledgerDirty=false;
+  try{ledger=JSON.parse(LS.get(LEDGER_KEY,'{}'))||{}}catch(e){ledger={}}
+  function pair(s){var p=String(s||'').split('/').map(function(x){return parseInt(String(x).replace(/[^\d-]/g,''),10)});return[isNaN(p[0])?0:p[0],isNaN(p[1])?0:p[1]]}
+  function tripKey(c){return String(c.vessel||'').trim().toUpperCase()+'|'+String(c.etb||'').slice(0,10)}
+  function pickCall(vName,now){
+    var best=null,bestScore=1e18;
+    calls().forEach(function(c){
+      if(String(c.vessel||'').trim().toUpperCase()!==vName||!c.etb)return;
+      var t1=new Date(c.etb).getTime(),t2=c.etd?new Date(c.etd).getTime():t1+7*DAY;if(isNaN(t1))return;
+      var s=(now>=t1&&now<=t2)?0:Math.min(Math.abs(now-t1),Math.abs(now-t2))+1;
+      if(s<bestScore){bestScore=s;best=c}
+    });
+    return(best&&bestScore<=3*DAY)?best:null;   // chỉ ghép nếu lệch tối đa 3 ngày
+  }
+  function updateLedger(){
+    var store=window.eportTanVuJobsMap;if(!store)return;
+    var now=Date.now(),changed=false;
+    Object.keys(store).forEach(function(vName){
+      var ep=store[vName];if(!ep||typeof ep!=='object')return;
+      var done=Number(ep.doneNum)||0,plan=Number(ep.planNum)||0;if(done<=0&&plan<=0)return;
+      var c=pickCall(vName,now),key,rec;
+      key=c?tripKey(c):(vName+'|'+ymd(new Date()));
+      rec=ledger[key];
+      var tc=pair(ep.contTeuStr),ratio=(tc[0]>0&&tc[1]>0)?tc[1]/tc[0]:0;
+      var nu={vessel:vName,operator:(c&&c.operator)||(rec&&rec.operator)||'',terminal:(c&&c.terminal)||'TÂN VŨ',berth:ep.berth||(c&&c.berth)||'',
+        etb:(c&&c.etb)||(rec&&rec.etb)||'',etd:(c&&c.etd)||(rec&&rec.etd)||'',cargo:ep.cargoType||'',
+        done:Math.max(done,rec?rec.done:0),plan:Math.max(plan,rec?rec.plan:0),ratio:ratio||(rec?rec.ratio:0),planTeu:tc[1]||(rec?rec.planTeu:0),
+        pct:Math.max(Number(ep.pct)||0,rec?rec.pct:0),updated:new Date().toISOString()};
+      if(!rec||rec.done!==nu.done||rec.plan!==nu.plan||rec.operator!==nu.operator||rec.etb!==nu.etb){ledger[key]=nu;changed=true}
+    });
+    if(changed){ledgerDirty=true;LS.set(LEDGER_KEY,JSON.stringify(ledger))}
+  }
+  function mergeLedger(remote){
+    var ch=false;Object.keys(remote||{}).forEach(function(k){var r=remote[k],l=ledger[k];
+      if(!l||(r.done||0)>(l.done||0)||((r.done||0)===(l.done||0)&&(r.updated||'')>(l.updated||''))){ledger[k]=r;ch=true}});
+    if(ch)LS.set(LEDGER_KEY,JSON.stringify(ledger));return ch;
+  }
+  async function cloudLedger(){
+    var c=sb();if(!c)return;
+    try{
+      var r=await c.storage.from('port-documents').download('trip_ledger.json');
+      if(r&&r.data){var rm=JSON.parse(await r.data.text());if(mergeLedger(rm))ledgerDirty=true}
+    }catch(e){}
+    if(!ledgerDirty)return;
+    try{await c.storage.from('port-documents').upload('trip_ledger.json',new Blob([JSON.stringify(ledger)],{type:'application/json'}),{upsert:true});ledgerDirty=false}catch(e){}
+  }
+  setTimeout(function(){updateLedger();cloudLedger()},6000);
+  setInterval(updateLedger,60000);setInterval(cloudLedger,600000);
+
+  /* ---------- 6. THỐNG KÊ THEO HÃNG TÀU: LƯỢT TÀU + SẢN LƯỢNG THỰC TẾ MỖI CHUYẾN ---------- */
+  var carrierSort=LS.get('hp_car_sort','calls');if(['calls','done','teu'].indexOf(carrierSort)<0)carrierSort='calls';
+  var panelHtml='<section class="panel" id="hpCarrierPanel" style="margin-top:12px"><div class="panel-head"><h3>📦 Hãng tàu: Lượt tàu &amp; Sản lượng thực tế từng chuyến (ePort)</h3><span class="badge" id="hpCarrierBadge">—</span></div><div class="panel-body"><div class="hp-sorts" id="hpCarSorts"><button data-s="calls">Xếp theo Lượt tàu</button><button data-s="done">Xếp theo Sản lượng thực tế (Cont)</button><button data-s="teu">Xếp theo TEU quy đổi</button></div><div class="hp-note">Sản lượng thực tế = số container đã làm xong ghi nhận từ ePort BerthMap (Tân Vũ), lưu theo từng chuyến (tên tàu + ngày cập) và giữ giá trị lớn nhất, nên vẫn còn sau khi tàu rời bến. TEU quy đổi = Cont thực tế × (TEU/Cont kế hoạch). Chuyến chưa có dữ liệu ePort được đếm lượt nhưng sản lượng để trống.</div><div id="hpCarrierBody"></div></div></section>';
+  function renderCarriers(){
+    var host=$q('#hpCarrierBody');if(!host)return;
+    updateLedger();
+    var list=(typeof getFilteredCalls==='function')?getFilteredCalls():[],groups={},tot={calls:0,voy:0,done:0,teu:0};
+    list.forEach(function(c){
+      var sp=(typeof getVesselEnrichedSpecs==='function')?getVesselEnrichedSpecs(c.vessel,c):c;
+      var op=String(c.operator||sp.operator||'Chưa rõ Hãng/Đại lý').trim();
+      var g=groups[op]||(groups[op]={calls:0,voy:0,done:0,plan:0,teu:0,rows:[]});
+      var L=ledger[tripKey(c)];
+      g.calls++;tot.calls++;
+      var teu=L&&L.ratio?Math.round(L.done*L.ratio):0;
+      if(L){g.voy++;g.done+=L.done;g.plan+=L.plan;g.teu+=teu;tot.voy++;tot.done+=L.done;tot.teu+=teu}
+      g.rows.push({c:c,L:L,teu:teu});
+    });
+    var names=Object.keys(groups);
+    names.sort(function(a,b){var A=groups[a],B=groups[b];return(B[carrierSort]-A[carrierSort])||(B.calls-A.calls)});
+    var mx=Math.max(1,names.length?groups[names[0]][carrierSort]:1);
+    $$('#hpCarSorts button').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-s')===carrierSort)});
+    var b=$q('#hpCarrierBadge');if(b)b.textContent=names.length+' hãng · '+tot.voy+'/'+tot.calls+' chuyến có ePort';
+    var html='<div class="hp-kpi-row"><div><small>Tổng lượt tàu</small><b>'+fmt(tot.calls)+'</b></div><div><small>Chuyến có số liệu ePort</small><b>'+fmt(tot.voy)+'</b></div><div><small>Cont thực tế</small><b>'+fmt(tot.done)+'</b></div><div><small>TEU quy đổi</small><b>'+fmt(tot.teu)+'</b></div></div>';
+    if(!names.length)html+='<div class="empty">Không có dữ liệu trong khoảng ngày đã chọn</div>';
+    names.forEach(function(n){
+      var g=groups[n],pct=g.plan>0?Math.round(g.done/g.plan*100):0,w=Math.round((g[carrierSort]||0)/mx*100);
+      g.rows.sort(function(a,b){return String(b.c.etb||'').localeCompare(String(a.c.etb||''))});
+      html+='<details class="hp-car"><summary><span class="nm" title="'+escH(n)+'">'+escH(n)+'</span><span class="hp-bar"><i style="width:'+w+'%"></i></span>'+
+        '<span class="meta"><b>'+g.calls+'</b> lượt · <b>'+g.voy+'</b> chuyến có ePort · <b>'+fmt(g.done)+'</b>'+(g.plan?'/'+fmt(g.plan):'')+' cont'+(g.plan?' ('+pct+'%)':'')+' · <b>'+fmt(g.teu)+'</b> TEU</span></summary>'+
+        '<div style="overflow-x:auto"><table class="hp-voy"><thead><tr><th>Tàu</th><th>Cập (ETB)</th><th>Bến</th><th class="n">Cont thực tế</th><th class="n">Kế hoạch</th><th class="n">%</th><th class="n">TEU</th></tr></thead><tbody>'+
+        g.rows.map(function(r){var c=r.c,L=r.L,d=c.etb?String(c.etb).replace('T',' ').slice(5,16):'—';
+          return'<tr><td><b>'+escH(c.vessel)+'</b></td><td>'+escH(d)+'</td><td>'+escH((c.terminal||'')+' '+(c.berth||''))+'</td>'+
+            (L?'<td class="n"><b>'+fmt(L.done)+'</b></td><td class="n">'+fmt(L.plan)+'</td><td class="n">'+(L.plan?Math.min(100,Math.round(L.done/L.plan*100)):0)+'%</td><td class="n">'+(r.teu?fmt(r.teu):'—')+'</td>'
+              :'<td class="n nodata" colspan="4">chưa có dữ liệu ePort</td>')+'</tr>'}).join('')+
+        '</tbody></table></div></details>';
+    });
+    host.innerHTML=html;
+  }
+  var page=$q('#page-stats');
+  if(page&&!$q('#hpCarrierPanel')){
+    var tmp=document.createElement('div');tmp.innerHTML=panelHtml;page.appendChild(tmp.firstChild);
+    $q('#hpCarSorts').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;carrierSort=b.getAttribute('data-s');LS.set('hp_car_sort',carrierSort);renderCarriers()});
+  }
+  var baseStats=window.renderStats;
+  window.renderStats=function(){var r;try{if(typeof baseStats==='function')r=baseStats.apply(this,arguments)}catch(e){console.warn(e)}
+    try{renderCarriers()}catch(e){console.warn('hpCarrier',e)}
+    var p=$q('#hpCarrierPanel'),t=$q('#tanvuDedicatedStatsCard');if(p&&t&&p.nextElementSibling!==t&&p.parentNode===t.parentNode)p.parentNode.insertBefore(p,t);
+    return r};
+
+  /* ---------- 7. SAO LƯU / CẮT BỚT / KHÔI PHỤC ---------- */
+  var BK='hp_last_backup',SNZ='hp_backup_snooze';
+  function daysSince(iso){if(!iso)return null;var t=Date.parse(iso);return isNaN(t)?null:Math.floor((Date.now()-t)/DAY)}
+  function infoRefresh(){
+    var el=$q('#hpBackupInfo');if(!el)return;var last=LS.get(BK,''),d=daysSince(last);
+    if(d===null){el.textContent='⚠️ Chưa từng sao lưu trên thiết bị này';el.className='hp-backup-info warn'}
+    else{el.textContent='Sao lưu gần nhất: '+new Date(last).toLocaleDateString('vi-VN')+' ('+(d===0?'hôm nay':d+' ngày trước')+')';el.className='hp-backup-info'+(d>=30?' warn':'')}
+  }
+  function pinOk(label){return(typeof verifyAdminPinPrompt==='function')?verifyAdminPinPrompt(label):(prompt('Nhập mật khẩu để '+label+':')==='6868')}
+  async function buildBackup(){
+    var ls={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^hp_/.test(k)&&k!=='hp_admin_pin')ls[k]=localStorage.getItem(k)}
+    ls[LEDGER_KEY]=JSON.stringify(ledger);
+    var out={app:'CSKH247-Dashboard',version:2,created_at:new Date().toISOString(),localStorage:ls,allCalls:calls(),
+      eport_jobs:{},tanVuHistoryRecords:window.tanVuHistoryRecords||[],trip_ledger:ledger,cloud:{}};
+    try{var st=window.eportTanVuJobsMap;Object.keys(st).forEach(function(k){out.eport_jobs[k]=st[k]})}catch(e){}
+    try{if(typeof vesselOverridesMap!=='undefined')out.vessel_overrides=Array.from(vesselOverridesMap.entries());if(typeof vesselCatalogMap!=='undefined')out.vessel_catalog=Array.from(vesselCatalogMap.entries())}catch(e){}
+    var c=sb();
+    if(c){
+      var tabs=[['port_calls_history',20000],['feedback_reports',5000],['shift_configs',2000]];
+      for(var j=0;j<tabs.length;j++){try{var r=await c.from(tabs[j][0]).select('*').limit(tabs[j][1]);if(r&&Array.isArray(r.data))out.cloud[tabs[j][0]]=r.data}catch(e){}}
+    }
+    return out;
+  }
+  async function doBackup(skipPin){
+    if(skipPin!==true&&!pinOk('sao lưu dữ liệu'))return false;
+    var btn=$q('#hpBackupBtn');if(btn)btn.disabled=true;
+    try{
+      var data=await buildBackup(),blob=new Blob([JSON.stringify(data)],{type:'application/json'}),a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);a.download='CSKH247_backup_'+ymd(new Date())+'_'+new Date().toTimeString().slice(0,5).replace(':','h')+'.json';
+      document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+      LS.set(BK,new Date().toISOString());LS.set(SNZ,'');infoRefresh();checkReminder();
+      return true;
+    }catch(e){alert('❌ Sao lưu thất bại: '+e.message);return false}
+    finally{if(btn)btn.disabled=false}
+  }
+  window.hpBackupNow=function(){return doBackup()};
+  function dateOf(c){var s=c.etd||c.etb||'';var t=Date.parse(s);return isNaN(t)?0:t}
+  async function doTrim(){
+    if(!pinOk('cắt bớt dữ liệu cũ'))return;
+    var d=daysSince(LS.get(BK,''));
+    if(d===null||d>0){
+      if(!confirm('Chưa có bản sao lưu HÔM NAY. Cần sao lưu (tải file về máy) trước khi cắt bớt.\n\nSao lưu ngay bây giờ?'))return;
+      if(!(await doBackup(true)))return;
+      if(!confirm('File sao lưu đã được tải về máy và bạn đã lưu ở nơi an toàn?\nBấm OK để tiếp tục cắt bớt dữ liệu.'))return;
+    }
+    var keep=parseInt(prompt('Giữ lại dữ liệu của bao nhiêu NGÀY gần nhất? (tối thiểu 30)','90'),10);
+    if(isNaN(keep))return;if(keep<30){alert('Giữ tối thiểu 30 ngày.');return}
+    var cut=Date.now()-keep*DAY,cutIso=new Date(cut).toISOString().slice(0,10);
+    var all=calls(),oldN=all.filter(function(c){var t=dateOf(c);return t&&t<cut}).length;
+    var ledOld=Object.keys(ledger).filter(function(k){var t=Date.parse((ledger[k].etb||'').slice(0,10));return t&&t<cut});
+    if(!confirm('Sẽ cắt dữ liệu cũ hơn '+cutIso+' (giữ '+keep+' ngày):\n• '+oldN+' lượt tàu trong bộ nhớ/cache máy này\n• '+ledOld.length+' chuyến trong sổ sản lượng ePort\n\nTiếp tục?'))return;
+    try{window.allCalls=all.filter(function(c){var t=dateOf(c);return!(t&&t<cut)});allCalls=window.allCalls}catch(e){}
+    try{var raw=JSON.parse(LS.get('hp_cached_raw_calls','[]'));if(Array.isArray(raw))LS.set('hp_cached_raw_calls',JSON.stringify(raw.filter(function(c){var t=dateOf(c);return!(t&&t<cut)})))}catch(e){}
+    if(Array.isArray(window.tanVuHistoryRecords))window.tanVuHistoryRecords=window.tanVuHistoryRecords.filter(function(c){var t=dateOf(c);return!(t&&t<cut)});
+    ledOld.forEach(function(k){delete ledger[k]});LS.set(LEDGER_KEY,JSON.stringify(ledger));ledgerDirty=true;
+    var msg='✅ Đã cắt bớt dữ liệu cũ trên máy này.';
+    var c=sb();
+    if(c){
+      if(confirm('Xóa luôn các file snapshot hằng ngày (daily_snapshot_*.json) cũ hơn '+cutIso+' trên Storage Bucket?\n(Đã có file sao lưu trên máy tính của bạn.)')){
+        try{var r=await c.storage.from('port-documents').list('',{limit:1000});
+          var del=(r.data||[]).map(function(f){return f.name}).filter(function(n){var m=/^daily_snapshot_(\d{4}-\d{2}-\d{2})\.json$/.exec(n);return m&&Date.parse(m[1])<cut});
+          if(del.length)await c.storage.from('port-documents').remove(del);msg+='\n• Đã xóa '+del.length+' snapshot cũ trên Bucket.'}catch(e){msg+='\n• Không xóa được snapshot: '+e.message}
+      }
+      if(confirm('CẨN THẬN: Xóa các dòng lịch sử cũ hơn '+cutIso+' trong bảng port_calls_history trên cơ sở dữ liệu?\nThao tác này KHÔNG hoàn tác được (chỉ khôi phục từ file sao lưu).')){
+        try{var q=await c.from('port_calls_history').delete().lt('etb',cutIso);msg+=q&&q.error?'\n• Không xóa được lịch sử: '+q.error.message:'\n• Đã xóa lịch sử cũ trong port_calls_history.'}catch(e){msg+='\n• Không xóa được lịch sử: '+e.message}
+      }
+    }
+    try{if(typeof renderAll==='function')renderAll();if(typeof window.renderStats==='function')window.renderStats()}catch(e){}
+    alert(msg);
+  }
+  function doRestore(file){
+    if(!file)return;
+    if(!pinOk('khôi phục dữ liệu từ file sao lưu'))return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{
+        var d=JSON.parse(rd.result);if(!d||d.app!=='CSKH247-Dashboard'||!d.localStorage)throw new Error('Không phải file sao lưu của hệ thống.');
+        var n=Object.keys(d.localStorage).filter(function(k){return/^hp_/.test(k)&&k!=='hp_admin_pin'}).length;
+        if(!confirm('File sao lưu ngày '+new Date(d.created_at).toLocaleString('vi-VN')+' có '+n+' mục dữ liệu, '+(d.allCalls||[]).length+' lượt tàu.\nGhi đè dữ liệu lưu trên máy này và tải lại trang?'))return;
+        Object.keys(d.localStorage).forEach(function(k){if(/^hp_/.test(k)&&k!=='hp_admin_pin')LS.set(k,d.localStorage[k])});
+        if(Array.isArray(d.allCalls)&&d.allCalls.length)LS.set('hp_cached_raw_calls',JSON.stringify(d.allCalls));
+        if(d.eport_jobs&&Object.keys(d.eport_jobs).length)LS.set('hp_eport_tanvu_jobs',JSON.stringify(d.eport_jobs));
+        alert('✅ Đã khôi phục. Trang sẽ tải lại.\n(Dữ liệu trên Supabase giữ nguyên; nếu cần nạp lại bảng đám mây, dùng file sao lưu để import thủ công.)');
+        location.reload();
+      }catch(e){alert('❌ Lỗi khôi phục: '+e.message)}
+    };
+    rd.readAsText(file,'UTF-8');
+  }
+  var bb=$q('#hpBackupBtn'),tb=$q('#hpTrimBtn'),rb=$q('#hpRestoreBtn'),ri=$q('#hpRestoreInput');
+  if(bb)bb.onclick=function(){doBackup()};if(tb)tb.onclick=doTrim;
+  if(rb&&ri){rb.onclick=function(){ri.click()};ri.onchange=function(){doRestore(ri.files[0]);ri.value=''}}
+  infoRefresh();
+
+  /* ---------- 8. NHẮC SAO LƯU MỖI THÁNG ---------- */
+  var banner=document.createElement('div');banner.id='hpBackupBanner';
+  banner.innerHTML='<span class="msg" id="hpBackupMsg"></span><button id="hpBkNow" class="no-mq">🗄️ Sao lưu ngay</button><button id="hpBkLater" class="ghost no-mq">Nhắc lại sau 3 ngày</button>';
+  if(stack)stack.appendChild(banner);
+  function checkReminder(){
+    var d=daysSince(LS.get(BK,'')),snz=Date.parse(LS.get(SNZ,'')||'')||0,due=(d===null||d>=30)&&Date.now()>snz;
+    banner.classList.toggle('show',due);
+    if(due)$q('#hpBackupMsg').textContent=d===null?'🗄️ Thiết bị này chưa có bản sao lưu nào. Hãy sao lưu dữ liệu về máy tính (mỗi tháng 1 lần) để phòng khi trang gặp sự cố.'
+      :'🗄️ Đã '+d+' ngày chưa sao lưu dữ liệu về máy tính. Nên sao lưu mỗi tháng 1 lần.';
+    setTimeout(measure,50);
+  }
+  $q('#hpBkNow').onclick=function(){doBackup()};
+  $q('#hpBkLater').onclick=function(){LS.set(SNZ,new Date(Date.now()+3*DAY).toISOString());checkReminder()};
+  setTimeout(checkReminder,3500);setInterval(checkReminder,3600000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)checkReminder()});
+})();
+
 </script>
 </body>
 </html>
