@@ -5840,6 +5840,7 @@ function applyPortBerthAllocationRules(callsList) {
   if (!Array.isArray(callsList) || callsList.length === 0) return [];
   const getTermGroupKey = (termStr) => {
     let t = String(termStr || '').toUpperCase();
+    if (t.includes('EURO')) return 'EURO_DINH_VU';
     if (t.includes('TÂN VŨ') || t.includes('TAN VU')) return 'TAN_VU';
     if (t.includes('CHÙA VẼ') || t.includes('CHUA VE')) return 'CHUA_VE';
     if ((t.includes('ĐÌNH VŨ') || t.includes('DINH VU')) && !t.includes('NAM')) return 'DINH_VU';
@@ -5882,10 +5883,12 @@ function applyPortBerthAllocationRules(callsList) {
     let curBerth = normalizeBerthCode(c.berth);
     let finalBerth = curBerth || 'B1';
 
-    if (rule) {
+   if (rule) {
+      let allowed = rule.maxBerths || ['B1', 'B2', 'B3', 'B4', 'B5'];
       let ov = vesselOverridesMap.get(vName) || null;
       let ovBerth = ov && ov.berth ? normalizeBerthCode(ov.berth) : '';
-      if (ovBerth && (rule.preferred.includes(ovBerth) || rule.allowKeepOriginalIfNoConflict)) {
+      let isOvAllowed = ovBerth && allowed.includes(ovBerth);
+      if (isOvAllowed && (rule.preferred.includes(ovBerth) || rule.allowKeepOriginalIfNoConflict)) {
         finalBerth = ovBerth;
       } else {
         finalBerth = pickBestBerthWithoutOverlap(rule, t1, t2, termMap, curBerth);
