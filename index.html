@@ -2913,6 +2913,9 @@ function renderOverrideTable() {
   }).join('');
 }
 
+async function deleteVesselOverrideProtected() {
+  if (!(await verifyAdminPinPrompt('ẩn/xóa chuyến tàu'))) return;
+  
   let vName = ($('editVesselName').value || '').trim();
   let vEtb = $('editVesselEtb').value; // Lấy thời gian CẬP (ETB) để nhận diện đích danh chuyến tàu này
 
@@ -6957,9 +6960,6 @@ function populateEditForm(vesselOrName) {
   nav('edit-vessel', true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
-async function deleteVesselOverrideProtected() {
-  if (!(await verifyAdminPinPrompt('ẩn/xóa chuyến tàu'))) return;
 
 async function saveVesselOverrideProtected() {
   if (!(await verifyAdminPinPrompt('lưu/cập nhật thông số tàu'))) return;
