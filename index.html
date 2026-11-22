@@ -12333,6 +12333,245 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     };
   }
 })();
+
+/* ==================== MODULE 3: KHÓA MÃ PIN CHO 2 BẢNG DỮ LIỆU VIP ==================== */
+(function initVipStatsPinLock() {
+  const VIP_PIN = '6868'; // Có thể đổi sang mã PIN riêng cho dữ liệu VIP nếu muốn
+  let isVipUnlocked = false;
+  let isApplyingLock = false;
+
+  // 1. Tự chèn CSS cho màn hình khóa VIP
+  if (!document.getElementById('vipPinLockStyles')) {
+    const style = document.createElement('style');
+    style.id = 'vipPinLockStyles';
+    style.textContent = `
+      .vip-protected-panel {
+        position: relative !important;
+      }
+      .vip-protected-panel.vip-locked {
+        min-height: 230px !important;
+        overflow: hidden !important;
+      }
+      /* Ẩn hoàn toàn số liệu bên trong và các badge số ở tiêu đề khi đang khóa */
+      .vip-protected-panel.vip-locked > :not(.panel-head):not(.vip-lock-overlay) {
+        visibility: hidden !important;
+        max-height: 170px !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        user-select: none !important;
+      }
+      .vip-protected-panel.vip-locked .panel-head > :not(:first-child) {
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+      .vip-lock-overlay {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: 44px;
+        z-index: 25;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: color-mix(in srgb, var(--card) 92%, transparent);
+        backdrop-filter: blur(8px);
+      }
+      .vip-lock-box {
+        background: var(--card);
+        border: 1.5px solid var(--cyan);
+        border-radius: 12px;
+        padding: 16px 20px;
+        box-shadow: 0 8px 24px rgba(16, 43, 70, 0.16);
+        text-align: center;
+        width: min(340px, 94%);
+      }
+      .vip-lock-title {
+        font-size: 13px;
+        font-weight: 850;
+        color: var(--navy2);
+        margin-bottom: 4px;
+      }
+      :root[data-theme="dark"] .vip-lock-title { color: var(--cyan); }
+      .vip-lock-desc {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .vip-lock-row {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+      }
+      .vip-pin-input {
+        width: 140px !important;
+        text-align: center;
+        letter-spacing: 4px;
+        font-weight: 800;
+        padding: 6px 10px !important;
+      }
+      .vip-unlock-btn {
+        background: var(--cyan) !important;
+        color: #fff !important;
+        padding: 6px 14px !important;
+        box-shadow: none !important;
+      }
+      .vip-lock-err {
+        color: var(--red, #c94d4d);
+        font-size: 11px;
+        font-weight: 700;
+        margin-top: 6px;
+        min-height: 15px;
+      }
+      .vip-relock-btn {
+        background: rgba(201, 77, 77, 0.12) !important;
+        color: #c94d4d !important;
+        border: 1px solid rgba(201, 77, 77, 0.4) !important;
+        padding: 3px 8px !important;
+        font-size: 10.5px !important;
+        margin-left: 6px;
+        box-shadow: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // 2. Tìm đúng 2 bảng dữ liệu VIP
+  function findVipPanels() {
+    const found = new Set();
+    const carrierPanel = document.getElementById('hpCarrierPanel');
+    if (carrierPanel) found.add(carrierPanel);
+
+    document.querySelectorAll('.panel').forEach(el => {
+      if (el.id === 'page-stats') return;
+      const head = el.querySelector(':scope > .panel-head');
+      const titleText = (head ? head.textContent : (el.querySelector(':scope > h3')?.textContent || '')).toLowerCase();
+      if (
+        titleText.includes('sản lượng thực tế từng chuyến') ||
+        titleText.includes('hãng tàu: lượt tàu') ||
+        titleText.includes('thống kê khai thác cảng tân vũ')
+      ) {
+        found.add(el);
+      }
+    });
+    return Array.from(found);
+  }
+
+  // 3. Kiểm tra mã PIN & mở khóa đồng thời cả 2 bảng
+  function tryUnlockVip(inputEl, errEl) {
+    const val = String(inputEl?.value || '').trim();
+    if (val === VIP_PIN) {
+      isVipUnlocked = true;
+      applyVipLockState();
+    } else {
+      if (errEl) errEl.textContent = 'Mã PIN không chính xác!';
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+      }
+    }
+  }
+
+  // 4. Tạo màn hình khóa phủ lên bảng
+  function createLockOverlay(panelEl) {
+    const overlay = document.createElement('div');
+    overlay.className = 'vip-lock-overlay';
+    const head = panelEl.querySelector(':scope > .panel-head');
+    if (head && head.offsetHeight > 0) {
+      overlay.style.top = head.offsetHeight + 'px';
+    } else if (!head) {
+      overlay.style.top = '0px';
+    }
+
+    overlay.innerHTML = `
+      <div class="vip-lock-box">
+        <div class="vip-lock-title">🔒 Dữ liệu VIP · Yêu cầu mã PIN</div>
+        <div class="vip-lock-desc">Nhập mã PIN quản trị để xem sản lượng thực tế ePort</div>
+        <div class="vip-lock-row">
+          <input type="password" inputmode="numeric" maxlength="12" class="field vip-pin-input" placeholder="••••" autocomplete="off">
+          <button type="button" class="vip-unlock-btn">Mở khóa</button>
+        </div>
+        <div class="vip-lock-err"></div>
+      </div>
+    `;
+
+    const inputEl = overlay.querySelector('.vip-pin-input');
+    const btnEl = overlay.querySelector('.vip-unlock-btn');
+    const errEl = overlay.querySelector('.vip-lock-err');
+
+    btnEl.addEventListener('click', () => tryUnlockVip(inputEl, errEl));
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tryUnlockVip(inputEl, errEl);
+    });
+
+    return overlay;
+  }
+
+  // 5. Áp dụng trạng thái Khóa / Mở khóa cho cả 2 bảng
+  function applyVipLockState() {
+    if (isApplyingLock) return;
+    isApplyingLock = true;
+    try {
+      const panels = findVipPanels();
+      panels.forEach(panel => {
+        panel.classList.add('vip-protected-panel');
+        const head = panel.querySelector(':scope > .panel-head');
+        const oldOverlay = panel.querySelector(':scope > .vip-lock-overlay');
+        const oldRelock = panel.querySelector('.vip-relock-btn');
+
+        if (!isVipUnlocked) {
+          panel.classList.add('vip-locked');
+          if (oldRelock) oldRelock.remove();
+          if (!oldOverlay) {
+            panel.appendChild(createLockOverlay(panel));
+          }
+        } else {
+          panel.classList.remove('vip-locked');
+          if (oldOverlay) oldOverlay.remove();
+          if (head && !oldRelock) {
+            const lockBtn = document.createElement('button');
+            lockBtn.type = 'button';
+            lockBtn.className = 'vip-relock-btn';
+            lockBtn.textContent = '🔒 Khóa lại';
+            lockBtn.title = 'Ẩn lại dữ liệu VIP';
+            lockBtn.addEventListener('click', () => {
+              isVipUnlocked = false;
+              applyVipLockState();
+            });
+            head.appendChild(lockBtn);
+          }
+        }
+      });
+    } finally {
+      isApplyingLock = false;
+    }
+  }
+
+  // 6. Bọc renderStats & theo dõi DOM để không bị mất khóa khi bảng render lại
+  if (typeof window.renderStats === 'function') {
+    const origRenderStats = window.renderStats;
+    window.renderStats = function () {
+      const r = origRenderStats.apply(this, arguments);
+      applyVipLockState();
+      return r;
+    };
+  }
+
+  const statsPage = document.getElementById('page-stats');
+  if (statsPage && window.MutationObserver) {
+    const obs = new MutationObserver((mutations) => {
+      if (isApplyingLock) return;
+      const internal = mutations.every(m => m.target.closest && m.target.closest('.vip-lock-overlay'));
+      if (!internal) applyVipLockState();
+    });
+    obs.observe(statsPage, { childList: true, subtree: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', applyVipLockState);
+  setTimeout(applyVipLockState, 600);
+  setTimeout(applyVipLockState, 1800);
+})();  
   
 </script>
 </body>
