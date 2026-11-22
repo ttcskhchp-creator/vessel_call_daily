@@ -2192,7 +2192,7 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
   <div class="pop-list" id="popList"></div>
 </div>
 
-<!-- MODAL 1: BẢO MẬT NHẬP MẬT KHẨU (6868 ẨN) ĐỂ VÀO HÒM THƯ -->
+<!-- MODAL 1: BẢO MẬT NHẬP MẬT KHẨU (****ẨN) ĐỂ VÀO HÒM THƯ -->
 <div id="mailAuthModal" class="modal-shade">
   <div class="modal">
     <h3>🔒 Bảo mật Hòm Thư Phản Ánh</h3>
@@ -9370,24 +9370,41 @@ if (!window._customMenuWrapped) {
   window._customMenuWrapped = true;
 }
 
-// 2. Cơ chế Mã PIN Quản trị động (Mặc định: 6868, Reset qua SĐT Admin: 0787307004)
-const ADMIN_RECOVERY_PHONE = '0787307004';
-const DEFAULT_ADMIN_PIN = '6868';
+// 2. Cơ chế Mã PIN Quản trị bảo mật qua Supabase RPC (Không lưu PIN / STK trong mã nguồn)
+(function cleanLegacyPlainPin() {
+  try {
+    localStorage.removeItem('hp_admin_pin');
+    if (typeof draftConfig === 'object' && draftConfig && 'adminPin' in draftConfig) {
+      delete draftConfig.adminPin;
+      localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
+    }
+  } catch (e) {}
+})();
 
-function getCurrentAdminPin() {
-  return localStorage.getItem('hp_admin_pin') || (typeof draftConfig !== 'undefined' && draftConfig.adminPin) || DEFAULT_ADMIN_PIN;
-}
-
-function verifyAdminPinPrompt(actionLabel = 'thực hiện thao tác này') {
-  let currentPin = getCurrentAdminPin();
-  let entered = prompt(`🔒 Nhập mã PIN quản trị (••••) để ${actionLabel}:`);
+async function verifyAdminPinPrompt(actionLabel = 'thực hiện thao tác này') {
+  const entered = prompt(`🔒 Nhập mã PIN quản trị (••••) để ${actionLabel}:`);
   if (entered === null) return false;
-  if (String(entered).trim() === String(currentPin).trim()) {
+
+  if (!supabaseClient) {
+    alert('❌ Chưa kết nối được máy chủ xác thực.');
+    return false;
+  }
+
+  const { data, error } = await supabaseClient.rpc('verify_admin_pin', {
+    p_pin: String(entered).trim()
+  });
+
+  if (error) {
+    alert('❌ Lỗi kết nối xác thực: ' + error.message);
+    return false;
+  }
+  if (data && data.ok) {
     return true;
   }
-  alert('❌ Mã PIN quản trị không chính xác!');
+  alert('❌ ' + ((data && data.message) || 'Mã PIN quản trị không chính xác!'));
   return false;
 }
+window.verifyAdminPinPrompt = verifyAdminPinPrompt;
 
 // Tạo giao diện Đổi Mã PIN & Reset Mã PIN ngay trong màn hình Cài đặt (Setting)
 function renderPinSettingsCard() {
@@ -9405,29 +9422,29 @@ function renderPinSettingsCard() {
     pinCard.style.borderLeft = '4px solid #0284c7';
     pinCard.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-        <h3 style="margin:0;font-size:13.5px;color:var(--cyan);">🔐 Cài đặt Mã PIN Quản Trị (Bảo mật Lưu / Xóa / Khôi phục)</h3>
-        <span class="badge" style="background:rgba(2,132,199,0.12);color:#0284c7;">Trạng thái PIN: Đã kích hoạt (••••)</span>
+        <h3 style="margin:0;font-size:13.5px;color:var(--cyan);">🔐 Cài đặt Mã PIN Quản Trị (Bảo mật Lưu / Xóa / Khôi phục / VIP)</h3>
+        <span class="badge" style="background:rgba(2,132,199,0.12);color:#0284c7;">Xác thực máy chủ · Đã kích hoạt</span>
       </div>
       <div class="draft-setup-grid" style="align-items:end;">
         <div class="form-group" style="margin-bottom:0;">
           <label>Mã PIN hiện tại (*)</label>
-          <input type="password" id="pinOldInput" class="field" maxlength="10" placeholder="Nhập PIN cũ (••••)" style="letter-spacing:3px;font-weight:800;">
+          <input type="password" id="pinOldInput" class="field" maxlength="12" placeholder="Nhập PIN cũ (••••)" style="letter-spacing:3px;font-weight:800;" autocomplete="off">
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label>Mã PIN mới (*)</label>
-          <input type="password" id="pinNewInput" class="field" maxlength="10" placeholder="Nhập PIN mới (••••)" style="letter-spacing:3px;font-weight:800;">
+          <input type="password" id="pinNewInput" class="field" maxlength="12" placeholder="Nhập PIN mới (••••)" style="letter-spacing:3px;font-weight:800;" autocomplete="new-password">
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label>Xác nhận Mã PIN mới (*)</label>
-          <input type="password" id="pinConfirmInput" class="field" maxlength="10" placeholder="Nhập lại PIN mới (••••)" style="letter-spacing:3px;font-weight:800;">
+          <input type="password" id="pinConfirmInput" class="field" maxlength="12" placeholder="Nhập lại PIN mới (••••)" style="letter-spacing:3px;font-weight:800;" autocomplete="new-password">
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button type="button" class="primary" style="flex:1;padding:8px 10px;" onclick="handleChangeAdminPin()">🔑 Đổi Mã PIN</button>
-          <button type="button" style="background:#f59e0b;color:#fff;padding:8px 10px;" onclick="handleResetAdminPinByPhone()" title="Quên mã PIN? Đặt lại bằng SĐT Admin">↺ Reset PIN</button>
+          <button type="button" style="background:#f59e0b;color:#fff;padding:8px 10px;" onclick="handleResetAdminPinByBank()" title="Quên mã PIN? Đặt lại bằng Số TK Ngân hàng Admin">↺ Reset PIN</button>
         </div>
       </div>
       <small class="muted" style="display:block;margin-top:6px;">
-        * Mã PIN áp dụng cho: Lưu cấu hình Bucket, Khôi phục mặc định, Lưu/Cập nhật thông tin tàu, Xóa/Ẩn chuyến tàu và Mở hòm thư.
+        - Mã PIN áp dụng cho: Dữ liệu VIP, Lưu cấu hình Bucket, Khôi phục mặc định, Lưu/Cập nhật thông tin tàu, Xóa/Ẩn chuyến tàu và Mở hòm thư.
       </small>
     `;
     if (firstCard) {
@@ -9439,22 +9456,16 @@ function renderPinSettingsCard() {
 }
 
 async function handleChangeAdminPin() {
-  let oldPin = ($('pinOldInput')?.value || '').trim();
-  let newPin = ($('pinNewInput')?.value || '').trim();
-  let confirmPin = ($('pinConfirmInput')?.value || '').trim();
-  let actualPin = getCurrentAdminPin();
+  const oldPin = ($('pinOldInput')?.value || '').trim();
+  const newPin = ($('pinNewInput')?.value || '').trim();
+  const confirmPin = ($('pinConfirmInput')?.value || '').trim();
 
   if (!oldPin || !newPin || !confirmPin) {
     alert('Vui lòng nhập đầy đủ Mã PIN hiện tại, Mã PIN mới và Xác nhận Mã PIN mới!');
     return;
   }
-  if (oldPin !== String(actualPin)) {
-    alert('❌ Mã PIN hiện tại không chính xác!');
-    $('pinOldInput')?.focus();
-    return;
-  }
-  if (newPin.length < 4) {
-    alert('Mã PIN mới phải có ít nhất 4 ký tự/chữ số!');
+  if (newPin.length < 4 || newPin.length > 12) {
+    alert('Mã PIN mới phải từ 4 đến 12 ký tự/chữ số!');
     return;
   }
   if (newPin !== confirmPin) {
@@ -9462,51 +9473,76 @@ async function handleChangeAdminPin() {
     $('pinConfirmInput')?.focus();
     return;
   }
+  if (!supabaseClient) {
+    alert('❌ Chưa kết nối được máy chủ xác thực.');
+    return;
+  }
 
-  localStorage.setItem('hp_admin_pin', newPin);
-  if (typeof draftConfig === 'object') {
-    draftConfig.adminPin = newPin;
-    localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
-    if (supabaseClient) {
-      try {
-        const blob = new Blob([JSON.stringify(draftConfig)], { type: 'application/json' });
-        await supabaseClient.storage.from('port-documents').upload('port_channel_config.json', blob, { upsert: true });
-      } catch (e) {}
-    }
+  const { data, error } = await supabaseClient.rpc('change_admin_pin', {
+    p_old_pin: oldPin,
+    p_new_pin: newPin
+  });
+
+  if (error) {
+    alert('❌ Lỗi kết nối máy chủ: ' + error.message);
+    return;
+  }
+  if (!data || !data.ok) {
+    alert('❌ ' + ((data && data.message) || 'Mã PIN hiện tại không chính xác!'));
+    $('pinOldInput')?.focus();
+    return;
   }
 
   $('pinOldInput').value = '';
   $('pinNewInput').value = '';
   $('pinConfirmInput').value = '';
-  alert('✅ Đã thay đổi Mã PIN quản trị mới và đồng bộ thành công!');
+  alert('✅ ' + (data.message || 'Đã thay đổi Mã PIN quản trị mới và đồng bộ thành công!'));
 }
 window.handleChangeAdminPin = handleChangeAdminPin;
 
-async function handleResetAdminPinByPhone() {
-  let phone = prompt('🔐 KHÔI PHỤC MÃ PIN QUẢN TRỊ:\nVui lòng nhập Số điện thoại của Admin để đặt lại mã PIN về mặc định:');
-  if (phone === null) return;
-  let cleanPhone = String(phone).replace(/\s+|\.|-/g, '').trim();
-
-  if (cleanPhone !== ADMIN_RECOVERY_PHONE) {
-    alert('❌ Số điện thoại Admin không chính xác! Không thể reset mã PIN.');
+async function handleResetAdminPinByBank() {
+  // Nếu đã tích hợp Modal Reset PIN của Module 3 thì mở luôn giao diện Modal (ẩn ký tự *** khi gõ)
+  if (typeof window.openResetPinByBankModal === 'function') {
+    window.openResetPinByBankModal();
     return;
   }
 
-  localStorage.setItem('hp_admin_pin', DEFAULT_ADMIN_PIN);
-  if (typeof draftConfig === 'object') {
-    draftConfig.adminPin = DEFAULT_ADMIN_PIN;
-    localStorage.setItem('hp_draft_config', JSON.stringify(draftConfig));
-    if (supabaseClient) {
-      try {
-        const blob = new Blob([JSON.stringify(draftConfig)], { type: 'application/json' });
-        await supabaseClient.storage.from('port-documents').upload('port_channel_config.json', blob, { upsert: true });
-      } catch (e) {}
-    }
-  }
-  alert('✅ Xác thực SĐT Admin thành công! Mã PIN quản trị đã được đặt lại về mặc định (6868).');
-}
-window.handleResetAdminPinByPhone = handleResetAdminPinByPhone;
+  // Fallback nếu chưa chèn Module 3
+  const bankAcc = prompt('🔐 KHÔI PHỤC MÃ PIN QUẢN TRỊ:\nVui lòng nhập Số tài khoản Ngân hàng của Admin:');
+  if (bankAcc === null) return;
 
+  const newPin = prompt('🔑 Nhập Mã PIN mới (4 – 12 ký tự):');
+  if (newPin === null) return;
+
+  const confirmPin = prompt('🔑 Nhập lại Mã PIN mới để xác nhận:');
+  if (confirmPin === null) return;
+
+  if (String(newPin).trim() !== String(confirmPin).trim()) {
+    alert('❌ Xác nhận Mã PIN mới không trùng khớp!');
+    return;
+  }
+  if (!supabaseClient) {
+    alert('❌ Chưa kết nối được máy chủ xác thực.');
+    return;
+  }
+
+  const { data, error } = await supabaseClient.rpc('reset_admin_pin_by_bank', {
+    p_bank_account: String(bankAcc).trim(),
+    p_new_pin: String(newPin).trim()
+  });
+
+  if (error) {
+    alert('❌ Lỗi máy chủ: ' + error.message);
+    return;
+  }
+  if (data && data.ok) {
+    alert('✅ ' + (data.message || 'Xác thực Số tài khoản Ngân hàng Admin thành công! Đã đặt lại mã PIN mới.'));
+  } else {
+    alert('❌ ' + ((data && data.message) || 'Số tài khoản Ngân hàng Admin không chính xác!'));
+  }
+}
+window.handleResetAdminPinByBank = handleResetAdminPinByBank;
+window.handleResetAdminPinByPhone = handleResetAdminPinByBank; // Giữ tương thích nếu nơi khác còn gọi tên cũ
 // 3. Áp dụng Mã PIN động vào tất cả các nút yêu cầu:
 // - Lưu cấu hình Bucket (Cài đặt)
 // - Khôi phục mặc định (Cài đặt)
@@ -9566,7 +9602,7 @@ saveDraftFormulaConfig = async function(skipPinPrompt = false) {
 window.saveDraftFormulaConfig = saveDraftFormulaConfig;
 
 resetDraftFormulaConfig = function() {
-  if (!verifyAdminPinPrompt('khôi phục cấu hình luồng mớn về mặc định')) return;
+  if (!(await verifyAdminPinPrompt('khôi phục cấu hình luồng mớn về mặc định'))) return;
   if (!confirm('Xác nhận khôi phục toàn bộ thông số Bến, Luồng và Dải mớn về mặc định ban đầu?')) return;
 
   let keepPin = getCurrentAdminPin();
@@ -9587,7 +9623,7 @@ resetDraftFormulaConfig = function() {
 window.resetDraftFormulaConfig = resetDraftFormulaConfig;
 
 saveVesselOverrideProtected = async function() {
-  if (!verifyAdminPinPrompt('lưu / cập nhật thông tin tàu')) return;
+  if (!(await verifyAdminPinPrompt('lưu / cập nhật thông tin tàu'))) return;
 
   let vName = ($('editVesselName').value || '').trim().toUpperCase();
   if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
@@ -9648,7 +9684,7 @@ saveVesselOverrideProtected = async function() {
 window.saveVesselOverrideProtected = saveVesselOverrideProtected;
 
 deleteVesselOverrideProtected = async function() {
-  if (!verifyAdminPinPrompt('xóa / ẩn bản ghi chuyến tàu')) return;
+  if (!(await verifyAdminPinPrompt('xóa / ẩn bản ghi chuyến tàu'))) return;
 
   let vName = ($('editVesselName').value || '').trim().toUpperCase();
   let vEtb = $('editVesselEtb').value;
@@ -11800,7 +11836,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     if(d===null){el.textContent='⚠️ Chưa từng sao lưu trên thiết bị này';el.className='hp-backup-info warn'}
     else{el.textContent='Sao lưu gần nhất: '+new Date(last).toLocaleDateString('vi-VN')+' ('+(d===0?'hôm nay':d+' ngày trước')+')';el.className='hp-backup-info'+(d>=30?' warn':'')}
   }
-  function pinOk(label){return(typeof verifyAdminPinPrompt==='function')?verifyAdminPinPrompt(label):(prompt('Nhập mật khẩu để '+label+':')==='6868')}
+  function pinOk(label){return(typeof verifyAdminPinPrompt==='function')?verifyAdminPinPrompt(label):(prompt('Nhập mật khẩu để '+label+':')==='****')}
   async function buildBackup(){
     var ls={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^hp_/.test(k)&&k!=='hp_admin_pin')ls[k]=localStorage.getItem(k)}
     ls[LEDGER_KEY]=JSON.stringify(ledger);
@@ -12084,10 +12120,12 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   if (trimBtn) {
     trimBtn.onclick = async () => {
       const pwd = prompt(dict[currentLang]?.promptPwd || 'Nhập mã PIN quản trị:');
-      if (pwd !== '6868') {
-        if (pwd !== null) alert(dict[currentLang]?.pwdWrong || 'Sai mã PIN!');
-        return;
-      }
+     // Mới (nhớ thêm async trước tên hàm nếu chưa có):
+const pinCheck = await window.verifyAdminPinSecure(pwd);
+if (!pinCheck.ok) {
+  if (pwd !== null) alert(pinCheck.message || dict[currentLang].pwdWrong);
+  return;
+}
       const cutoffIso = getTwoYearCutoffIso();
       const ok = confirm(
         `Chính sách bảo vệ dữ liệu 2 năm (730 ngày):\n` +
@@ -12334,115 +12372,181 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   }
 })();
 
-/* ==================== MODULE 3: KHÓA MÃ PIN CHO 2 BẢNG DỮ LIỆU VIP ==================== */
-(function initVipStatsPinLock() {
-  const VIP_PIN = '6868'; // Có thể đổi sang mã PIN riêng cho dữ liệu VIP nếu muốn
+/* ==================== MODULE 3: KHÓA VIP & RESET PIN QUA SUPABASE RPC (KHÔNG LỘ CODE) ==================== */
+(function initSecureVipPinAndBankReset() {
   let isVipUnlocked = false;
   let isApplyingLock = false;
 
-  // 1. Tự chèn CSS cho màn hình khóa VIP
+  // Hàm dùng chung xác thực PIN trên máy chủ Supabase (không lưu PIN trong code)
+  window.verifyAdminPinSecure = async function (pinInput) {
+    if (!supabaseClient) {
+      return { ok: false, message: 'Chưa kết nối được máy chủ xác thực.' };
+    }
+    const { data, error } = await supabaseClient.rpc('verify_admin_pin', {
+      p_pin: String(pinInput || '').trim()
+    });
+    if (error) return { ok: false, message: 'Lỗi kết nối xác thực: ' + error.message };
+    return data || { ok: false, message: 'Mã PIN không chính xác!' };
+  };
+
+  // Hàm dùng chung Reset PIN bằng Số tài khoản Ngân hàng Admin
+  window.resetAdminPinByBankSecure = async function (bankAcc, newPin) {
+    if (!supabaseClient) {
+      return { ok: false, message: 'Chưa kết nối được máy chủ xác thực.' };
+    }
+    const { data, error } = await supabaseClient.rpc('reset_admin_pin_by_bank', {
+      p_bank_account: String(bankAcc || '').trim(),
+      p_new_pin: String(newPin || '').trim()
+    });
+    if (error) return { ok: false, message: 'Lỗi máy chủ: ' + error.message };
+    return data || { ok: false, message: 'Không thể đặt lại mã PIN.' };
+  };
+
+  // 1. Chèn CSS cho khóa VIP và Modal Reset PIN
   if (!document.getElementById('vipPinLockStyles')) {
     const style = document.createElement('style');
     style.id = 'vipPinLockStyles';
     style.textContent = `
-      .vip-protected-panel {
-        position: relative !important;
-      }
-      .vip-protected-panel.vip-locked {
-        min-height: 230px !important;
-        overflow: hidden !important;
-      }
-      /* Ẩn hoàn toàn số liệu bên trong và các badge số ở tiêu đề khi đang khóa */
+      .vip-protected-panel { position: relative !important; }
+      .vip-protected-panel.vip-locked { min-height: 245px !important; overflow: hidden !important; }
       .vip-protected-panel.vip-locked > :not(.panel-head):not(.vip-lock-overlay) {
-        visibility: hidden !important;
-        max-height: 170px !important;
-        overflow: hidden !important;
-        pointer-events: none !important;
-        user-select: none !important;
+        visibility: hidden !important; max-height: 180px !important;
+        overflow: hidden !important; pointer-events: none !important; user-select: none !important;
       }
       .vip-protected-panel.vip-locked .panel-head > :not(:first-child) {
-        visibility: hidden !important;
-        pointer-events: none !important;
+        visibility: hidden !important; pointer-events: none !important;
       }
       .vip-lock-overlay {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        top: 44px;
-        z-index: 25;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
+        position: absolute; left: 0; right: 0; bottom: 0; top: 44px; z-index: 25;
+        display: flex; align-items: center; justify-content: center; padding: 16px;
         background: color-mix(in srgb, var(--card) 92%, transparent);
         backdrop-filter: blur(8px);
       }
       .vip-lock-box {
-        background: var(--card);
-        border: 1.5px solid var(--cyan);
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: 0 8px 24px rgba(16, 43, 70, 0.16);
-        text-align: center;
-        width: min(340px, 94%);
+        background: var(--card); border: 1.5px solid var(--cyan); border-radius: 12px;
+        padding: 16px 20px; box-shadow: 0 8px 24px rgba(16, 43, 70, 0.16);
+        text-align: center; width: min(350px, 94%);
       }
-      .vip-lock-title {
-        font-size: 13px;
-        font-weight: 850;
-        color: var(--navy2);
-        margin-bottom: 4px;
-      }
+      .vip-lock-title { font-size: 13px; font-weight: 850; color: var(--navy2); margin-bottom: 4px; }
       :root[data-theme="dark"] .vip-lock-title { color: var(--cyan); }
-      .vip-lock-desc {
-        font-size: 11px;
-        color: var(--muted);
-        margin-bottom: 10px;
-      }
-      .vip-lock-row {
-        display: flex;
-        gap: 6px;
-        justify-content: center;
-      }
-      .vip-pin-input {
-        width: 140px !important;
-        text-align: center;
-        letter-spacing: 4px;
-        font-weight: 800;
-        padding: 6px 10px !important;
-      }
-      .vip-unlock-btn {
-        background: var(--cyan) !important;
-        color: #fff !important;
-        padding: 6px 14px !important;
-        box-shadow: none !important;
-      }
-      .vip-lock-err {
-        color: var(--red, #c94d4d);
-        font-size: 11px;
-        font-weight: 700;
-        margin-top: 6px;
-        min-height: 15px;
+      .vip-lock-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+      .vip-lock-row { display: flex; gap: 6px; justify-content: center; }
+      .vip-pin-input { width: 140px !important; text-align: center; letter-spacing: 4px; font-weight: 800; padding: 6px 10px !important; }
+      .vip-unlock-btn { background: var(--cyan) !important; color: #fff !important; padding: 6px 14px !important; box-shadow: none !important; }
+      .vip-lock-err { color: var(--red, #c94d4d); font-size: 11px; font-weight: 700; margin-top: 6px; min-height: 15px; }
+      .vip-forgot-link {
+        margin-top: 6px; display: inline-block; font-size: 10.5px; font-weight: 700;
+        color: var(--cyan); cursor: pointer; background: none !important;
+        border: 0 !important; padding: 2px 4px !important; box-shadow: none !important;
+        text-decoration: underline;
       }
       .vip-relock-btn {
-        background: rgba(201, 77, 77, 0.12) !important;
-        color: #c94d4d !important;
-        border: 1px solid rgba(201, 77, 77, 0.4) !important;
-        padding: 3px 8px !important;
-        font-size: 10.5px !important;
-        margin-left: 6px;
-        box-shadow: none !important;
+        background: rgba(201, 77, 77, 0.12) !important; color: #c94d4d !important;
+        border: 1px solid rgba(201, 77, 77, 0.4) !important; padding: 3px 8px !important;
+        font-size: 10.5px !important; margin-left: 6px; box-shadow: none !important;
       }
     `;
     document.head.appendChild(style);
   }
 
-  // 2. Tìm đúng 2 bảng dữ liệu VIP
+  // 2. Tạo Modal Reset PIN bằng Số tài khoản Ngân hàng Admin
+  function ensureResetPinModal() {
+    let modal = document.getElementById('adminBankResetModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'adminBankResetModal';
+    modal.className = 'modal-shade';
+    modal.innerHTML = `
+      <div class="modal" style="width:min(400px,92vw)">
+        <h3>🔐 Khôi phục & Đổi mã PIN Admin</h3>
+        <p class="muted tiny" style="margin-bottom:12px">
+          Nhập <b>Số tài khoản Ngân hàng của Admin</b> để xác minh và thiết lập mã PIN mới.
+        </p>
+        <div class="form-group">
+          <label>Số tài khoản Ngân hàng của Admin (*)</label>
+          <input type="password" inputmode="numeric" id="rstBankAccInput" class="field" placeholder="Nhập số tài khoản ngân hàng..." autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Mã PIN mới (4 – 12 ký tự) (*)</label>
+          <input type="password" inputmode="numeric" maxlength="12" id="rstNewPinInput" class="field" placeholder="••••" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Nhập lại mã PIN mới (*)</label>
+          <input type="password" inputmode="numeric" maxlength="12" id="rstConfirmPinInput" class="field" placeholder="••••" autocomplete="new-password">
+        </div>
+        <div id="rstBankStatus" style="font-size:11px;font-weight:700;min-height:16px;margin-bottom:6px;"></div>
+        <div class="modal-actions">
+          <button type="button" id="rstCancelBtn">Hủy</button>
+          <button type="button" id="rstSubmitBtn" class="primary">Xác nhận đổi PIN</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => modal.classList.remove('open');
+    modal.querySelector('#rstCancelBtn').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    const submitBtn = modal.querySelector('#rstSubmitBtn');
+    const statusEl = modal.querySelector('#rstBankStatus');
+
+    const handleReset = async () => {
+      const bankAcc = modal.querySelector('#rstBankAccInput').value.trim();
+      const newPin = modal.querySelector('#rstNewPinInput').value.trim();
+      const confirmPin = modal.querySelector('#rstConfirmPinInput').value.trim();
+
+      statusEl.style.color = 'var(--red, #c94d4d)';
+      if (!bankAcc) { statusEl.textContent = 'Vui lòng nhập Số tài khoản ngân hàng của Admin!'; return; }
+      if (newPin.length < 4 || newPin.length > 12) { statusEl.textContent = 'Mã PIN mới phải từ 4 đến 12 ký tự!'; return; }
+      if (newPin !== confirmPin) { statusEl.textContent = 'Mã PIN nhập lại không khớp!'; return; }
+
+      submitBtn.disabled = true;
+      statusEl.style.color = 'var(--cyan)';
+      statusEl.textContent = '⏳ Đang xác minh trên máy chủ bảo mật...';
+
+      const res = await window.resetAdminPinByBankSecure(bankAcc, newPin);
+      submitBtn.disabled = false;
+
+      if (res.ok) {
+        statusEl.style.color = 'var(--green, #168568)';
+        statusEl.textContent = '✅ ' + (res.message || 'Đổi mã PIN thành công!');
+        modal.querySelector('#rstBankAccInput').value = '';
+        modal.querySelector('#rstNewPinInput').value = '';
+        modal.querySelector('#rstConfirmPinInput').value = '';
+        setTimeout(() => {
+          close();
+          alert('Đã đổi mã PIN thành công! Vui lòng dùng mã PIN mới để mở khóa.');
+        }, 700);
+      } else {
+        statusEl.style.color = 'var(--red, #c94d4d)';
+        statusEl.textContent = '❌ ' + (res.message || 'Xác minh thất bại!');
+      }
+    };
+
+    submitBtn.addEventListener('click', handleReset);
+    modal.querySelector('#rstConfirmPinInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleReset();
+    });
+
+    return modal;
+  }
+
+  window.openResetPinByBankModal = function () {
+    const modal = ensureResetPinModal();
+    modal.querySelector('#rstBankAccInput').value = '';
+    modal.querySelector('#rstNewPinInput').value = '';
+    modal.querySelector('#rstConfirmPinInput').value = '';
+    modal.querySelector('#rstBankStatus').textContent = '';
+    modal.classList.add('open');
+    setTimeout(() => modal.querySelector('#rstBankAccInput')?.focus(), 60);
+  };
+
+  // 3. Tìm 2 bảng VIP và xử lý mở khóa qua RPC
   function findVipPanels() {
     const found = new Set();
     const carrierPanel = document.getElementById('hpCarrierPanel');
     if (carrierPanel) found.add(carrierPanel);
-
     document.querySelectorAll('.panel').forEach(el => {
       if (el.id === 'page-stats') return;
       const head = el.querySelector(':scope > .panel-head');
@@ -12458,14 +12562,23 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     return Array.from(found);
   }
 
-  // 3. Kiểm tra mã PIN & mở khóa đồng thời cả 2 bảng
-  function tryUnlockVip(inputEl, errEl) {
+  async function tryUnlockVip(inputEl, btnEl, errEl) {
     const val = String(inputEl?.value || '').trim();
-    if (val === VIP_PIN) {
+    if (!val) {
+      if (errEl) errEl.textContent = 'Vui lòng nhập mã PIN!';
+      return;
+    }
+    if (btnEl) btnEl.disabled = true;
+    if (errEl) errEl.textContent = 'Đang kiểm tra...';
+
+    const res = await window.verifyAdminPinSecure(val);
+    if (btnEl) btnEl.disabled = false;
+
+    if (res.ok) {
       isVipUnlocked = true;
       applyVipLockState();
     } else {
-      if (errEl) errEl.textContent = 'Mã PIN không chính xác!';
+      if (errEl) errEl.textContent = res.message || 'Mã PIN không chính xác!';
       if (inputEl) {
         inputEl.value = '';
         inputEl.focus();
@@ -12473,16 +12586,11 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     }
   }
 
-  // 4. Tạo màn hình khóa phủ lên bảng
   function createLockOverlay(panelEl) {
     const overlay = document.createElement('div');
     overlay.className = 'vip-lock-overlay';
     const head = panelEl.querySelector(':scope > .panel-head');
-    if (head && head.offsetHeight > 0) {
-      overlay.style.top = head.offsetHeight + 'px';
-    } else if (!head) {
-      overlay.style.top = '0px';
-    }
+    overlay.style.top = (head && head.offsetHeight > 0) ? (head.offsetHeight + 'px') : '0px';
 
     overlay.innerHTML = `
       <div class="vip-lock-box">
@@ -12493,6 +12601,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
           <button type="button" class="vip-unlock-btn">Mở khóa</button>
         </div>
         <div class="vip-lock-err"></div>
+        <button type="button" class="vip-forgot-link">Quên / Reset mã PIN (Số TK Ngân hàng Admin)</button>
       </div>
     `;
 
@@ -12500,21 +12609,20 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     const btnEl = overlay.querySelector('.vip-unlock-btn');
     const errEl = overlay.querySelector('.vip-lock-err');
 
-    btnEl.addEventListener('click', () => tryUnlockVip(inputEl, errEl));
+    btnEl.addEventListener('click', () => tryUnlockVip(inputEl, btnEl, errEl));
     inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') tryUnlockVip(inputEl, errEl);
+      if (e.key === 'Enter') tryUnlockVip(inputEl, btnEl, errEl);
     });
+    overlay.querySelector('.vip-forgot-link').addEventListener('click', window.openResetPinByBankModal);
 
     return overlay;
   }
 
-  // 5. Áp dụng trạng thái Khóa / Mở khóa cho cả 2 bảng
   function applyVipLockState() {
     if (isApplyingLock) return;
     isApplyingLock = true;
     try {
-      const panels = findVipPanels();
-      panels.forEach(panel => {
+      findVipPanels().forEach(panel => {
         panel.classList.add('vip-protected-panel');
         const head = panel.querySelector(':scope > .panel-head');
         const oldOverlay = panel.querySelector(':scope > .vip-lock-overlay');
@@ -12523,9 +12631,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (!isVipUnlocked) {
           panel.classList.add('vip-locked');
           if (oldRelock) oldRelock.remove();
-          if (!oldOverlay) {
-            panel.appendChild(createLockOverlay(panel));
-          }
+          if (!oldOverlay) panel.appendChild(createLockOverlay(panel));
         } else {
           panel.classList.remove('vip-locked');
           if (oldOverlay) oldOverlay.remove();
@@ -12534,7 +12640,6 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
             lockBtn.type = 'button';
             lockBtn.className = 'vip-relock-btn';
             lockBtn.textContent = '🔒 Khóa lại';
-            lockBtn.title = 'Ẩn lại dữ liệu VIP';
             lockBtn.addEventListener('click', () => {
               isVipUnlocked = false;
               applyVipLockState();
@@ -12548,7 +12653,22 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     }
   }
 
-  // 6. Bọc renderStats & theo dõi DOM để không bị mất khóa khi bảng render lại
+  // Ghi đè luôn hàm kiểm tra PIN Hòm thư (verifyMailPassword) để dùng chung PIN mới trên Supabase
+  window.verifyMailPassword = async function () {
+    const pwd = document.getElementById('mailPasswordInput')?.value || '';
+    const errEl = document.getElementById('mailAuthError');
+    const res = await window.verifyAdminPinSecure(pwd);
+    if (res.ok) {
+      if (typeof closeMailAuthModal === 'function') closeMailAuthModal();
+      if (typeof renderInboxModal === 'function') renderInboxModal();
+      document.getElementById('inboxModal')?.classList.add('open');
+    } else if (errEl) {
+      errEl.textContent = res.message || 'Mật khẩu không chính xác!';
+      errEl.style.display = 'block';
+      document.getElementById('mailPasswordInput')?.select();
+    }
+  };
+
   if (typeof window.renderStats === 'function') {
     const origRenderStats = window.renderStats;
     window.renderStats = function () {
@@ -12571,7 +12691,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   document.addEventListener('DOMContentLoaded', applyVipLockState);
   setTimeout(applyVipLockState, 600);
   setTimeout(applyVipLockState, 1800);
-})();  
+})();
   
 </script>
 </body>
