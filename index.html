@@ -2871,20 +2871,7 @@ async function submitFeedbackReport() {
 }
 
 // --- DỮ LIỆU TÀU VÀ GHI ĐÈ ---
-async function loadVesselOverrides() {
-  if (!supabaseClient) return;
-  try {
-    let { data, error } = await supabaseClient.from('vessel_overrides').select('*');
-    if (data && !error) {
-      vesselOverridesMap.clear();
-      data.forEach(item => {
-        let key = (item.vessel_name || '').trim().toUpperCase();
-        if (key) vesselOverridesMap.set(key, item);
-      });
-      renderOverrideTable();
-    }
-  } catch(e) {}
-}
+
 
 function renderOverrideTable() {
   let tbody = $('overrideTableRows');
@@ -2911,114 +2898,6 @@ function renderOverrideTable() {
       <td><button class="tiny darkbtn" onclick="populateEditForm('${esc(key)}')">Sửa / Chọn</button></td>
     </tr>`;
   }).join('');
-}
-
-function populateEditForm(vesselOrName) {
-  let item = null;
-  let vName = '';
-
-  if (typeof vesselOrName === 'string') {
-    vName = vesselOrName.trim().toUpperCase();
-    item = allCalls.find(c => (c.vessel || '').trim().toUpperCase() === vName) || {};
-  } else if (vesselOrName && typeof vesselOrName === 'object') {
-    item = vesselOrName;
-    vName = (item.vessel || item.vessel_name || '').trim().toUpperCase();
-  }
-
-  if (!vName) return;
-  let specs = getVesselEnrichedSpecs(vName, item);
-  let ov = vesselOverridesMap.get(vName) || {};
-
-  if ($('editVesselName')) $('editVesselName').value = vName;
-  if ($('editVesselImo')) $('editVesselImo').value = specs.imo || '';
-  if ($('editVesselType')) $('editVesselType').value = specs.vessel_type || 'Container';
-  if ($('editVesselOperator')) $('editVesselOperator').value = specs.operator || '';
-  if ($('editVesselTerminal')) $('editVesselTerminal').value = ov.terminal || item.terminal || '';
-  if ($('editVesselBerth')) $('editVesselBerth').value = ov.berth || item.berth || '';
-  if ($('editVesselLoa')) $('editVesselLoa').value = specs.loa || '';
-  if ($('editVesselBeam')) $('editVesselBeam').value = specs.beam || '';
-  if ($('editVesselTeu')) $('editVesselTeu').value = specs.teu !== undefined ? specs.teu : '';
-  if ($('editVesselDwt')) $('editVesselDwt').value = specs.dwt || '';
-  if ($('editVesselGt')) $('editVesselGt').value = specs.gt || '';
-  if ($('editVesselEtb')) $('editVesselEtb').value = formatDateTimeLocal(ov.etb || item.etb);
-  if ($('editVesselEtd')) $('editVesselEtd').value = formatDateTimeLocal(ov.etd || item.etd);
-
-  nav('edit-vessel', true);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function saveVesselOverrideProtected() {
-  let pwd = prompt(dict[currentLang].promptPwd);
-  if (pwd !== '6868') {
-    if (pwd !== null) alert(dict[currentLang].pwdWrong);
-    return;
-  }
-
-  let vName = ($('editVesselName').value || '').trim().toUpperCase();
-  if (!vName) {
-    alert('Vui lòng nhập tên tàu cần lưu!');
-    return;
-  }
-
-  let payload = {
-    vessel_name: vName,
-    imo: ($('editVesselImo')?.value || '').trim(),
-    vessel_type: $('editVesselType')?.value || 'Container',
-    operator: $('editVesselOperator').value.trim(),
-    terminal: $('editVesselTerminal').value.trim(),
-    berth: $('editVesselBerth').value.trim(),
-    loa: Number($('editVesselLoa').value) || 0,
-    beam: Number($('editVesselBeam')?.value) || 0,
-    teu: Number($('editVesselTeu')?.value) || 0,
-    dwt: $('editVesselDwt').value.trim(),
-    gt: ($('editVesselGt')?.value || '').trim(),
-    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
-    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
-    updated_at: new Date().toISOString()
-  };
-
-  // Cập nhật ngay vào cả Override và Catalog
-  vesselOverridesMap.set(vName, payload);
-  vesselCatalogMap.set(vName, {
-    type: payload.vessel_type,
-    loa: payload.loa,
-    beam: payload.beam,
-    teu: payload.teu,
-    dwt: payload.dwt,
-    gt: payload.gt,
-    imo: payload.imo,
-    agent: payload.operator
-  });
-
-  let catalogObj = Object.fromEntries(vesselCatalogMap);
-  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
-
-  try {
-    if (supabaseClient) {
-      // Lưu các trường chuẩn vào bảng vessel_overrides
-      await supabaseClient.from('vessel_overrides').upsert({
-        vessel_name: payload.vessel_name,
-        operator: payload.operator,
-        terminal: payload.terminal,
-        berth: payload.berth,
-        loa: payload.loa,
-        dwt: payload.dwt,
-        etb: payload.etb,
-        etd: payload.etd,
-        updated_at: payload.updated_at
-      }, { onConflict: 'vessel_name' });
-
-      // Đồng bộ toàn bộ thông số mở rộng (Beam, TEU, Loại tàu, IMO, GT) lên Bucket vessel_catalog.json
-      const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
-      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
-    }
-    updateCatalogBadgeCount();
-    renderOverrideTable();
-    loadData();
-    alert(`Đã lưu thông số tàu "${vName}" (Beam: ${payload.beam}m, TEU: ${payload.teu}) thành công!`);
-  } catch (err) {
-    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
-  }
 }
 
 async function deleteVesselOverrideProtected() {
@@ -3071,252 +2950,6 @@ async function deleteVesselOverrideProtected() {
   }
 }
 
-function filterAndDeduplicateCalls(rawList) {
-  if (!Array.isArray(rawList)) return [];
-
-
-// Hàm tra cứu thông số kỹ thuật của tàu từ Override hoặc Catalog
-function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
-  let vKey = String(vesselName || '').trim().toUpperCase();
-  let ov = vesselOverridesMap.get(vKey) || {};
-  let cat = vesselCatalogMap.get(vKey) || {};
-
-  let loa = Number(ov.loa || rawCall.loa || cat.loa || 0);
-  let beam = Number(ov.beam || rawCall.beam || cat.beam || 0);
-  let teu = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
-  let vType = ov.vessel_type || rawCall.vessel_type || cat.type || (teu > 0 ? 'Container' : '');
-
-  // Ước lượng thông minh nếu tàu hoàn toàn mới chưa kịp tra cứu
-  if (!beam && loa > 0) {
-    beam = loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0));
-  }
-  if (!vType && loa > 0) {
-    vType = 'Container';
-  }
-
-  return {
-    vessel_type: vType,
-    beam: beam,
-    teu: teu,
-    loa: loa,
-    dwt: ov.dwt || rawCall.dwt || cat.dwt || '',
-    gt: ov.gt || rawCall.gt || cat.gt || '',
-    imo: ov.imo || rawCall.imo || cat.imo || '',
-    operator: ov.operator || rawCall.operator || cat.agent || ''
-  };
-}
-  // 1. Chuẩn hóa dữ liệu & Tích hợp XÓA CHUYẾN THEO NGÀY CẬP (Yêu cầu ẩn chuyến)
-  let cleanList = rawList.map(c => {
-    let vName = (c.vessel || '').trim().toUpperCase();
-    let ov = vesselOverridesMap.get(vName);
-    
-    // NẾU CÓ CỜ ẨN -> Chỉ xóa đúng chuyến có ETB trùng khớp
-    if (ov && ov.is_hidden === true) {
-      let ovDate = ov.etb ? ov.etb.split('T')[0] : '';
-      let cDate = c.etb ? c.etb.split('T')[0] : '';
-      
-      if (ovDate && cDate && ovDate === cDate) {
-        return null; // Vứt bỏ chuyến bị xóa theo lệnh người dùng
-      }
-      if (!ovDate && !cDate) {
-        return null;
-      }
-    }
-
-    return {
-      vessel: vName,
-      operator: (ov && !ov.is_hidden && ov.operator) || c.operator || '',
-      terminal: (ov && !ov.is_hidden && ov.terminal) || c.terminal || '',
-      berth: (ov && !ov.is_hidden && ov.berth) || c.berth || '',
-      loa: (ov && !ov.is_hidden && ov.loa !== undefined && ov.loa !== null && ov.loa !== '') ? Number(ov.loa) : (Number(c.loa) || 0),
-      dwt: (ov && !ov.is_hidden && ov.dwt) || c.dwt || '',
-      etb: c.etb || '',
-      etd: c.etd || ''
-    };
-  }).filter(c => c && c.vessel);
-
-  // 2. Nhóm theo tên tàu để tách/ghép cặp ETB - ETD
-  let groups = new Map();
-  cleanList.forEach(c => {
-    if (!groups.has(c.vessel)) groups.set(c.vessel, []);
-    groups.get(c.vessel).push(c);
-  });
-
-  const MAX_PORT_STAY_MS = 5 * 86400000; // Giới hạn chuyến độc lập dài tối đa: 5 ngày
-  let pairedCalls = [];
-
-  // 3. Tách và ghép cặp chuẩn xác
-  groups.forEach((recs, vName) => {
-    let defaultMeta = { operator: '', terminal: '', berth: '', loa: 0, dwt: '' };
-    recs.forEach(r => {
-      if (!defaultMeta.operator && r.operator) defaultMeta.operator = r.operator;
-      if (!defaultMeta.terminal && r.terminal) defaultMeta.terminal = r.terminal;
-      if (!defaultMeta.berth && r.berth) defaultMeta.berth = r.berth;
-      if (!defaultMeta.loa && r.loa) defaultMeta.loa = r.loa;
-      if (!defaultMeta.dwt && r.dwt) defaultMeta.dwt = r.dwt;
-    });
-
-    let standaloneCalls = [];
-    let rawEtbs = [];
-    let rawEtds = [];
-
-    recs.forEach(r => {
-      let t1 = r.etb ? new Date(r.etb).getTime() : 0;
-      let t2 = r.etd ? new Date(r.etd).getTime() : 0;
-
-      if (t1 > 0 && t2 > 0 && t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
-        standaloneCalls.push({
-          ...r,
-          operator: r.operator || defaultMeta.operator,
-          terminal: r.terminal || defaultMeta.terminal,
-          berth: r.berth || defaultMeta.berth,
-          loa: r.loa || defaultMeta.loa,
-          dwt: r.dwt || defaultMeta.dwt
-        });
-      } else {
-        if (t1 > 0) rawEtbs.push({ time: t1, str: r.etb, rec: r });
-        if (t2 > 0) rawEtds.push({ time: t2, str: r.etd, rec: r });
-      }
-    });
-
-    let uniqueEtbs = [];
-    let seenEtb = new Set();
-    rawEtbs.forEach(item => {
-      if (!seenEtb.has(item.str)) { seenEtb.add(item.str); uniqueEtbs.push(item); }
-    });
-
-    let uniqueEtds = [];
-    let seenEtd = new Set();
-    rawEtds.forEach(item => {
-      if (!seenEtd.has(item.str)) { seenEtd.add(item.str); uniqueEtds.push(item); }
-    });
-
-    uniqueEtbs.sort((a, b) => a.time - b.time);
-    uniqueEtds.sort((a, b) => a.time - b.time);
-
-    let usedEtdIndices = new Set();
-
-    uniqueEtbs.forEach(eItem => {
-      let t1 = eItem.time;
-      let bestEtd = null;
-      let bestDiff = Infinity;
-      let bestIdx = -1;
-
-      uniqueEtds.forEach((dItem, idx) => {
-        if (usedEtdIndices.has(idx)) return;
-        let t2 = dItem.time;
-        if (t2 >= t1 && (t2 - t1) <= MAX_PORT_STAY_MS) {
-          let diff = t2 - t1;
-          if (diff < bestDiff) {
-            bestDiff = diff;
-            bestEtd = dItem;
-            bestIdx = idx;
-          }
-        }
-      });
-
-      let srcRec = eItem.rec;
-      pairedCalls.push({
-        vessel: vName,
-        operator: srcRec.operator || (bestEtd && bestEtd.rec.operator) || defaultMeta.operator,
-        terminal: srcRec.terminal || (bestEtd && bestEtd.rec.terminal) || defaultMeta.terminal,
-        berth: srcRec.berth || (bestEtd && bestEtd.rec.berth) || defaultMeta.berth,
-        loa: srcRec.loa || (bestEtd && bestEtd.rec.loa) || defaultMeta.loa,
-        dwt: srcRec.dwt || (bestEtd && bestEtd.rec.dwt) || defaultMeta.dwt,
-        etb: eItem.str,
-        etd: bestEtd ? bestEtd.str : ''
-      });
-
-      if (bestIdx !== -1) usedEtdIndices.add(bestIdx);
-    });
-
-    standaloneCalls.forEach(sc => pairedCalls.push(sc));
-  });
-
-  // 4. KHỬ TRÙNG LẶP NÂNG CAO & GỘP TÀU TRÙNG LẶP TRONG CÙNG 1 NGÀY
-  let dailyDistinctMap = new Map();
-  
-  pairedCalls.forEach(c => {
-    // 🛑 Lọc bảo vệ: Bỏ qua hoàn toàn các tàu không có giờ cập (ETB)
-    if (!c.etb) return;
-
-    let etbDateStr = c.etb.split('T')[0]; // Lấy phần ngày YYYY-MM-DD
-    let key = `${c.vessel}_${etbDateStr}`; // Khóa định danh: Tên tàu + Ngày cập
-    
-    if (!dailyDistinctMap.has(key)) {
-      dailyDistinctMap.set(key, c);
-    } else {
-      
-      // 🛑 Phát hiện dữ liệu 1 tàu được ghi nhận nhiều lần cập trong cùng 1 ngày
-      let existingCall = dailyDistinctMap.get(key);
-      let t1_existing = new Date(existingCall.etb).getTime();
-      let t1_current = new Date(c.etb).getTime();
-      
-      // So sánh và chỉ giữ lại chuyến có giờ cập (ETB) MUỘN NHẤT
-      if (t1_current > t1_existing) {
-        dailyDistinctMap.set(key, c);
-      }
-    }
-  });
-return Array.from(dailyDistinctMap.values()).map(c => {
-    let specs = getVesselEnrichedSpecs(c.vessel, c);
-    return {
-      ...c,
-      operator: c.operator || specs.operator,
-      loa: specs.loa || c.loa,
-      dwt: c.dwt || specs.dwt,
-      gt: specs.gt,
-      imo: specs.imo,
-      vessel_type: specs.vessel_type,
-      beam: specs.beam,
-      teu: specs.teu
-    };
-  });
-  return Array.from(dailyDistinctMap.values());
-}
- 
-
-  async function loadData() {
-  if ($('refreshBtn')) $('refreshBtn').disabled = true;
-  if ($('sideStatus')) $('sideStatus').textContent = 'Đang tải dữ liệu...';
-  try {
-    await loadVesselOverrides();
-    let r = await fetch(API, { cache: 'no-store' });
-    let d = await r.json();
-    if (d && Array.isArray(d.calls)) {
-      allCalls = filterAndDeduplicateCalls(d.calls.map(c => ({
-        vessel: c.vessel || '',
-        operator: c.operator || '',
-        terminal: c.terminal || '',
-        berth: c.berth || '',
-        loa: Number(c.loa) || 0,
-        dwt: c.dwt ?? '',
-        etb: c.etb || '',
-        etd: c.etd || ''
-      })));
-      renderAll();
-      if ($('sideStatus')) $('sideStatus').textContent = `${allCalls.length} tàu`;
-    }
-  } catch(e) {
-    if ($('sideStatus')) $('sideStatus').textContent = 'Lỗi API, kiểm tra Bucket...';
-    try {
-      if (supabaseClient) {
-        let today = getTodayString();
-        const { data } = await supabaseClient.storage.from('port-documents').download(`daily_snapshot_${today}.json`);
-        if (data) {
-          let parsed = JSON.parse(await data.text());
-          if (parsed.calls) {
-            allCalls = filterAndDeduplicateCalls(parsed.calls);
-            renderAll();
-            if ($('sideStatus')) $('sideStatus').textContent = `Offline (${allCalls.length} tàu)`;
-          }
-        }
-      }
-    } catch(err) {}
-  } finally {
-    if ($('refreshBtn')) $('refreshBtn').disabled = false;
-  }
-}
 
 // --- KHÍ TƯỢNG HÀNG HẢI TRỰC TIẾP ---
 async function fetchRealWeatherHaiPhong() {
@@ -4513,23 +4146,6 @@ function parseDwtToMetricTons(rawDwt, loaFallback = 0) {
   return Math.round(num);
 }
 
-// 2. Hàm chuẩn hóa Sức chở TEU (kế thừa từ Catalog hoặc ước lượng theo LOA cho tàu Container)
-function getEffectiveTeu(callObj) {
-  let teu = Number(callObj.teu || 0);
-  if (teu > 0) return teu;
-  let vType = String(callObj.vessel_type || 'Container').toUpperCase();
-  if (vType.includes('RỜI') || vType.includes('PCTC') || vType.includes('Ô TÔ') || vType.includes('DẦU')) {
-    return 0;
-  }
-  let loa = Number(callObj.loa || 0);
-  if (loa >= 250) return 4200;
-  if (loa >= 200) return 2800;
-  if (loa >= 170) return 1850;
-  if (loa >= 140) return 1100;
-  if (loa >= 100) return 650;
-  return 0;
-}
-
 // 3. Chuyển đổi tiêu chí Ranking trên giao diện
 function setStatsRankingMetric(metric, btnElem) {
   currentRankingMetric = metric;
@@ -4799,121 +4415,6 @@ function showStatsPopover(e, groupKey, labelName) {
 }
 
 // 7. TIẾN TRÌNH TỰ ĐỘNG RÀ SOÁT & BỔ SUNG THÔNG SỐ TÀU CUỐI NGÀY (END-OF-DAY AUTO AUDIT)
-async function runEndOfDayVesselAudit(isSilentAuto = false) {
-  if (isEodAuditRunning) return;
-  isEodAuditRunning = true;
-
-  let badge = $('eodAuditStatusBadge');
-  let list = getFilteredCalls();
-  // Tìm các tàu trong ngày chưa đủ thông số (thiếu Beam hoặc thiếu DWT/LOA)
-  let missingVessels = [];
-  let seen = new Set();
-
-  list.forEach(c => {
-    let vName = (c.vessel || '').trim().toUpperCase();
-    if (!vName || seen.has(vName)) return;
-    seen.add(vName);
-    let specs = (typeof getVesselEnrichedSpecs === 'function') ? getVesselEnrichedSpecs(vName, c) : c;
-    let hasCatalogEntry = (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap.has(vName)) || vesselOverridesMap.has(vName);
-    if (!hasCatalogEntry || !specs.beam || !specs.loa || !specs.dwt) {
-      missingVessels.push({ name: vName, call: c, specs });
-    }
-  });
-
-  if (missingVessels.length === 0) {
-    if (badge) {
-      badge.textContent = `✓ 100% tàu trong ngày đã đủ thông số (${seen.size} tàu)`;
-      badge.style.color = '#059669';
-    }
-    if (!isSilentAuto) alert(`Tất cả ${seen.size} tàu trong danh sách hiện tại đều đã có đầy đủ thông số kỹ thuật (Loại tàu, LOA, Beam, TEU, DWT)!`);
-    isEodAuditRunning = false;
-    return;
-  }
-
-  let updatedCount = 0;
-  for (let i = 0; i < missingVessels.length; i++) {
-    let item = missingVessels[i];
-    if (badge) {
-      badge.textContent = `⏳ Đang quét cuối ngày (${i + 1}/${missingVessels.length}): ${item.name}...`;
-      badge.style.color = '#d97706';
-    }
-
-    try {
-      // Bước 1: Dò IMO và thông số từ VesselFinder qua r.jina.ai
-      let imo = item.specs.imo || '';
-      if (!imo) {
-        let sRes = await fetch(`https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(item.name)}`);
-        if (sRes.ok) {
-          let sText = await sRes.text();
-          let m = sText.match(/\/vessels\/details\/(\d{7})/);
-          if (m) imo = m[1];
-        }
-      }
-
-      let parsed = {};
-      if (imo && typeof parseVesselFinderContent === 'function') {
-        let dRes = await fetch(`https://r.jina.ai/https://www.vesselfinder.com/vessels/details/${imo}`);
-        if (dRes.ok) {
-          parsed = parseVesselFinderContent(await dRes.text());
-        }
-      }
-
-      // Bước 2: Gộp thông số quét được với thuật toán nội suy chuẩn Cảng HP nếu trang web thiếu trường
-      let finalLoa = parsed.loa || item.specs.loa || item.call.loa || 179.9;
-      let finalBeam = parsed.beam || item.specs.beam || (finalLoa >= 200 ? 32.2 : (finalLoa >= 170 ? 27.6 : 25.0));
-      let finalType = parsed.type || item.specs.vessel_type || 'Container';
-      let finalTeu = parsed.teu !== undefined ? parsed.teu : getEffectiveTeu({ loa: finalLoa, vessel_type: finalType });
-      let finalDwt = parsed.dwt || item.specs.dwt || item.call.dwt || String(parseDwtToMetricTons('', finalLoa));
-
-      if (typeof vesselCatalogMap !== 'undefined') {
-        vesselCatalogMap.set(item.name, {
-          type: finalType,
-          loa: finalLoa,
-          beam: finalBeam,
-          teu: finalTeu,
-          dwt: finalDwt,
-          gt: parsed.gt || item.specs.gt || '',
-          imo: imo || parsed.imo || '',
-          agent: item.call.operator || item.specs.operator || ''
-        });
-      }
-      updatedCount++;
-    } catch (e) {
-      console.warn('EOD Audit skip:', item.name, e);
-    }
-
-    // Nghỉ 2.0 giây giữa mỗi tàu để đảm bảo kết nối ổn định
-    await new Promise(r => setTimeout(r, 2000));
-  }
-
-  // Lưu bền vững kết quả rà soát cuối ngày vào LocalStorage & Supabase Bucket
-  if (typeof vesselCatalogMap !== 'undefined' && updatedCount > 0) {
-    let catalogObj = Object.fromEntries(vesselCatalogMap);
-    localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
-    if (supabaseClient) {
-      try {
-        const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
-        await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
-      } catch (e) {}
-    }
-  }
-
-  lastEodAuditDate = getTodayString();
-  localStorage.setItem('hp_last_eod_audit_date', lastEodAuditDate);
-  isEodAuditRunning = false;
-
-  if (typeof updateCatalogBadgeCount === 'function') updateCatalogBadgeCount();
-  allCalls = filterAndDeduplicateCalls(allCalls);
-  renderAll();
-
-  if (badge) {
-    badge.textContent = `✓ Đã rà soát & bổ sung ${updatedCount} tàu (${new Date().toLocaleTimeString('vi-VN')})`;
-    badge.style.color = '#059669';
-  }
-  if (!isSilentAuto) {
-    alert(`Hoàn tất rà soát cuối ngày! Đã tự động bổ sung và chuẩn hóa thông số cho ${updatedCount}/${missingVessels.length} tàu.`);
-  }
-}
 
 function scheduleHideStatsPopover() {
   clearStatsPopoverTimeout();
@@ -12366,6 +11867,510 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   document.addEventListener('visibilitychange',function(){if(!document.hidden)checkReminder()});
 })();
 
+  /* ==================== MODULE 1: TỐI ƯU BỘ NHỚ & LƯU TRỮ DỮ LIỆU 2 NĂM (730 NGÀY) ==================== */
+(function initMemoryAndTwoYearRetention() {
+  const DB_NAME = 'CHP_VesselHistory_2Y';
+  const DB_VERSION = 1;
+  const STORE_VOYAGES = 'voyages';
+  const RETENTION_DAYS = 730; // Đúng 2 năm (730 ngày) mới được phép xóa
+  const RETENTION_MS = RETENTION_DAYS * 86400000;
+
+  let _dbPromise = null;
+
+  function openHistoryDB() {
+    if (_dbPromise) return _dbPromise;
+    _dbPromise = new Promise((resolve, reject) => {
+      if (!window.indexedDB) return resolve(null);
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_VOYAGES)) {
+          const store = db.createObjectStore(STORE_VOYAGES, { keyPath: 'id' });
+          store.createIndex('by_date', 'd', { unique: false });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    return _dbPromise;
+  }
+
+  // Nén bản ghi xuống 8 trường lõi để tiết kiệm ~65% RAM & ổ đĩa
+  function compactCallRecord(c) {
+    const v = String(c.vessel || c.v || '').trim().toUpperCase();
+    const eb = String(c.etb || c.eb || '').trim();
+    const d = eb ? eb.split('T')[0] : '';
+    if (!v || !d) return null;
+    return {
+      id: `${v}_${d}`,
+      d,
+      v,
+      op: String(c.operator || c.op || '').trim(),
+      t: String(c.terminal || c.t || '').trim(),
+      b: String(c.berth || c.b || '').trim(),
+      l: Number(c.loa || c.l) || 0,
+      dw: String(c.dwt ?? c.dw ?? '').trim(),
+      eb,
+      ed: String(c.etd || c.ed || '').trim()
+    };
+  }
+
+  function expandCallRecord(r) {
+    return {
+      vessel: r.v,
+      operator: r.op,
+      terminal: r.t,
+      berth: r.b,
+      loa: Number(r.l) || 0,
+      dwt: r.dw || '',
+      etb: r.eb || '',
+      etd: r.ed || ''
+    };
+  }
+
+  function getTwoYearCutoffIso() {
+    const cutoff = new Date(Date.now() - RETENTION_MS);
+    const yyyy = cutoff.getFullYear();
+    const mm = String(cutoff.getMonth() + 1).padStart(2, '0');
+    const dd = String(cutoff.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Lưu chuyến tàu vào IndexedDB (không dồn 2 năm vào localStorage tránh tràn 5MB)
+  async function saveCallsToHistoryDB(rawCalls) {
+    const db = await openHistoryDB();
+    if (!db || !Array.isArray(rawCalls) || !rawCalls.length) return 0;
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_VOYAGES, 'readwrite');
+      const store = tx.objectStore(STORE_VOYAGES);
+      let count = 0;
+      for (let i = 0; i < rawCalls.length; i++) {
+        const rec = compactCallRecord(rawCalls[i]);
+        if (rec) {
+          store.put(rec);
+          count++;
+        }
+      }
+      tx.oncomplete = () => resolve(count);
+      tx.onerror = () => resolve(count);
+    });
+  }
+
+  // Chỉ đọc các chuyến trong khoảng ngày cần xem (mặc định 60 ngày gần nhất nếu không truyền)
+  async function loadCallsFromHistoryDB(fromIso = '', toIso = '') {
+    const db = await openHistoryDB();
+    if (!db) return [];
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_VOYAGES, 'readonly');
+      const idx = tx.objectStore(STORE_VOYAGES).index('by_date');
+      let range = null;
+      if (fromIso && toIso) {
+        // Lùi thêm 5 ngày đầu để không sót tàu cập trước kỳ nhưng còn nằm bến
+        const startPad = new Date(new Date(fromIso).getTime() - 5 * 86400000).toISOString().split('T')[0];
+        range = IDBKeyRange.bound(startPad, toIso);
+      }
+      const req = idx.getAll(range);
+      req.onsuccess = () => resolve((req.result || []).map(expandCallRecord));
+      req.onerror = () => resolve([]);
+    });
+  }
+
+  // CHÍNH SÁCH BẢO VỆ 2 NĂM: Chỉ xóa bản ghi cũ hơn đúng 730 ngày
+  async function pruneDataOlderThan2Years(includeCloud = false) {
+    const cutoffIso = getTwoYearCutoffIso();
+    let deletedLocal = 0;
+    let deletedCloud = 0;
+
+    const db = await openHistoryDB();
+    if (db) {
+      deletedLocal = await new Promise((resolve) => {
+        const tx = db.transaction(STORE_VOYAGES, 'readwrite');
+        const idx = tx.objectStore(STORE_VOYAGES).index('by_date');
+        const range = IDBKeyRange.upperBound(cutoffIso, true); // Strictly < cutoffIso (> 2 năm)
+        let removed = 0;
+        const cursorReq = idx.openCursor(range);
+        cursorReq.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (cursor) {
+            cursor.delete();
+            removed++;
+            cursor.continue();
+          }
+        };
+        tx.oncomplete = () => resolve(removed);
+        tx.onerror = () => resolve(removed);
+      });
+    }
+
+    // Dọn snapshot trên Supabase Storage CHỈ KHI cũ hơn 2 năm (730 ngày)
+    if (includeCloud && typeof supabaseClient !== 'undefined' && supabaseClient) {
+      try {
+        const { data: files } = await supabaseClient.storage.from('port-documents').list('', { limit: 1000 });
+        if (Array.isArray(files)) {
+          const expiredFiles = files
+            .filter(f => {
+              const m = String(f.name || '').match(/^daily_snapshot_(\d{4}-\d{2}-\d{2})\.json$/);
+              return m && m[1] < cutoffIso;
+            })
+            .map(f => f.name);
+          if (expiredFiles.length > 0) {
+            await supabaseClient.storage.from('port-documents').remove(expiredFiles);
+            deletedCloud = expiredFiles.length;
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi dọn snapshot quá 2 năm trên Cloud:', e);
+      }
+    }
+
+    // Dọn key cũ cồng kềnh trong localStorage nếu vượt 1MB (dữ liệu đã nằm an toàn trong IndexedDB)
+    try {
+      const oldCache = localStorage.getItem('hp_cached_raw_calls');
+      if (oldCache && oldCache.length > 800000) {
+        localStorage.removeItem('hp_cached_raw_calls');
+      }
+    } catch (e) {}
+
+    return { cutoffIso, deletedLocal, deletedCloud };
+  }
+
+  // Tự động dọn dữ liệu quá 2 năm (mỗi ngày chạy tối đa 1 lần, không bao giờ xóa dữ liệu < 2 năm)
+  async function autoPruneOnceDaily() {
+    const today = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().split('T')[0];
+    if (localStorage.getItem('hp_last_2y_prune') === today) return;
+    await pruneDataOlderThan2Years(false);
+    localStorage.setItem('hp_last_2y_prune', today);
+  }
+
+  // Ghi đè nút "Cắt bớt dữ liệu" (#hpTrimBtn) để ép tuân thủ quy tắc chỉ xóa sau 2 năm
+  const trimBtn = document.getElementById('hpTrimBtn');
+  if (trimBtn) {
+    trimBtn.onclick = async () => {
+      const pwd = prompt(dict[currentLang]?.promptPwd || 'Nhập mã PIN quản trị:');
+      if (pwd !== '6868') {
+        if (pwd !== null) alert(dict[currentLang]?.pwdWrong || 'Sai mã PIN!');
+        return;
+      }
+      const cutoffIso = getTwoYearCutoffIso();
+      const ok = confirm(
+        `Chính sách bảo vệ dữ liệu 2 năm (730 ngày):\n` +
+        `- Mọi dữ liệu từ ngày ${cutoffIso} trở lại đây được GIỮ NGUYÊN.\n` +
+        `- Chỉ xóa các bản ghi & snapshot cũ hơn ngày ${cutoffIso}.\n\n` +
+        `Bạn có muốn thực hiện dọn dẹp ngay?`
+      );
+      if (!ok) return;
+      const res = await pruneDataOlderThan2Years(true);
+      alert(`Hoàn tất tối ưu bộ nhớ!\n- Đã xóa ${res.deletedLocal} chuyến tàu (> 2 năm) trong bộ nhớ máy.\n- Đã xóa ${res.deletedCloud} file snapshot (> 2 năm) trên Cloud.\n- Toàn bộ dữ liệu trong 2 năm gần nhất vẫn an toàn.`);
+    };
+  }
+
+  // Vá rò rỉ bộ nhớ URL.revokeObjectURL khi xuất CSV
+  if (typeof window.exportConfigAsCSV === 'function') {
+    const origExport = window.exportConfigAsCSV;
+    window.exportConfigAsCSV = function () {
+      const origCreate = URL.createObjectURL;
+      const createdUrls = [];
+      URL.createObjectURL = function (blob) {
+        const u = origCreate.call(URL, blob);
+        createdUrls.push(u);
+        return u;
+      };
+      try {
+        origExport.apply(this, arguments);
+      } finally {
+        URL.createObjectURL = origCreate;
+        setTimeout(() => createdUrls.forEach(u => URL.revokeObjectURL(u)), 2000);
+      }
+    };
+  }
+
+  // Tối ưu phân trang cho bảng Tra cứu (tránh treo trình duyệt khi xem lịch sử 2 năm)
+  let _tableAllFiltered = [];
+  let _tableRenderedCount = 0;
+  const TABLE_PAGE_SIZE = 100;
+
+  window.renderMoreTableRows = function () {
+    const tbody = document.getElementById('rows');
+    if (!tbody) return;
+    const oldBtnRow = document.getElementById('tableLoadMoreRow');
+    if (oldBtnRow) oldBtnRow.remove();
+
+    const slice = _tableAllFiltered.slice(_tableRenderedCount, _tableRenderedCount + TABLE_PAGE_SIZE);
+    const startIdx = _tableRenderedCount;
+    _tableRenderedCount += slice.length;
+
+    const html = slice.map((c, offset) => {
+      const i = startIdx + offset;
+      const typeBadgeColor = (c.vessel_type || '').includes('Hàng rời')
+        ? 'background:#dcfce7;color:#166534'
+        : ((c.vessel_type || '').includes('PCTC') ? 'background:#fef3c7;color:#92400e' : 'background:#e0f2fe;color:#0369a1');
+      const beamStr = c.beam ? `${Number(c.beam).toFixed(1)}m` : '—';
+      const teuStr = c.teu > 0 ? `${Number(c.teu).toLocaleString('vi-VN')} ${esc(c.capacity_unit || 'TEU')}` : '—';
+      const yearAge = c.year_built ? `${c.year_built}${c.vessel_age !== null && c.vessel_age !== undefined ? ` (${c.vessel_age}t)` : ''}` : '—';
+      const routeStr = (c.last_port || c.destination) ? `${esc(c.last_port || '—')} → ${esc(c.destination || '—')}` : '—';
+
+      return `
+        <tr onclick="populateEditForm('${esc(c.vessel)}')" style="cursor:pointer">
+          <td>${i + 1}</td>
+          <td class="vessel">${esc(c.vessel)} ${c.imo ? `<small class="muted">(${esc(c.imo)})</small>` : ''}</td>
+          <td><span class="badge" style="${typeBadgeColor}">${esc(c.vessel_type || 'Container')}</span></td>
+          <td>${yearAge}</td>
+          <td><span class="badge">${esc(c.operator || '—')}</span></td>
+          <td><b>${c.loa || '—'}</b> × <span style="color:#0284c7;font-weight:700">${beamStr}</span></td>
+          <td style="color:#059669;font-weight:700">${teuStr}</td>
+          <td>${esc(c.dwt || '—')}</td>
+          <td style="font-size:10px;color:var(--muted)">${routeStr}</td>
+          <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
+          <td>${dt(c.etb)}</td>
+          <td>${dt(c.etd)}</td>
+        </tr>`;
+    }).join('');
+
+    tbody.insertAdjacentHTML('beforeend', html);
+
+    if (_tableRenderedCount < _tableAllFiltered.length) {
+      const remain = _tableAllFiltered.length - _tableRenderedCount;
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr id="tableLoadMoreRow">
+          <td colspan="12" style="text-align:center;padding:10px;">
+            <button type="button" class="primary" onclick="renderMoreTableRows()">
+              ⬇ Tải thêm ${Math.min(TABLE_PAGE_SIZE, remain)} dòng (còn ${remain.toLocaleString('vi-VN')} dòng)
+            </button>
+          </td>
+        </tr>`);
+    }
+  };
+
+  window.renderTable = function (list) {
+    const q = (document.getElementById('search')?.value || '').toLowerCase();
+    _tableAllFiltered = (list || []).filter(c =>
+      !q || [c.vessel, c.vessel_type, c.operator, c.terminal, c.berth, c.imo].join(' ').toLowerCase().includes(q)
+    );
+    _tableRenderedCount = 0;
+    const tbody = document.getElementById('rows');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!_tableAllFiltered.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="empty">Không tìm thấy bản ghi.</td></tr>`;
+      return;
+    }
+    window.renderMoreTableRows();
+  };
+
+  // Khi người dùng đổi bộ lọc ngày về quá khứ (trong vòng 2 năm), tự nạp bổ sung từ IndexedDB
+  async function syncHistoryOnDateFilter() {
+    const fDate = document.getElementById('fromDate')?.value || '';
+    const tDate = document.getElementById('toDate')?.value || '';
+    if (!fDate && !tDate) return;
+    const histCalls = await loadCallsFromHistoryDB(fDate, tDate || getTodayString());
+    if (histCalls.length > 0) {
+      allCalls = filterAndDeduplicateCalls([...allCalls, ...histCalls]);
+      renderAll();
+    }
+  }
+
+  document.getElementById('fromDate')?.addEventListener('change', syncHistoryOnDateFilter);
+  document.getElementById('toDate')?.addEventListener('change', syncHistoryOnDateFilter);
+
+  // Tự động lưu dữ liệu mới vào kho 2 năm mỗi lần loadData() hoàn tất
+  if (typeof window.loadData === 'function') {
+    const origLoadData = window.loadData;
+    window.loadData = async function () {
+      await origLoadData.apply(this, arguments);
+      if (Array.isArray(allCalls) && allCalls.length > 0) {
+        await saveCallsToHistoryDB(allCalls);
+      }
+      await autoPruneOnceDaily();
+    };
+  }
+
+  window.PortHistory2Y = {
+    saveCalls: saveCallsToHistoryDB,
+    loadCallsByRange: loadCallsFromHistoryDB,
+    pruneOlderThan2Years: pruneDataOlderThan2Years,
+    getCutoffDate: getTwoYearCutoffIso
+  };
+})();
+
+  /* ==================== MODULE 2: POPUP CLICK-ONLY + ĐÓNG SAU 1S KHI RÊ CHUỘT ĐI / CLICK NGOÀI ==================== */
+(function initClickOnlyShipPopup() {
+  const CLOSE_DELAY_MS = 1000; // Đúng 1 giây khi di chuyển con trỏ ra khỏi popup / thẻ tàu
+  window._shipRegistry = { tv: new Map(), gantt: new Map() };
+  let activeTriggerEl = null;
+
+  function clearHideTimer() {
+    if (tooltipHideTimeout) {
+      clearTimeout(tooltipHideTimeout);
+      tooltipHideTimeout = null;
+    }
+  }
+
+  window.scheduleHideTooltip = function (delayMs = CLOSE_DELAY_MS) {
+    clearHideTimer();
+    tooltipHideTimeout = setTimeout(() => {
+      window.hideTooltip();
+    }, delayMs);
+  };
+
+  window.hideTooltip = function () {
+    clearHideTimer();
+    const tt = document.getElementById('shipTooltip');
+    if (tt) tt.style.display = 'none';
+    activeTriggerEl = null;
+  };
+
+  // Bọc lại showTooltip để chỉ mở khi có thao tác click thực sự và định vị chống tràn màn hình
+  const origShowTooltip = window.showTooltip;
+  window.showTooltip = function (e, s) {
+    if (e && e.type && e.type !== 'click') return; // Chặn tuyệt đối hover/mouseenter mở popup
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+
+    clearHideTimer();
+    activeTriggerEl = (e && e.currentTarget) || (e && e.target?.closest?.('.ship-chip, .shipbar, .tv-compact-chip')) || null;
+
+    if (typeof origShowTooltip === 'function') {
+      origShowTooltip(e, s);
+    }
+
+    // Điền thêm Năm SX / Tuổi tàu & Hành trình nếu có
+    if ($('ttYearAge')) {
+      $('ttYearAge').textContent = s.year_built
+        ? `${s.year_built}${s.vessel_age !== null && s.vessel_age !== undefined ? ` (${s.vessel_age}t)` : ''}`
+        : '—';
+    }
+    if ($('ttRoute')) {
+      $('ttRoute').textContent = (s.last_port || s.destination)
+        ? `${s.last_port || '—'} → ${s.destination || '—'}`
+        : '—';
+    }
+
+    const tt = document.getElementById('shipTooltip');
+    if (tt && e) {
+      tt.style.display = 'block';
+      const rect = tt.getBoundingClientRect();
+      const left = Math.max(8, Math.min(e.clientX + 10, window.innerWidth - rect.width - 12));
+      const top = Math.max(8, Math.min(e.clientY + 10, window.innerHeight - rect.height - 12));
+      tt.style.left = left + 'px';
+      tt.style.top = top + 'px';
+    }
+  };
+
+  // Gắn sự kiện rê chuột vào / ra khỏi chính Popup (#shipTooltip)
+  const ttEl = document.getElementById('shipTooltip');
+  if (ttEl) {
+    ttEl.addEventListener('mouseenter', clearHideTimer);
+    ttEl.addEventListener('mouseleave', () => {
+      if (ttEl.style.display === 'block') {
+        window.scheduleHideTooltip(CLOSE_DELAY_MS);
+      }
+    });
+    ttEl.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  // Click bất kỳ chỗ nào bên ngoài Popup & thẻ tàu -> Đóng ngay lập tức
+  document.addEventListener('click', (e) => {
+    const tt = document.getElementById('shipTooltip');
+    if (!tt || tt.style.display !== 'block') return;
+    if (tt.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.ship-chip, .shipbar, .tv-compact-chip')) return;
+    window.hideTooltip();
+  });
+
+  // Bấm phím ESC cũng đóng popup
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.hideTooltip();
+  });
+
+  // Event delegation dùng chung cho thẻ tàu Tân Vũ & thanh tàu Gantt (tối ưu RAM, không nhúng JSON vào HTML)
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest && e.target.closest('[data-ship-reg][data-ship-id]');
+    if (!chip) return;
+    const regName = chip.dataset.shipReg;
+    const shipId = chip.dataset.shipId;
+    const shipObj = window._shipRegistry[regName]?.get(shipId);
+    if (shipObj) {
+      window.showTooltip(e, shipObj);
+    }
+  });
+
+  // Nếu chuột rời khỏi chính thẻ tàu vừa click (mà chưa đưa vào popup) -> đếm 1 giây rồi đóng
+  document.addEventListener('mouseout', (e) => {
+    if (!activeTriggerEl) return;
+    const leftTrigger = e.target.closest && e.target.closest('.ship-chip, .shipbar, .tv-compact-chip');
+    if (leftTrigger !== activeTriggerEl) return;
+    const toEl = e.relatedTarget;
+    const tt = document.getElementById('shipTooltip');
+    if (toEl && (activeTriggerEl.contains(toEl) || (tt && tt.contains(toEl)))) return;
+    if (tt && tt.style.display === 'block') {
+      window.scheduleHideTooltip(CLOSE_DELAY_MS);
+    }
+  });
+
+  // Helper gỡ sạch onmouseenter inline & thay bằng data-ship-id nhẹ cho DOM (áp dụng cho cả renderTanVuLayout & renderGantt)
+  function stripHoverAndOptimizeShipNodes(containerId, regName, sourceList) {
+    const root = document.getElementById(containerId);
+    if (!root) return;
+    const reg = window._shipRegistry[regName];
+    reg.clear();
+
+    const byName = new Map();
+    (sourceList || []).forEach(item => {
+      const k = String(item.vessel || '').trim().toUpperCase();
+      if (k && !byName.has(k)) byName.set(k, item);
+    });
+
+    const nodes = root.querySelectorAll('.ship-chip, .shipbar, .tv-compact-chip');
+    nodes.forEach((el, idx) => {
+      // Nếu node có inline onclick/onmouseenter chứa JSON -> lấy tên tàu, đăng ký vào Map và xóa sạch chuỗi JSON khỏi DOM
+      let shipObj = null;
+      const vAttr = (el.dataset.vessel || el.querySelector('span')?.textContent || el.textContent || '').trim().toUpperCase();
+      if (window._tanVuRenderedMap && window._tanVuRenderedMap.has(vAttr)) {
+        shipObj = window._tanVuRenderedMap.get(vAttr);
+      } else if (byName.has(vAttr)) {
+        shipObj = byName.get(vAttr);
+      } else {
+        // Fallback đọc 1 lần từ thuộc tính onclick cũ rồi xóa ngay
+        const oc = el.getAttribute('onclick') || '';
+        const m = oc.match(/showTooltip\s*\(\s*event\s*,\s*(\{[\s\S]*\})\s*\)/);
+        if (m) {
+          try { shipObj = JSON.parse(m[1]); } catch (err) {}
+        }
+      }
+
+      el.removeAttribute('onmouseenter');
+      el.removeAttribute('onmouseleave');
+      if (shipObj) {
+        const id = `${regName}_${idx}`;
+        reg.set(id, shipObj);
+        el.removeAttribute('onclick');
+        el.dataset.shipReg = regName;
+        el.dataset.shipId = id;
+      }
+    });
+  }
+
+  // Tự động bọc renderTanVuLayout và renderGantt hiện có
+  if (typeof window.renderTanVuLayout === 'function') {
+    const origRenderTV = window.renderTanVuLayout;
+    window.renderTanVuLayout = function (list) {
+      const r = origRenderTV.apply(this, arguments);
+      stripHoverAndOptimizeShipNodes('tanvuBerthsLayout', 'tv', list);
+      return r;
+    };
+  }
+
+  if (typeof window.renderGantt === 'function') {
+    const origRenderGantt = window.renderGantt;
+    window.renderGantt = function () {
+      const r = origRenderGantt.apply(this, arguments);
+      stripHoverAndOptimizeShipNodes('fullGantt', 'gantt', typeof getFilteredCalls === 'function' ? getFilteredCalls() : allCalls);
+      return r;
+    };
+  }
+})();
+  
 </script>
 </body>
 </html>
