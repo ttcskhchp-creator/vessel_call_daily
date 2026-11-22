@@ -10951,6 +10951,31 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   return '';
 }
 
+// Chuyển đổi chuẩn ngày giờ từ ePort ("22/11/2026 07:05") hoặc ISO sang mili-giây
+  function parsePortDateTimeMs(rawStr) {
+    if (!rawStr) return 0;
+    const s = String(rawStr).trim();
+    // Khớp định dạng Việt Nam: DD/MM/YYYY HH:mm(:ss)
+    const mVn = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (mVn) {
+      const dd = mVn[1].padStart(2, '0');
+      const mm = mVn[2].padStart(2, '0');
+      const yyyy = mVn[3];
+      const hh = (mVn[4] || '00').padStart(2, '0');
+      const min = (mVn[5] || '00').padStart(2, '0');
+      const ss = (mVn[6] || '00').padStart(2, '0');
+      const d = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}+07:00`);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+    const dIso = new Date(s);
+    return isNaN(dIso.getTime()) ? 0 : dIso.getTime();
+  }
+
+  function toIsoFromPortStr(rawStr) {
+    const ms = parsePortDateTimeMs(rawStr);
+    return ms > 0 ? new Date(ms).toISOString() : '';
+  }
+  
   function checkIsBarge(name, ep) {
     const v = String(name || '').trim().toUpperCase();
     if (!v) return false;
@@ -11119,53 +11144,62 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (k) mergedMap.set(k, { ...c, terminal: 'TÂN VŨ' });
       });
 
-     if (selectedDateStr === todayStr) {
-    Object.entries(rawStore).forEach(([vKey, ep]) => {
-      if (!ep || typeof ep !== 'object') return;
-      const upName = vKey.trim().toUpperCase();
-      if (!upName) return;
-      const epBerth = normTanVuBerth(ep.berth);
+    if (selectedDateStr === todayStr) {
+        Object.entries(rawStore).forEach(([vKey, ep]) => {
+          if (!ep || typeof ep !== 'object') return;
+          const upName = vKey.trim().toUpperCase();
+          if (!upName) return;
+          const epBerth = normTanVuBerth(ep.berth);
+          const epAtbIso = toIsoFromPortStr(ep.atb);
+          const epEtdIso = toIsoFromPortStr(ep.etd);
 
-      if (mergedMap.has(upName)) {
-        const cur = mergedMap.get(upName);
-        cur.terminal = 'TÂN VŨ';
-        if (epBerth) cur.berth = epBerth;
-        else cur.berth = normTanVuBerth(cur.berth) || 'B1';
-        if (!cur.etd && ep.etd) cur.etd = ep.etd;
-        cur._eport = ep;
-      } else {
-        mergedMap.set(upName, {
-          vessel: upName,
-          terminal: 'TÂN VŨ',
-          berth: epBerth || 'B1',
-          loa: 0,
-          dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
-          etb: ep.atb || new Date(now - 3600000).toISOString(),
-          etd: ep.etd || '',
-          operator: ep.cargoType || 'ePort Tân Vũ',
-          _eport: ep
+          if (mergedMap.has(upName)) {
+            const cur = mergedMap.get(upName);
+            cur.terminal = 'TÂN VŨ';
+            if (epBerth) cur.berth = epBerth;
+            else cur.berth = normTanVuBerth(cur.berth) || 'B1';
+
+            // Ưu tiên giờ cập thực tế (ATB) từ ePort nếu đã có
+            if (epAtbIso) cur.etb = epAtbIso;
+            if (epEtdIso) {
+              const tAtbCheck = parsePortDateTimeMs(cur.etb);
+              const tEtdCheck = parsePortDateTimeMs(epEtdIso);
+              if (tEtdCheck > tAtbCheck) cur.etd = epEtdIso;
+            }
+            cur._eport = ep;
+          } else {
+            mergedMap.set(upName, {
+              vessel: upName,
+              terminal: 'TÂN VŨ',
+              berth: epBerth || 'B1',
+              loa: 0,
+              dwt: ep.contTeuStr ? `${ep.contTeuStr} TEU` : '—',
+              etb: epAtbIso || new Date(now - 3600000).toISOString(),
+              etd: epEtdIso || '',
+              operator: ep.cargoType || 'ePort Tân Vũ',
+              _eport: ep
+            });
+          }
         });
       }
-    });
-  }
 
       let shipCount = 0;
       let bargeCount = 0;
       const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 
-     mergedMap.forEach(item => {
-    const ep = item._eport || rawStore[item.vessel] || null;
-    const isBarge = checkIsBarge(item.vessel, ep);
-    item._isBarge = isBarge;
-    item._eport = ep;
-    if (isBarge) bargeCount++;
-    else shipCount++;
+      mergedMap.forEach(item => {
+        const ep = item._eport || rawStore[item.vessel] || null;
+        const isBarge = checkIsBarge(item.vessel, ep);
+        item._isBarge = isBarge;
+        item._eport = ep;
+        if (isBarge) bargeCount++;
+        else shipCount++;
 
-    const b = normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
-    item.berth = b;
-    if (!berthMap[b]) berthMap[b] = [];
-    berthMap[b].push(item);
-  });
+        const b = normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
+        item.berth = b;
+        if (!berthMap[b]) berthMap[b] = [];
+        berthMap[b].push(item);
+      });
 
       const countEl = document.getElementById('tanvuCount');
       if (countEl) {
@@ -11186,7 +11220,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
       `;
 
       ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(bName => {
-        const ships = (berthMap[bName] || []).sort((a, b) => new Date(a.etb || 0) - new Date(b.etb || 0));
+        const ships = (berthMap[bName] || []).sort((a, b) => parsePortDateTimeMs(a.etb) - parsePortDateTimeMs(b.etb));
         html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
 
         if (ships.length === 0) {
@@ -11194,16 +11228,24 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         } else {
           ships.forEach(s => {
             const ep = s._eport;
-            const t1 = s.etb ? new Date(s.etb).getTime() : 0;
-            const t2 = s.etd ? new Date(s.etd).getTime() : 0;
-            const etdDate = s.etd ? s.etd.split('T')[0] : '';
-            const isDeparted = !s._isBarge && ((ep && ep.pct >= 100) || (t2 > 0 && t2 <= now));
+            const t1 = parsePortDateTimeMs((ep && ep.atb) || s.etb);
+            const rawT2 = parsePortDateTimeMs((ep && ep.etd) || s.etd);
+            // Bỏ qua ETD cũ nếu nhỏ hơn ATB thực tế (tránh lỗi tàu vừa cập đã báo Đã rời)
+            const t2 = (rawT2 > t1) ? rawT2 : 0;
+
+            const etdDateObj = t2 > 0 ? new Date(t2) : null;
+            const etdDate = etdDateObj
+              ? `${etdDateObj.getFullYear()}-${String(etdDateObj.getMonth() + 1).padStart(2, '0')}-${String(etdDateObj.getDate()).padStart(2, '0')}`
+              : '';
+
+            const hasEportProgress = ep && (Number(ep.doneNum) > 0 || Number(ep.pct) > 0 || Boolean(ep.atb));
+            const isDeparted = !s._isBarge && ((ep && Number(ep.pct) >= 100) || (t2 > 0 && t2 <= now));
 
             let statusLabel = '';
             let bgStyle = '';
 
             if (s._isBarge) {
-              statusLabel = (ep && ep.pct >= 100) ? '✔️ Xong hàng' : '🚩 Rời trong ngày';
+              statusLabel = (ep && Number(ep.pct) >= 100) ? '✔️ Xong hàng' : '🚩 Rời trong ngày';
               bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
             } else if (isDeparted) {
               statusLabel = '✔️ Đã rời';
@@ -11211,14 +11253,13 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
             } else if (etdDate === todayStr && t2 > now) {
               statusLabel = '🚩 Rời trong ngày';
               bgStyle = 'background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #7dd3fc;';
-            } else if (t1 <= now && (t2 === 0 || t2 > now)) {
+            } else if (hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now))) {
               statusLabel = '🏗️ Đang làm hàng';
               bgStyle = 'background: linear-gradient(135deg, #059669, #047857); color: #fff; border: 1px solid #34d399;';
             } else {
               statusLabel = '⏳ Sắp cập';
               bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
             }
-
             const displayPct = isDeparted ? 100 : (ep && typeof ep.pct === 'number' ? ep.pct : null);
             const pctHtml = displayPct !== null
               ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 3px;">
