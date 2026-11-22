@@ -10951,7 +10951,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
 
     if (document.getElementById('ttName')) document.getElementById('ttName').textContent = cleanName || '—';
     if (document.getElementById('ttVesselType')) {
-      document.getElementById('ttVesselType').textContent = isBarge ? 'Sà lan (ePort)' : (s.vessel_type || 'Container');
+      document.getElementById('ttVesselType').textContent = isBarge ? 'Sà lan' : (s.vessel_type || 'Container');
     }
 
     let opLine = s.operator || '—';
