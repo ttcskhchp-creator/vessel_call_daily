@@ -5631,7 +5631,7 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let lastPort = ov.last_port || rawCall.last_port || cat.last_port || '';
   let destination = ov.destination || rawCall.destination || cat.destination || '';
 
-  let vType = ov.vessel_type || rawCall.vessel_type || cat.type || 'Container';
+  let vType = ov.vessel_type || rawCall.vessel_type || cat.vessel_type || cat.type || 'Container'
   let capUnit = ov.capacity_unit || rawCall.capacity_unit || cat.capacity_unit || getDefaultCapacityUnitByType(vType);
   let rawCap = Number(ov.teu !== undefined ? ov.teu : (rawCall.teu !== undefined ? rawCall.teu : (cat.teu || 0)));
 
@@ -6742,79 +6742,150 @@ function populateEditForm(vesselOrName) {
 
 async function saveVesselOverrideProtected() {
   if (!(await verifyAdminPinPrompt('lưu/cập nhật thông số tàu'))) return;
-  
-  let vName = ($('editVesselName').value || '').trim().toUpperCase();
-  if (!vName) { alert('Vui lòng nhập tên tàu cần lưu!'); return; }
 
-  let vType = $('editVesselType')?.value || 'Container';
-  let capUnit = $('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType);
-  let yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
+  const vName = ($('editVesselName')?.value || '').trim().toUpperCase();
+  if (!vName) {
+    alert('Vui lòng nhập tên tàu cần lưu!');
+    return;
+  }
 
-  let payload = {
+  const vType = ($('editVesselType')?.value || 'Container').trim();
+  const capUnit = ($('editVesselCapUnit')?.value || getDefaultCapacityUnitByType(vType)).trim();
+  const yearBuilt = parseInt($('editVesselYearBuilt')?.value, 10) || null;
+  const loaVal = parseFloat(String($('editVesselLoa')?.value || 0).replace(',', '.')) || 0;
+  const beamVal = parseFloat(String($('editVesselBeam')?.value || 0).replace(',', '.')) || 0;
+  const teuVal = parseInt(String($('editVesselTeu')?.value || 0).replace(/\D/g, ''), 10) || 0;
+  const dwtVal = ($('editVesselDwt')?.value || '').trim();
+  const gtVal = ($('editVesselGt')?.value || '').trim();
+  const imoVal = ($('editVesselImo')?.value || '').trim().replace(/\D/g, '');
+  const opVal = ($('editVesselOperator')?.value || '').trim();
+  const lastPortVal = ($('editVesselLastPort')?.value || '').trim().toUpperCase();
+  const destVal = ($('editVesselDestination')?.value || '').trim().toUpperCase();
+  const termVal = ($('editVesselTerminal')?.value || '').trim();
+  const berthVal = ($('editVesselBerth')?.value || '').trim();
+  const etbIso = $('editVesselEtb')?.value ? new Date($('editVesselEtb').value).toISOString() : null;
+  const etdIso = $('editVesselEtd')?.value ? new Date($('editVesselEtd').value).toISOString() : null;
+  const nowIso = new Date().toISOString();
+
+  const fullOverrideRecord = {
     vessel_name: vName,
-    imo: ($('editVesselImo')?.value || '').trim(),
+    imo: imoVal,
     vessel_type: vType,
     year_built: yearBuilt,
-    operator: $('editVesselOperator').value.trim(),
-    last_port: ($('editVesselLastPort')?.value || '').trim().toUpperCase(),
-    destination: ($('editVesselDestination')?.value || '').trim().toUpperCase(),
-    terminal: $('editVesselTerminal').value.trim(),
-    berth: $('editVesselBerth').value.trim(),
-    loa: Number($('editVesselLoa').value) || 0,
-    beam: Number($('editVesselBeam')?.value) || 0,
-    teu: Number($('editVesselTeu')?.value) || 0,
+    operator: opVal,
+    last_port: lastPortVal,
+    destination: destVal,
+    terminal: termVal,
+    berth: berthVal,
+    loa: loaVal,
+    beam: beamVal,
+    teu: teuVal,
     capacity_unit: capUnit,
-    dwt: $('editVesselDwt').value.trim(),
-    gt: ($('editVesselGt')?.value || '').trim(),
-    etb: $('editVesselEtb').value ? new Date($('editVesselEtb').value).toISOString() : null,
-    etd: $('editVesselEtd').value ? new Date($('editVesselEtd').value).toISOString() : null,
-    updated_at: new Date().toISOString()
+    dwt: dwtVal,
+    gt: gtVal,
+    etb: etbIso,
+    etd: etdIso,
+    is_hidden: false,
+    updated_at: nowIso
   };
 
-  vesselOverridesMap.set(vName, payload);
-  vesselCatalogMap.set(vName, {
-    type: payload.vessel_type,
-    year_built: payload.year_built,
-    last_port: payload.last_port,
-    destination: payload.destination,
-    loa: payload.loa,
-    beam: payload.beam,
-    teu: payload.teu,
-    capacity_unit: payload.capacity_unit,
-    dwt: payload.dwt,
-    gt: payload.gt,
-    imo: payload.imo,
-    agent: payload.operator
-  });
+  const catalogRecord = {
+    type: vType,
+    vessel_type: vType,
+    year_built: yearBuilt,
+    last_port: lastPortVal,
+    destination: destVal,
+    loa: loaVal,
+    beam: beamVal,
+    teu: teuVal,
+    capacity_unit: capUnit,
+    dwt: dwtVal,
+    gt: gtVal,
+    imo: imoVal,
+    agent: opVal,
+    updated_at: nowIso
+  };
 
-  let catalogObj = Object.fromEntries(vesselCatalogMap);
-  localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
+  vesselOverridesMap.set(vName, fullOverrideRecord);
+  vesselCatalogMap.set(vName, catalogRecord);
 
+  const catalogObj = Object.fromEntries(vesselCatalogMap);
+  try {
+    localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
+  } catch (e) {}
+
+  let cloudWarnings = [];
   try {
     if (supabaseClient) {
-      await supabaseClient.from('vessel_overrides').upsert({
-        vessel_name: payload.vessel_name,
-        operator: payload.operator,
-        terminal: payload.terminal,
-        berth: payload.berth,
-        loa: payload.loa,
-        dwt: payload.dwt,
-        etb: payload.etb,
-        etd: payload.etd,
-        updated_at: payload.updated_at
-      }, { onConflict: 'vessel_name' });
+      // Thử lưu đầy đủ cột vào vessel_overrides; nếu bảng chưa có cột mới thì lưu cột chuẩn
+      let { error: ovErr } = await supabaseClient
+        .from('vessel_overrides')
+        .upsert(fullOverrideRecord, { onConflict: 'vessel_name' });
+
+      if (ovErr) {
+        const { error: fallbackErr } = await supabaseClient
+          .from('vessel_overrides')
+          .upsert({
+            vessel_name: vName,
+            operator: opVal,
+            terminal: termVal,
+            berth: berthVal,
+            loa: loaVal,
+            dwt: dwtVal,
+            etb: etbIso,
+            etd: etdIso,
+            is_hidden: false,
+            updated_at: nowIso
+          }, { onConflict: 'vessel_name' });
+        if (fallbackErr) cloudWarnings.push('vessel_overrides: ' + fallbackErr.message);
+      }
 
       const blob = new Blob([JSON.stringify(catalogObj)], { type: 'application/json' });
-      await supabaseClient.storage.from('port-documents').upload('vessel_catalog.json', blob, { upsert: true });
+      const { error: stErr } = await supabaseClient.storage
+        .from('port-documents')
+        .upload('vessel_catalog.json', blob, { upsert: true });
+      if (stErr) cloudWarnings.push('vessel_catalog.json: ' + stErr.message);
     }
-    updateCatalogBadgeCount();
-    allCalls = filterAndDeduplicateCalls(allCalls);
-    renderAll();
-    renderOverrideTable();
-    alert(`Đã lưu tàu "${vName}" (Sức chở: ${payload.teu.toLocaleString('vi-VN')} ${payload.capacity_unit}, Năm SX: ${payload.year_built || '—'}) thành công!`);
   } catch (err) {
-    alert('Đã lưu trên máy, lỗi đồng bộ mạng: ' + err.message);
+    cloudWarnings.push(err.message);
   }
+
+  // Cập nhật trực tiếp vào allCalls đang có để áp dụng ngay lập tức
+  if (Array.isArray(allCalls)) {
+    const { age } = getVesselAgeAndFactor(yearBuilt);
+    allCalls = allCalls.map(c => {
+      if ((c.vessel || '').trim().toUpperCase() !== vName) return c;
+      return {
+        ...c,
+        operator: opVal || c.operator,
+        terminal: termVal || c.terminal,
+        berth: berthVal || c.berth,
+        loa: loaVal || c.loa,
+        beam: beamVal || c.beam,
+        dwt: dwtVal || c.dwt,
+        gt: gtVal || c.gt,
+        imo: imoVal || c.imo,
+        vessel_type: vType,
+        teu: teuVal,
+        capacity_unit: capUnit,
+        year_built: yearBuilt,
+        vessel_age: age,
+        last_port: lastPortVal || c.last_port,
+        destination: destVal || c.destination,
+        etb: etbIso || c.etb,
+        etd: etdIso || c.etd
+      };
+    });
+    allCalls = filterAndDeduplicateCalls(allCalls);
+  }
+
+  updateCatalogBadgeCount();
+  renderAll();
+  renderOverrideTable();
+
+  const capLabel = teuVal > 0 ? `${teuVal.toLocaleString('vi-VN')} ${capUnit}` : '—';
+  const warnText = cloudWarnings.length ? `\n(Lưu ý đồng bộ: ${cloudWarnings.join(' | ')})` : '';
+  alert(`Đã lưu tàu "${vName}" · Loại: ${vType} · Sức chở: ${capLabel} · Năm SX: ${yearBuilt || '—'}${warnText}`);
 }
 
 /* ==================== MODULE QUÉT NHANH TÀU TRONG BỘ LỌC THEO IMO ==================== */
