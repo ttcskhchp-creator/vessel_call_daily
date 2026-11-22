@@ -10832,11 +10832,10 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         berthMap[b].push(item);
       });
 
-      const countEl = document.getElementById('tanvuCount');
+     const countEl = document.getElementById('tanvuCount');
       if (countEl) {
-        const oldSuffix = countEl.textContent.includes('· ePort')
-          ? ' · ePort' + countEl.textContent.split('· ePort')[1]
-          : '';
+        const mTime = countEl.textContent.match(/(\d{1,2}:\d{2}\s*\(Nạp [^)]+\))/);
+        const oldSuffix = mTime ? ` · ${mTime[1]}` : '';
         countEl.textContent = `${shipCount} lượt tàu · ${bargeCount} sà lan${oldSuffix}`;
       }
 
@@ -10951,7 +10950,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
 
     if (document.getElementById('ttName')) document.getElementById('ttName').textContent = cleanName || '—';
     if (document.getElementById('ttVesselType')) {
-      document.getElementById('ttVesselType').textContent = isBarge ? 'Sà lan' : (s.vessel_type || 'Container');
+      document.getElementById('ttVesselType').textContent = isBarge ? 'Sà lan (ePort)' : (s.vessel_type || 'Container');
     }
 
     let opLine = s.operator || '—';
@@ -11518,7 +11517,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
           const countEl = document.getElementById('tanvuCount');
           if (countEl) {
             const baseTxt = countEl.textContent.split('· ePort')[0].trim();
-            countEl.textContent = `${baseTxt} · ePort ${botTime} (Nạp ${nowReloadTime})`;
+            countEl.textContent = `${baseTxt} ${botTime} (Nạp ${nowReloadTime})`;
           }
           console.log(`✅ [Auto ePort] Đã nạp & ghi đè ${Object.keys(rawStore).length} tàu/sà lan Tân Vũ lúc ${nowReloadTime}`);
         }
