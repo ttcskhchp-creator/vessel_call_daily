@@ -10809,6 +10809,16 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         const t1 = _toShipMs((ep && ep.atb) || item.etb);
         const rawT2 = _toShipMs((ep && ep.etd) || item.etd);
         const t2 = (rawT2 > t1) ? rawT2 : 0;
+        // Ẩn hoàn toàn tàu lai / tàu kéo / hoa tiêu / công vụ khỏi thẻ Tân Vũ (Tiêu điểm)
+        if (isTugOrServiceVessel(item, ep, isBarge)) {
+          return;
+        }
+
+        // Ẩn các tàu không có giờ rời (ETD), không có dữ liệu ePort và đã đỗ treo quá 48 tiếng
+        const hasLiveEport = Boolean(ep && (Number(ep.totalCont) > 0 || Number(ep.doneNum) > 0 || Number(ep.pct) > 0));
+        if (isViewingToday && !isBarge && !hasLiveEport && t2 === 0 && t1 > 0 && (now - t1) > (48 * ONE_HOUR_MS)) {
+          return;
+        }
         const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
         const isDepartedShip = !isBarge && (isPctDone || (t2 > 0 && t2 <= now));
 
@@ -13310,6 +13320,24 @@ if (!pinCheck.ok) {
     const list = Array.isArray(calls) ? calls.map(c => ({ ...c })) : [];
 
     rows.forEach(r => {
+      // Bỏ qua tàu lai / tàu kéo / hoa tiêu / tàu công vụ (thường không có ETD, đỗ cố định lâu dài)
+      const _normShift = (s) => String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+        .replace(/\s+/g, ' ').trim().toUpperCase();
+      const _vNorm = _normShift(r.vessel);
+      const _opNorm = _normShift(r.operator);
+      const _loaNum = Number(r.loa) || 0;
+      const _dwtNum = parseInt(String(r.dwt || '').replace(/\D/g, ''), 10) || 0;
+      const _isSbOrBarge = /\(SB\)|\b(BARGE|SA\s*LAN)\b/i.test(_vNorm);
+
+      if (
+        /(THONG\s*NHAT|TUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|PILOT\b|CONG\s*VU|CUU\s*HO|CSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(_vNorm) ||
+        /(LAI\s*DAT|HOA\s*TIEU|TOWAGE|\bTUG\b|CUU\s*HO)/i.test(_opNorm) ||
+        (!_isSbOrBarge && ((_loaNum > 0 && _loaNum <= 42) || (_dwtNum > 0 && _dwtNum <= 500)))
+      ) {
+        return;
+      }
       const vName = String(r.vessel || '').trim().toUpperCase();
       const moveIso = r.moveAt || '';
       const moveMs = moveIso ? new Date(moveIso).getTime() : 0;
