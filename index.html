@@ -10690,6 +10690,45 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
       const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 
       const ONE_HOUR_MS = 60 * 60 * 1000;
+      const normPlain = (s) => String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+        .replace(/\s+/g, ' ').trim().toUpperCase();
+
+      const isTugOrServiceVessel = (item, ep, isBarge) => {
+        // Không lọc nhầm tàu đang có sản lượng làm hàng thực tế trên ePort
+        if (ep && (Number(ep.totalCont) > 0 || Number(ep.doneNum) > 0)) return false;
+
+        const vKey = String(item.vessel || '').trim().toUpperCase();
+        const specs = (typeof window.getVesselEnrichedSpecs === 'function')
+          ? (window.getVesselEnrichedSpecs(vKey, item) || {})
+          : {};
+
+        const nameNorm = normPlain(vKey);
+        const typeNorm = normPlain(specs.vessel_type || item.vessel_type || '');
+        const opNorm = normPlain(item.operator || specs.operator || '');
+        const loa = parseFloat(String(item.loa || specs.loa || 0).replace(',', '.')) || 0;
+        const dwt = parseInt(String(item.dwt || specs.dwt || '').replace(/\D/g, ''), 10) || 0;
+
+        // 1. Khớp tên tàu lai / hoa tiêu / công vụ (VD: THONGNHATK1, THONG NHAT K2, TUG...)
+        if (/(THONG\s*NHAT|TUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|PILOT\b|CONG\s*VU|CUU\s*HO|CSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(nameNorm)) {
+          return true;
+        }
+        // 2. Khớp đơn vị khai thác lai dắt / hoa tiêu
+        if (/(LAI\s*DAT|HOA\s*TIEU|TOWAGE|\bTUG\b|CUU\s*HO)/i.test(opNorm)) {
+          return true;
+        }
+        // 3. Khớp loại tàu phụ trợ / quân sự / đánh cá / tàu khác (không phải sà lan chở hàng)
+        if (!isBarge && /(TUG|TAU\s*KEO|TAU\s*LAI|PILOT|QUAN\s*SU|MILITARY|NAVAL|DANH\s*CA|FISHING|YACHT|AUX|CONG\s*VU|^KHAC$)/i.test(typeNorm)) {
+          return true;
+        }
+        // 4. Tàu kích thước rất nhỏ (LOA <= 42m hoặc DWT > 0 & <= 500T), không phải sà lan và không làm hàng ePort
+        if (!isBarge && ((loa > 0 && loa <= 42) || (dwt > 0 && dwt <= 500))) {
+          return true;
+        }
+        return false;
+      };
+      
       const _toShipMs = (v) =>
         typeof parsePortDateTimeMs === 'function'
           ? parsePortDateTimeMs(v)
