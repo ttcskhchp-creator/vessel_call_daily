@@ -10817,25 +10817,26 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (isOtherOrServiceVessel(item, ep, isBarge)) {
           return;
         }
-        const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
-        const isDepartedShip = !isBarge && (isPctDone || (t2 > 0 && t2 <= now));
+       const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
+        // CHỈ tính là "Đã rời" khi giờ rời ETD đã thực sự đi qua (t2 <= now).
+        // Nếu đã xong hàng 100% nhưng chưa đến giờ rời (t2 > now) -> vẫn đang ở cầu, KHÔNG ẩn và KHÔNG báo Đã rời.
+        const isActuallyDeparted = (t2 > 0 && t2 <= now);
+        const isDoneWithoutEtd = (!isBarge && t2 === 0 && isPctDone);
 
-        // Ẩn tàu đã rời sau đúng 01 tiếng khỏi tiêu điểm Cảng Tân Vũ
-        if (isViewingToday && isDepartedShip) {
-          const seenKey = `${vKey}_${t1 || todayStr}`;
-          if (isPctDone && !doneSeenMap[seenKey]) {
-            doneSeenMap[seenKey] = now;
-            try { localStorage.setItem('hp_tv_done_seen_map', JSON.stringify(doneSeenMap)); } catch (e) {}
-          }
-          const seenMs = doneSeenMap[seenKey] || 0;
+        if (isViewingToday && (isActuallyDeparted || isDoneWithoutEtd)) {
           let departMs = 0;
-          if (t2 > 0 && t2 <= now) {
-            departMs = seenMs > 0 ? Math.min(t2, seenMs) : t2;
-          } else if (isPctDone) {
-            departMs = seenMs || now;
+          if (isActuallyDeparted) {
+            departMs = t2;
+          } else if (isDoneWithoutEtd) {
+            const seenKey = `${vKey}_${t1 || todayStr}`;
+            if (!doneSeenMap[seenKey]) {
+              doneSeenMap[seenKey] = now;
+              try { localStorage.setItem('hp_tv_done_seen_map', JSON.stringify(doneSeenMap)); } catch (e) {}
+            }
+            departMs = doneSeenMap[seenKey] || now;
           }
           if (departMs > 0 && (now - departMs) > ONE_HOUR_MS) {
-            return; // Quá 01 tiếng -> không cộng vào tổng và không hiển thị trên thẻ Tân Vũ
+            return; // Quá 01 tiếng sau khi thực sự rời -> ẩn khỏi tiêu điểm
           }
         }
 
@@ -10884,12 +10885,12 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         const rawT2 = getShipTimeMs((ep && ep.etd) || s.etd);
         const t2 = (rawT2 > t1) ? rawT2 : 0;
 
-        const isBargeDone = s._isBarge && ep && Number(ep.pct) >= 100;
-        const isDeparted = !s._isBarge && ((ep && Number(ep.pct) >= 100) || (t2 > 0 && t2 <= now));
-        if (isDeparted || isBargeDone) return 4 + bargeOffset;
+        // Chỉ đưa về nhóm Đã rời (rank 4-5) khi đã thực sự qua giờ ETD
+        if (t2 > 0 && t2 <= now) return 4 + bargeOffset;
 
+        // Tàu/sà lan đang ở cầu (đang làm hàng hoặc đã xong hàng 100% đang chờ rời) -> sát mép trái
         const hasEportProgress = ep && (Number(ep.doneNum) > 0 || Number(ep.pct) > 0 || Boolean(ep.atb));
-        if (s._isBarge || hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now))) {
+        if (hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now))) {
           return 0 + bargeOffset;
         }
 
@@ -10920,27 +10921,48 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
               : '';
 
             const hasEportProgress = ep && (Number(ep.doneNum) > 0 || Number(ep.pct) > 0 || Boolean(ep.atb));
-            const isDeparted = !s._isBarge && ((ep && Number(ep.pct) >= 100) || (t2 > 0 && t2 <= now));
+            const isCargoDone = Boolean(ep && Number(ep.pct) >= 100);
+            const isDeparted = (t2 > 0 && t2 <= now);
+            const isLeavingToday = (etdDate === todayStr && t2 > now);
+            const isAtBerthNow = hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now));
 
             let statusLabel = '';
             let bgStyle = '';
 
             if (s._isBarge) {
-              statusLabel = (ep && Number(ep.pct) >= 100) ? '✔️ Xong hàng' : '🚩 Rời trong ngày';
-              bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
+              if (isDeparted) {
+                statusLabel = '✔️ Đã rời';
+                bgStyle = 'background: linear-gradient(135deg, #475569, #334155); color: #fff; opacity: 0.88;';
+              } else if (isCargoDone) {
+                statusLabel = isLeavingToday ? '✅ Xong hàng · Rời trong ngày' : '✅ Xong hàng · Chờ rời';
+                bgStyle = 'background: linear-gradient(135deg, #0f766e, #115e59); color: #fff; border: 1px solid #5eead4;';
+              } else if (isLeavingToday) {
+                statusLabel = '🚩 Rời trong ngày';
+                bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
+              } else if (isAtBerthNow) {
+                statusLabel = '🏗️ Đang làm hàng';
+                bgStyle = 'background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; border: 1px solid #5eead4;';
+              } else {
+                statusLabel = '⏳ Sắp cập';
+                bgStyle = 'background: linear-gradient(135deg, #0e7490, #155e75); color: #fff;';
+              }
             } else if (isDeparted) {
               statusLabel = '✔️ Đã rời';
               bgStyle = 'background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; opacity: 0.9;';
-            } else if (etdDate === todayStr && t2 > now) {
+            } else if (isCargoDone) {
+              statusLabel = isLeavingToday ? '✅ Xong hàng · Rời trong ngày' : '✅ Xong hàng · Chờ rời';
+              bgStyle = 'background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #7dd3fc;';
+            } else if (isLeavingToday) {
               statusLabel = '🚩 Rời trong ngày';
               bgStyle = 'background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #7dd3fc;';
-            } else if (hasEportProgress || (t1 > 0 && t1 <= now && (t2 === 0 || t2 > now))) {
+            } else if (isAtBerthNow) {
               statusLabel = '🏗️ Đang làm hàng';
               bgStyle = 'background: linear-gradient(135deg, #059669, #047857); color: #fff; border: 1px solid #34d399;';
             } else {
               statusLabel = '⏳ Sắp cập';
               bgStyle = 'background: linear-gradient(135deg, #1f6d9c, #134c70); color: #fff;';
             }
+            
             const displayPct = isDeparted ? 100 : (ep && typeof ep.pct === 'number' ? ep.pct : null);
             const pctHtml = displayPct !== null
               ? `<span style="display:inline-flex;align-items:center;gap:4px;margin:0 3px;">
@@ -13061,10 +13083,23 @@ if (!pinCheck.ok) {
       }
 
       // D. Sửa khung Năng suất (#ttReqRateBox): Moves -> Units cho tàu Ro-Ro
-      if (rateBox && isRoRo && /Moves/i.test(rateBox.innerHTML)) {
-        rateBox.innerHTML = rateBox.innerHTML
-          .replace(/Moves\/h/gi, 'Units/h')
-          .replace(/Moves/gi, 'Units');
+      if (rateBox) {
+        let html = rateBox.innerHTML;
+        if (isRoRo) {
+          html = html
+            .replace(/xếp dỡ container/gi, 'xếp dỡ xe ô tô (Ro-Ro)')
+            .replace(/Moves\/h/gi, 'Units/h')
+            .replace(/Moves/gi, 'Units');
+        }
+        if (/undefined/i.test(html) && ep) {
+          const totalPair = parsePairText(ep.contTeuStr || ep.total || '');
+          const totalQty = Number(ep.totalCont) || Number(ep.planNum) || totalPair.qty || Number(ep.doneCont) || 0;
+          const unitLabel = isRoRo ? 'Units' : 'Cont';
+          html = html.replace(/undefined\s*(Units|Moves|Cont)?/gi, `${totalQty.toLocaleString('vi-VN')} ${unitLabel}`);
+        }
+        if (rateBox.innerHTML !== html) {
+          rateBox.innerHTML = html;
+        }
       }
     } finally {
       isFixingTooltip = false;
