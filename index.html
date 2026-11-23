@@ -12583,7 +12583,7 @@ if (!pinCheck.ok) {
 <!-- DÁN ĐOẠN NÀY NGAY DƯỚI THẺ </script> CUỐI CÙNG VÀ NGAY TRÊN </body> -->
 <script id="hp-mobile-and-unit-master-fix">
 (function () {
-  // 1. CSS căn giữa popup trên điện thoại & không cắt nút đáy trên máy tính
+  // 1. CSS căn giữa popup trên điện thoại
   if (!document.getElementById('hpMobileStrictFixCss')) {
     const st = document.createElement('style');
     st.id = 'hpMobileStrictFixCss';
@@ -12616,12 +12616,9 @@ if (!pinCheck.ok) {
     document.head.appendChild(st);
   }
 
-  // 2. Quy tắc đơn vị sức chở chuẩn theo từng loại tàu
   function getStrictUnitRule(vesselType) {
     const t = String(vesselType || '').trim().toUpperCase();
     if (!t) return { allowed: [], defaultUnit: '' };
-
-    // Tàu quân sự, đánh cá, tàu kéo, du thuyền, tàu khác -> KHÔNG tính đơn vị sức chở
     if (
       t.includes('QUÂN SỰ') || t.includes('MILITARY') || t.includes('NAVAL') || t.includes('WARSHIP') ||
       t.includes('ĐÁNH CÁ') || t.includes('FISHING') || t.includes('TRAWLER') ||
@@ -12629,168 +12626,78 @@ if (!pinCheck.ok) {
       t.includes('AUX') || t.includes('UNKNOWN') || t === 'KHÁC' || t.startsWith('KHÁC')
     ) return { allowed: [], defaultUnit: '' };
 
-    // Tàu Ro-Ro / Ô tô -> Units
-    if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('CAR CARRIER')) {
+    if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('XE Ô TÔ') || t.includes('CAR CARRIER')) {
       return { allowed: ['Units'], defaultUnit: 'Units' };
     }
-    // Tàu khách -> Pax
     if (t.includes('KHÁCH') || t.includes('PASSENGER') || t.includes('CRUISE')) {
       return { allowed: ['Pax'], defaultUnit: 'Pax' };
     }
-    // Tàu lỏng, dầu, hóa chất, gas (LPG/LNG) -> m³ hoặc MT
     if (t.includes('DẦU') || t.includes('FSO') || t.includes('FPSO') || t.includes('HÓA CHẤT') || t.includes('LỎNG') || t.includes('KHÍ') || t.includes('GAS') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) {
       return { allowed: ['m³', 'MT'], defaultUnit: 'm³' };
     }
-    // Tàu hàng rời, sắt thép, tổng hợp, thiết bị -> Tấn (hoặc MT)
     if (t.includes('RỜI') || t.includes('BULK') || t.includes('SẮT') || t.includes('THÉP') || t.includes('TỔNG HỢP') || t.includes('THIẾT BỊ') || t.includes('PROJECT') || t.includes('HEAVY')) {
       return { allowed: ['Tấn', 'MT'], defaultUnit: 'Tấn' };
     }
-    // Tàu Container / Feeder -> TEU
     if (t.includes('CONTAINER') || t.includes('FEEDER')) {
       return { allowed: ['TEU'], defaultUnit: 'TEU' };
     }
     return { allowed: [], defaultUnit: '' };
   }
 
-  function parseTons(raw, loaFallback) {
-    if (typeof window.parseDwtToMetricTons === 'function') {
-      return window.parseDwtToMetricTons(raw, loaFallback || 0);
+  function parsePairText(str) {
+    const clean = String(str || '').trim();
+    const m = clean.match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+    if (m) {
+      return {
+        qty: parseInt(m[1].replace(/[^\d]/g, ''), 10) || 0,
+        teu: parseInt(m[2].replace(/[^\d]/g, ''), 10) || 0
+      };
     }
-    const n = parseInt(String(raw || '').replace(/\D/g, ''), 10);
-    return isNaN(n) ? 0 : n;
+    const n = parseInt(clean.replace(/[^\d]/g, ''), 10) || 0;
+    return { qty: n, teu: 0 };
   }
 
-  function getAgeFactor(yearBuilt) {
-    const curYear = new Date().getFullYear();
-    const y = parseInt(yearBuilt, 10);
-    if (isNaN(y) || y < 1950 || y > curYear + 2) return { age: null, kAge: 1.0 };
-    const age = Math.max(0, curYear - y);
-    const kAge = age <= 10 ? 1.05 : (age <= 20 ? 1.00 : 0.92);
-    return { age, kAge };
+  function isRoRoVessel(vName, vType, ep) {
+    if (ep && (ep.isRoRoCargo || ep.cargoUnit === 'Units' || /xe|ô\s*tô|o\s*to|ro-?ro|car|unit/i.test(ep.cargoType || ''))) {
+      return true;
+    }
+    if (getStrictUnitRule(vType).defaultUnit === 'Units') return true;
+    if (vName && typeof window.getVesselEnrichedSpecs === 'function') {
+      const sp = window.getVesselEnrichedSpecs(vName);
+      if (sp && getStrictUnitRule(sp.vessel_type).defaultUnit === 'Units') return true;
+    }
+    return false;
   }
 
-  // 3. Công thức tính Sức chở thiết kế chuẩn đồng bộ với màn hình "Bổ sung & Sửa tàu / Tra cứu tàu mới"
-  function calcStandardCapacity(params) {
-    const vType = String(params.vessel_type || 'Container').trim();
-    const rule = getStrictUnitRule(vType);
-    if (rule.allowed.length === 0) return { capacity: 0, unit: '' };
-
-    const loa = parseFloat(String(params.loa || 0).replace(',', '.')) || 0;
-    const beam = parseFloat(String(params.beam || 0).replace(',', '.')) || 0;
-    const dwt = parseTons(params.dwt, loa);
-    const gt = parseTons(params.gt, 0);
-    const { kAge } = getAgeFactor(params.year_built);
-    const reqUnit = String(params.capacity_unit || '').trim();
-    const upType = vType.toUpperCase();
-
-    // Ro-Ro / Ô tô -> Units (VD: NXT GENESIS GT 18118, năm 2002 -> 1.961 Units)
-    if (rule.defaultUnit === 'Units') {
-      const units = gt > 1000
-        ? Math.round((gt / 8.5) * kAge)
-        : (loa > 0 && beam > 0
-            ? Math.round(((loa * beam * 0.78 * (loa >= 180 ? 11 : 8)) / 10.2) * kAge)
-            : Math.round((dwt * 0.35) * kAge));
-      return { capacity: units, unit: 'Units' };
+  function getEportRecord(vName) {
+    if (!vName) return null;
+    if (window._tanVuRenderedMap && typeof window._tanVuRenderedMap.get === 'function') {
+      const item = window._tanVuRenderedMap.get(vName);
+      if (item && item._eport) return item._eport;
     }
-
-    // Tàu khách -> Pax
-    if (rule.defaultUnit === 'Pax') {
-      const pax = gt > 500 ? Math.round((gt / 35) * kAge) : Math.round(loa * 12 * kAge);
-      return { capacity: pax, unit: 'Pax' };
+    if (window.eportTanVuJobsMap && typeof window.eportTanVuJobsMap.get === 'function') {
+      return window.eportTanVuJobsMap.get(vName) || null;
     }
-
-    // Tàu lỏng / dầu / hóa chất / gas -> m³ hoặc MT
-    if (rule.defaultUnit === 'm³') {
-      if (reqUnit === 'MT') {
-        const mt = dwt > 0 ? Math.round(dwt * 0.95 * kAge) : Math.round(loa * beam * 7.0 * kAge);
-        return { capacity: mt, unit: 'MT' };
-      }
-      const isGas = upType.includes('KHÍ') || upType.includes('GAS') || upType.includes('LPG') || upType.includes('LNG');
-      const m3 = dwt > 0
-        ? Math.round(dwt * (isGas ? 1.45 : 1.08) * kAge)
-        : Math.round(loa * beam * (isGas ? 7.5 : 8.5) * kAge);
-      return { capacity: m3, unit: 'm³' };
-    }
-
-    // Hàng rời / sắt thép / tổng hợp / thiết bị -> Tấn (hoặc MT)
-    if (rule.defaultUnit === 'Tấn') {
-      const tons = dwt > 0 ? Math.round(dwt * 0.94 * kAge) : Math.round(loa * beam * 7.2 * kAge);
-      return { capacity: tons, unit: reqUnit === 'MT' ? 'MT' : 'Tấn' };
-    }
-
-    // Tàu Container / Feeder -> TEU
-    const isFeederGenCargo = upType.includes('FEEDER') || upType.includes('GENERAL CARGO');
-    let teu = 0;
-    if (dwt >= 1500) {
-      const tonPerTeu = loa >= 350 ? 11.2 : (loa >= 290 ? 12.0 : (loa >= 200 ? 13.0 : (isFeederGenCargo ? 14.5 : 13.5)));
-      teu = Math.round((dwt / tonPerTeu) * kAge);
-    } else if (loa > 0) {
-      const baseTeu = loa >= 350 ? 22000 : (loa >= 290 ? 10000 : (loa >= 250 ? 4500 : (loa >= 200 ? 2750 : (loa >= 170 ? 1800 : (loa >= 140 ? 1100 : (loa >= 100 ? 650 : 350))))));
-      teu = Math.round(baseTeu * kAge);
-    }
-    return { capacity: teu, unit: 'TEU' };
+    return null;
   }
 
-  // Ghi đè đồng bộ các hàm lõi trên toàn trang (cả Form sửa tàu, Bảng tra cứu & Popup)
-  window.getAllowedCapacityUnitsByType = (vType) => getStrictUnitRule(vType).allowed;
-  window.getDefaultCapacityUnitByType = (vType) => getStrictUnitRule(vType).defaultUnit;
-  window.estimateStandardCapacityByDesign = calcStandardCapacity;
-
-  // Bọc getVesselEnrichedSpecs để tự tính lại đúng đơn vị & sức chở khi dữ liệu cũ bị lưu nhầm TEU
-  if (typeof window.getVesselEnrichedSpecs === 'function' && !window.getVesselEnrichedSpecs.__hpUnitPatched) {
-    const origSpecs = window.getVesselEnrichedSpecs;
-    window.getVesselEnrichedSpecs = function (vesselName, rawCall) {
-      const res = origSpecs.apply(this, arguments);
-      if (!res) return res;
-      const rule = getStrictUnitRule(res.vessel_type);
-
-      if (rule.allowed.length === 0) {
-        res.teu = 0;
-        res.capacity_unit = '';
-        return res;
-      }
-
-      const curUnit = String(res.capacity_unit || '').trim();
-      const isUnitValid = rule.allowed.includes(curUnit);
-      const dwtNum = parseInt(String(res.dwt || '').replace(/\D/g, ''), 10) || 0;
-      const isBuggyDwtCopy = (Number(res.teu) > 0 && dwtNum > 0 && Number(res.teu) === dwtNum && curUnit === 'TEU');
-
-      if (!isUnitValid || !Number(res.teu) || isBuggyDwtCopy) {
-        const est = calcStandardCapacity({
-          vessel_type: res.vessel_type,
-          loa: res.loa,
-          beam: res.beam,
-          dwt: res.dwt,
-          gt: res.gt,
-          year_built: res.year_built,
-          capacity_unit: isUnitValid ? curUnit : rule.defaultUnit
-        });
-        res.teu = est.capacity;
-        res.capacity_unit = est.unit;
-      }
-      return res;
-    };
-    window.getVesselEnrichedSpecs.__hpUnitPatched = true;
+  // 2. Đổi "Moves/h" -> "Units/h" trên các thẻ tàu Ro-Ro tại khung Cảng Tân Vũ
+  function fixTanVuChipsForRoRo() {
+    const layout = document.getElementById('tanvuBerthsLayout');
+    if (!layout) return;
+    layout.querySelectorAll('.ship-chip[data-vessel-key]').forEach(chip => {
+      const vKey = (chip.getAttribute('data-vessel-key') || '').trim().toUpperCase();
+      const ep = getEportRecord(vKey);
+      if (!isRoRoVessel(vKey, '', ep)) return;
+      chip.querySelectorAll('span').forEach(sp => {
+        if (sp.children.length === 0 && /Moves/i.test(sp.textContent || '')) {
+          sp.textContent = sp.textContent.replace(/Moves\/h/gi, 'Units/h').replace(/Moves/gi, 'Units');
+        }
+      });
+    });
   }
 
-  // Bổ sung tùy chọn MT và "Không tính" cho ô chọn đơn vị ở màn hình Bổ sung & Sửa tàu
-  function upgradeUnitDropdown() {
-    const unitSel = document.getElementById('editVesselCapUnit');
-    if (!unitSel) return;
-    const ensureOpt = (val, text) => {
-      if (![...unitSel.options].some(o => o.value === val)) {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = text;
-        unitSel.appendChild(opt);
-      }
-    };
-    ensureOpt('MT', 'MT');
-    ensureOpt('Pax', 'Khách (Pax)');
-    ensureOpt('', 'Không tính');
-  }
-
-  // 4. Ép đồng bộ hiển thị Sức chở / DWT & vị trí popup (cả Mobile lẫn Desktop)
+  // 3. Chuẩn hóa toàn bộ Popup chi tiết tàu
   let isFixingTooltip = false;
   function enforceTooltipDisplay() {
     if (isFixingTooltip) return;
@@ -12808,100 +12715,107 @@ if (!pinCheck.ok) {
         tt.style.bottom = '';
         tt.style.transform = '';
       } else {
-        // Trên máy tính: giữ popup luôn nằm trọn trong màn hình, không bị cắt mất hàng nút dưới
         const rect = tt.getBoundingClientRect();
         const pad = 10;
-        if (rect.bottom > window.innerHeight - pad) {
-          tt.style.top = Math.max(pad, window.innerHeight - rect.height - pad) + 'px';
-        }
-        if (rect.right > window.innerWidth - pad) {
-          tt.style.left = Math.max(pad, window.innerWidth - rect.width - pad) + 'px';
-        }
+        if (rect.bottom > window.innerHeight - pad) tt.style.top = Math.max(pad, window.innerHeight - rect.height - pad) + 'px';
+        if (rect.right > window.innerWidth - pad) tt.style.left = Math.max(pad, window.innerWidth - rect.width - pad) + 'px';
       }
 
-      // Chuẩn hóa hiển thị sản lượng ePort: tách rõ "Cont / TEUs" và tính % = (Tổng Cont - Còn lại) / Tổng Cont
+      const nameEl = tt.querySelector('#ttName');
+      const typeEl = tt.querySelector('#ttVesselType') || tt.querySelector('.badge');
+      const dwtEl = tt.querySelector('#ttDwt');
       const opEl = tt.querySelector('#ttOperator');
-      if (opEl && vName) {
-        const renderedItem = (window._tanVuRenderedMap && typeof window._tanVuRenderedMap.get === 'function')
-          ? window._tanVuRenderedMap.get(vName)
-          : null;
-        const ep = renderedItem && renderedItem._eport;
-        if (ep && (Number(ep.totalCont) > 0 || Number(ep.totalTeu) > 0)) {
-          const totalCont = Number(ep.totalCont) || 0;
-          const totalTeu = Number(ep.totalTeu) || 0;
-          const remCont = ep.remCont !== undefined ? Number(ep.remCont) : Math.max(0, totalCont - (Number(ep.doneCont) || 0));
-          const completedCont = Math.max(0, totalCont - remCont);
-          const realPct = totalCont > 0
-            ? Math.min(100, Math.round((completedCont / totalCont) * 100))
-            : (totalTeu > 0 ? Math.min(100, Math.round(((Number(ep.doneTeu) || 0) / totalTeu) * 100)) : 0);
+      const rateBox = tt.querySelector('#ttReqRateBox');
+
+      const vName = (nameEl ? nameEl.textContent : '').trim().toUpperCase();
+      const vType = (typeEl ? typeEl.textContent : '').trim();
+      const ep = getEportRecord(vName);
+      const isRoRo = isRoRoVessel(vName, vType, ep);
+      const rule = getStrictUnitRule(vType);
+
+      // A. Sửa dòng tiến độ ePort (#ttOperator): tách rõ Units cho Ro-Ro và Cont/TEUs cho Container
+      if (opEl && ep) {
+        const totalPair = parsePairText(ep.contTeuStr || ep.total || '');
+        const donePair = parsePairText(ep.donePlanStr || ep.done || '');
+
+        const totalQty = Number(ep.totalCont) || Number(ep.planNum) || totalPair.qty || 0;
+        const doneQty = (ep.doneCont !== undefined && ep.doneCont !== null && ep.doneCont !== '')
+          ? Number(ep.doneCont)
+          : (donePair.qty || Number(ep.doneNum) || 0);
+        const totalTeu = isRoRo ? 0 : (Number(ep.totalTeu) || totalPair.teu || 0);
+
+        if (totalQty > 0) {
+          const pct = (ep.progressStr && /(\d+(?:[.,]\d+)?)\s*%/.test(ep.progressStr))
+            ? Math.min(100, Math.round(parseFloat(ep.progressStr.match(/(\d+(?:[.,]\d+)?)\s*%/)[1].replace(',', '.'))))
+            : Math.min(100, Math.round((doneQty / totalQty) * 100));
 
           const rawOp = (opEl.textContent || '').trim();
           const opPrefix = rawOp.split('·')[0].trim() || '—';
-          const totalLabel = totalTeu > 0
-            ? `${totalCont.toLocaleString('vi-VN')} Cont / ${totalTeu.toLocaleString('vi-VN')} TEUs`
-            : `${totalCont.toLocaleString('vi-VN')} Cont`;
 
-          const newOpText = `${opPrefix} · Đã làm: ${completedCont.toLocaleString('vi-VN')}/${totalCont.toLocaleString('vi-VN')} Cont (${realPct}%) · Tổng: ${totalLabel}`;
-          if (opEl.textContent !== newOpText) {
-            opEl.textContent = newOpText;
+          let newOpText = '';
+          if (isRoRo) {
+            newOpText = `${opPrefix} · Đã làm: ${doneQty.toLocaleString('vi-VN')}/${totalQty.toLocaleString('vi-VN')} Units (${pct}%)`;
+          } else {
+            const totalLabel = totalTeu > 0
+              ? `${totalQty.toLocaleString('vi-VN')} Cont / ${totalTeu.toLocaleString('vi-VN')} TEUs`
+              : `${totalQty.toLocaleString('vi-VN')} Cont`;
+            newOpText = `${opPrefix} · Đã làm: ${doneQty.toLocaleString('vi-VN')}/${totalQty.toLocaleString('vi-VN')} Cont (${pct}%) · Tổng: ${totalLabel}`;
           }
-        }
-      }
-      const vType = (typeEl.textContent || '').trim();
-      const rule = getStrictUnitRule(vType);
 
-      // Lấy dữ liệu đã tính chuẩn theo thiết kế (giống hệt màn hình Tra cứu tàu mới / Sửa tàu)
-      const specs = (vName && typeof window.getVesselEnrichedSpecs === 'function')
-        ? window.getVesselEnrichedSpecs(vName, { vessel: vName, vessel_type: vType })
-        : null;
-
-      const rawText = (dwtEl.textContent || '').trim();
-      const parts = rawText.split('·').map(x => x.trim()).filter(Boolean);
-      const dwtFromDom = parts.length > 1 ? parts[parts.length - 1] : (/\d+\s*T\b/i.test(rawText) ? rawText : '—');
-      const dwtPart = (specs && specs.dwt) ? `${specs.dwt} T` : dwtFromDom;
-
-      if (rule.allowed.length === 0) {
-        if (dwtEl.textContent !== dwtPart) dwtEl.textContent = dwtPart;
-        return;
-      }
-
-      let capVal = specs ? Number(specs.teu) || 0 : 0;
-      let finalUnit = (specs && rule.allowed.includes(specs.capacity_unit)) ? specs.capacity_unit : rule.defaultUnit;
-
-      if (capVal <= 0 && parts.length > 1) {
-        const mNum = parts[0].match(/[\d.,]+/);
-        if (mNum) {
-          const parsedDomNum = parseInt(mNum[0].replace(/[^\d]/g, ''), 10) || 0;
-          capVal = parsedDomNum;
+          if (opEl.textContent !== newOpText) opEl.textContent = newOpText;
         }
       }
 
-      const fixedText = capVal > 0
-        ? `${capVal.toLocaleString('vi-VN')} ${finalUnit} · ${dwtPart}`
-        : dwtPart;
+      // B. Sửa ô Sức chở / DWT (#ttDwt): không để TEU cho tàu Ro-Ro/khác
+      if (dwtEl && typeEl) {
+        const rawText = (dwtEl.textContent || '').trim();
+        const parts = rawText.split('·').map(x => x.trim()).filter(Boolean);
+        const dwtPart = parts.length > 1 ? parts[parts.length - 1] : (/\d+\s*T\b/i.test(rawText) ? rawText : '—');
 
-      if (dwtEl.textContent !== fixedText) {
-        dwtEl.textContent = fixedText;
+        if (rule.allowed.length === 0) {
+          if (dwtEl.textContent !== dwtPart) dwtEl.textContent = dwtPart;
+        } else if (parts.length > 1) {
+          const mNum = parts[0].match(/[\d.,]+/);
+          const curUnit = parts[0].replace(/[\d.,\s]+/g, '').trim();
+          const finalUnit = rule.allowed.includes(curUnit) ? curUnit : rule.defaultUnit;
+          const fixedText = mNum ? `${mNum[0]} ${finalUnit} · ${dwtPart}` : dwtPart;
+          if (dwtEl.textContent !== fixedText) dwtEl.textContent = fixedText;
+        }
+      }
+
+      // C. Sửa khung "Năng suất cần giải phóng" (#ttReqRateBox): Moves -> Units cho tàu Ro-Ro
+      if (rateBox && isRoRo && /Moves/i.test(rateBox.innerHTML)) {
+        rateBox.innerHTML = rateBox.innerHTML
+          .replace(/Moves\/h/gi, 'Units/h')
+          .replace(/Moves/gi, 'Units');
       }
     } finally {
       isFixingTooltip = false;
     }
   }
 
-  function attachTooltipObserver() {
-    upgradeUnitDropdown();
+  function attachObservers() {
     const tt = document.getElementById('shipTooltip');
-    if (!tt || tt.__hpUnitObservedV3) return;
-    const obs = new MutationObserver(() => enforceTooltipDisplay());
-    obs.observe(tt, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true });
-    tt.__hpUnitObservedV3 = true;
-    enforceTooltipDisplay();
+    if (tt && !tt.__hpUnitObservedV4) {
+      const obs = new MutationObserver(() => enforceTooltipDisplay());
+      obs.observe(tt, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true });
+      tt.__hpUnitObservedV4 = true;
+      enforceTooltipDisplay();
+    }
+
+    const tv = document.getElementById('tanvuBerthsLayout');
+    if (tv && !tv.__hpChipObservedV4) {
+      const obsTv = new MutationObserver(() => fixTanVuChipsForRoRo());
+      obsTv.observe(tv, { childList: true, subtree: true });
+      tv.__hpChipObservedV4 = true;
+      fixTanVuChipsForRoRo();
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', attachTooltipObserver);
+  document.addEventListener('DOMContentLoaded', attachObservers);
   document.addEventListener('click', () => setTimeout(enforceTooltipDisplay, 30), true);
-  setTimeout(attachTooltipObserver, 400);
-  setTimeout(attachTooltipObserver, 1500);
+  setTimeout(attachObservers, 400);
+  setTimeout(attachObservers, 1500);
 })();
 </script>
 </body>
