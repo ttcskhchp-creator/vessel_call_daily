@@ -5540,14 +5540,40 @@ function mapVesselFinderShipType(rawVfType) {
   return '';
 }
 
-function getDefaultCapacityUnitByType(vesselType) {
+function getAllowedCapacityUnitsByType(vesselType) {
   let t = String(vesselType || 'Container').toUpperCase();
-  if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ')) return 'Units';
-  if (t.includes('KHÁCH') || t.includes('PASSENGER') || t.includes('CRUISE')) return 'Pax';
-  if (t.includes('DẦU') || t.includes('FSO') || t.includes('HÓA CHẤT') || t.includes('KHÍ') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) return 'm³';
-  if (t.includes('RỜI') || t.includes('BULK') || t.includes('TỔNG HỢP')) return 'Tấn';
-  if (t.includes('THIẾT BỊ') || t.includes('PROJECT') || t.includes('HEAVY')) return 'Tấn';
-  return 'TEU';
+  // 1. Tàu quân sự, đánh cá, tàu kéo, du thuyền, tàu khác -> KHÔNG tính đơn vị sức chở
+  if (
+    t.includes('QUÂN SỰ') || t.includes('MILITARY') || t.includes('NAVAL') || t.includes('WARSHIP') ||
+    t.includes('ĐÁNH CÁ') || t.includes('FISHING') || t.includes('TRAWLER') ||
+    t.includes('TUG') || t.includes('TÀU KÉO') || t.includes('YACHT') ||
+    t.includes('AUX') || t.includes('UNKNOWN') || t === 'KHÁC' || t.startsWith('KHÁC')
+  ) {
+    return [];
+  }
+  // 2. Tàu Ro-Ro / Ô tô -> Units
+  if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('CAR CARRIER')) {
+    return ['Units'];
+  }
+  // 3. Tàu khách -> Pax
+  if (t.includes('KHÁCH') || t.includes('PASSENGER') || t.includes('CRUISE')) {
+    return ['Pax'];
+  }
+  // 4. Tàu lỏng, dầu, hóa chất, gas (LPG/LNG) -> m³ hoặc MT
+  if (t.includes('DẦU') || t.includes('FSO') || t.includes('FPSO') || t.includes('HÓA CHẤT') || t.includes('LỎNG') || t.includes('KHÍ') || t.includes('GAS') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) {
+    return ['m³', 'MT'];
+  }
+  // 5. Tàu hàng rời, sắt thép, tổng hợp, thiết bị -> Tấn (hoặc MT)
+  if (t.includes('RỜI') || t.includes('BULK') || t.includes('SẮT') || t.includes('THÉP') || t.includes('TỔNG HỢP') || t.includes('THIẾT BỊ') || t.includes('PROJECT') || t.includes('HEAVY')) {
+    return ['Tấn', 'MT'];
+  }
+  // 6. Tàu Container / Feeder -> TEU
+  return ['TEU'];
+}
+
+function getDefaultCapacityUnitByType(vesselType) {
+  const allowed = getAllowedCapacityUnitsByType(vesselType);
+  return allowed.length > 0 ? allowed[0] : '';
 }
 
 function getVesselAgeAndFactor(yearBuilt) {
@@ -5563,43 +5589,56 @@ function getVesselAgeAndFactor(yearBuilt) {
 
 function estimateStandardCapacityByDesign(params) {
   let vType = String(params.vessel_type || 'Container').toUpperCase();
+  let allowedUnits = getAllowedCapacityUnitsByType(vType);
+
+  // Tàu quân sự, đánh cá, tàu khác: không tính sức chở
+  if (allowedUnits.length === 0) {
+    return { capacity: 0, unit: '' };
+  }
+
   let loa = parseFloat(String(params.loa || 0).replace(',', '.')) || 0;
   let beam = parseFloat(String(params.beam || 0).replace(',', '.')) || 0;
   let dwt = parseDwtToMetricTons(params.dwt, loa);
   let gt = parseDwtToMetricTons(params.gt, 0);
   let { kAge } = getVesselAgeAndFactor(params.year_built);
+  let reqUnit = String(params.capacity_unit || '').trim();
 
-  if (vType.includes('RO-RO') || vType.includes('VEHICLES') || vType.includes('PCTC') || vType.includes('Ô TÔ')) {
+  // 1. Ro-Ro / Ô tô (Units)
+  if (allowedUnits[0] === 'Units') {
     let units = gt > 1000
       ? Math.round((gt / 8.5) * kAge)
-      : (loa > 0 && beam > 0 ? Math.round(((loa * beam * 0.78 * (loa >= 180 ? 11 : 8)) / 10.2) * kAge) : Math.round((dwt * 0.35) * kAge));
+      : (loa > 0 && beam > 0
+          ? Math.round(((loa * beam * 0.78 * (loa >= 180 ? 11 : 8)) / 10.2) * kAge)
+          : Math.round((dwt * 0.35) * kAge));
     return { capacity: units, unit: 'Units' };
   }
-  if (vType.includes('KHÁCH') || vType.includes('PASSENGER') || vType.includes('CRUISE')) {
+
+  // 2. Tàu khách (Pax)
+  if (allowedUnits[0] === 'Pax') {
     let pax = gt > 500 ? Math.round((gt / 35) * kAge) : Math.round(loa * 12 * kAge);
     return { capacity: pax, unit: 'Pax' };
   }
-  if (vType.includes('DẦU') || vType.includes('FSO') || vType.includes('HÓA CHẤT') || vType.includes('TANKER')) {
-    let m3 = dwt > 0 ? Math.round(dwt * 1.08 * kAge) : Math.round(loa * beam * 8.5 * kAge);
-    return { capacity: m3, unit: 'm³' };
-  }
-  if (vType.includes('KHÍ') || vType.includes('LPG') || vType.includes('LNG')) {
-    let m3 = dwt > 0 ? Math.round(dwt * 1.45 * kAge) : Math.round(loa * beam * 7.5 * kAge);
-    return { capacity: m3, unit: 'm³' };
-  }
-  if (vType.includes('RỜI') || vType.includes('BULK') || vType.includes('TỔNG HỢP')) {
-    if (params.capacity_unit === 'm³') {
-      return { capacity: dwt > 0 ? Math.round(dwt * 1.25 * kAge) : Math.round(loa * beam * 9.0 * kAge), unit: 'm³' };
+
+  // 3. Tàu lỏng, dầu, hóa chất, gas (m³ hoặc MT)
+  if (allowedUnits[0] === 'm³') {
+    if (reqUnit === 'MT') {
+      let mt = dwt > 0 ? Math.round(dwt * 0.95 * kAge) : Math.round(loa * beam * 7.0 * kAge);
+      return { capacity: mt, unit: 'MT' };
     }
-    return { capacity: dwt > 0 ? Math.round(dwt * 0.94 * kAge) : Math.round(loa * beam * 7.2 * kAge), unit: 'Tấn' };
-  }
-  if (vType.includes('THIẾT BỊ') || vType.includes('PROJECT') || vType.includes('HEAVY')) {
-    return { capacity: dwt > 0 ? Math.round(dwt * 0.90 * kAge) : Math.round(loa * beam * 6.0 * kAge), unit: params.capacity_unit === 'Units' ? 'Units' : 'Tấn' };
-  }
-  if (params.capacity_unit === 'Tấn') {
-    return { capacity: dwt > 0 ? Math.round(dwt * 0.92 * kAge) : Math.round(loa * beam * 6.5 * kAge), unit: 'Tấn' };
+    let isGas = vType.includes('KHÍ') || vType.includes('GAS') || vType.includes('LPG') || vType.includes('LNG');
+    let m3 = dwt > 0
+      ? Math.round(dwt * (isGas ? 1.45 : 1.08) * kAge)
+      : Math.round(loa * beam * (isGas ? 7.5 : 8.5) * kAge);
+    return { capacity: m3, unit: 'm³' };
   }
 
+  // 4. Tàu hàng rời, sắt thép, tổng hợp, thiết bị (Tấn)
+  if (allowedUnits[0] === 'Tấn') {
+    let tons = dwt > 0 ? Math.round(dwt * 0.94 * kAge) : Math.round(loa * beam * 7.2 * kAge);
+    return { capacity: tons, unit: reqUnit === 'MT' ? 'MT' : 'Tấn' };
+  }
+
+  // 5. Tàu Container / Feeder (TEU)
   let isFeederGenCargo = vType.includes('FEEDER') || vType.includes('GENERAL CARGO');
   let teu = 0;
   if (dwt >= 1500) {
@@ -5611,7 +5650,7 @@ function estimateStandardCapacityByDesign(params) {
   }
   return { capacity: teu, unit: 'TEU' };
 }
-
+  
 function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let vKey = String(vesselName || '').trim().toUpperCase();
   let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vKey)) || {};
@@ -5638,31 +5677,37 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
     ? ovType
     : (catType || rawType || ovType || 'Container');
 
-  let ovUnit = (ov.capacity_unit && String(ov.capacity_unit).trim()) || '';
-  let catUnit = (cat.capacity_unit && String(cat.capacity_unit).trim()) || '';
-  let capUnit = (ovUnit && !(ovUnit === 'TEU' && catUnit && catUnit !== 'TEU'))
-    ? ovUnit
-    : (catUnit || rawCall.capacity_unit || getDefaultCapacityUnitByType(vType));
+let allowedUnits = getAllowedCapacityUnitsByType(vType);
+  let rawSavedUnit =
+    (ov.capacity_unit && String(ov.capacity_unit).trim()) ||
+    (cat.capacity_unit && String(cat.capacity_unit).trim()) ||
+    (rawCall.capacity_unit && String(rawCall.capacity_unit).trim()) || '';
 
-  let rawCap = Number(ov.teu) || Number(cat.teu) || Number(rawCall.teu) || 0;
+  let capUnit = '';
+  let rawCap = 0;
 
-  let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
-  let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && capUnit === 'TEU');
+  if (allowedUnits.length > 0) {
+    let isUnitValid = allowedUnits.includes(rawSavedUnit);
+    capUnit = isUnitValid ? rawSavedUnit : allowedUnits[0];
+    rawCap = isUnitValid ? (Number(ov.teu) || Number(cat.teu) || Number(rawCall.teu) || 0) : 0;
 
-  if (rawCap <= 0 || isBuggyDwtCopy) {
-    let est = estimateStandardCapacityByDesign({
-      vessel_type: vType,
-      loa: loa,
-      beam: beam,
-      dwt: dwt,
-      gt: gt,
-      year_built: yearBuilt,
-      capacity_unit: capUnit
-    });
-    rawCap = est.capacity;
-    capUnit = est.unit;
+    let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
+    let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && capUnit === 'TEU');
+
+    if (rawCap <= 0 || isBuggyDwtCopy) {
+      let est = estimateStandardCapacityByDesign({
+        vessel_type: vType,
+        loa: loa,
+        beam: beam,
+        dwt: dwt,
+        gt: gt,
+        year_built: yearBuilt,
+        capacity_unit: capUnit
+      });
+      rawCap = est.capacity;
+      capUnit = est.unit;
+    }
   }
-
   let { age } = getVesselAgeAndFactor(yearBuilt);
 
   return {
@@ -7391,7 +7436,7 @@ function showTooltip(e, s) {
   $('ttOperator').textContent = specs.operator || s.operator || '—';
   if ($('ttVesselType')) $('ttVesselType').textContent = specs.vessel_type || 'Container';
   $('ttLoa').textContent = `${specs.loa || '—'}m × ${specs.beam ? Number(specs.beam).toFixed(1) + 'm' : '—'}`;
-  let capPart = specs.teu > 0 ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'} · ` : '';
+  let capPart = (specs.teu > 0 && specs.capacity_unit) ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit} · ` : '';
   $('ttDwt').textContent = capPart + (specs.dwt ? `${specs.dwt} T` : '—');
   if ($('ttYearAge')) $('ttYearAge').textContent = specs.year_built ? `${specs.year_built} (${specs.vessel_age} tuổi)` : 'Chưa rõ';
   if ($('ttRoute')) $('ttRoute').textContent = (specs.last_port || specs.destination) ? `${specs.last_port || '—'} ➔ ${specs.destination || '—'}` : '—';
