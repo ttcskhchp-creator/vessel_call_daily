@@ -12614,8 +12614,23 @@ if (!pinCheck.ok) {
         tt.style.transform = '';
       }
 
-      const typeEl = document.getElementById('ttVesselType');
-      const dwtEl = document.getElementById('ttDwt');
+      // Tìm loại tàu (ưu tiên #ttVesselType, nếu không có thì lấy .badge đầu tiên trong popup)
+      const typeEl = tt.querySelector('#ttVesselType') || tt.querySelector('.badge');
+      // Tìm ô Sức chở / DWT (ưu tiên #ttDwt, nếu không có thì tìm theo nhãn "Sức chở / DWT")
+      let dwtEl = tt.querySelector('#ttDwt');
+      if (!dwtEl) {
+        const smalls = tt.querySelectorAll('small, div, span');
+        for (const el of smalls) {
+          if (el.children.length === 0 && /sức\s*chở\s*\/\s*dwt/i.test(el.textContent || '')) {
+            const parent = el.parentElement;
+            if (parent) {
+              dwtEl = parent.querySelector('b, strong') || el.nextElementSibling;
+              if (dwtEl) break;
+            }
+          }
+        }
+      }
+
       if (!typeEl || !dwtEl) return;
 
       const vType = (typeEl.textContent || '').trim();
@@ -12625,16 +12640,14 @@ if (!pinCheck.ok) {
       const dwtPart = parts.length > 1 ? parts[parts.length - 1] : (/\d+\s*T\b/i.test(rawText) ? rawText : '—');
 
       if (rule.allowed.length === 0) {
-        // Quân sự, đánh cá, tàu khác -> bỏ hoàn toàn đơn vị sức chở, chỉ giữ DWT
         if (dwtEl.textContent !== dwtPart) dwtEl.textContent = dwtPart;
         return;
       }
 
-      // Nếu đang có số sức chở ở vế trái, thay đúng đơn vị theo loại tàu (VD: 4.929 TEU -> 4.929 Units)
       if (parts.length > 1) {
         const mNum = parts[0].match(/[\d.,]+/);
-        const curUnitMatch = parts[0].replace(/[\d.,\s]+/g, '').trim();
-        const finalUnit = rule.allowed.includes(curUnitMatch) ? curUnitMatch : rule.defaultUnit;
+        const curUnit = parts[0].replace(/[\d.,\s]+/g, '').trim();
+        const finalUnit = rule.allowed.includes(curUnit) ? curUnit : rule.defaultUnit;
         const fixedText = mNum ? `${mNum[0]} ${finalUnit} · ${dwtPart}` : dwtPart;
         if (dwtEl.textContent !== fixedText) dwtEl.textContent = fixedText;
       }
@@ -12645,14 +12658,16 @@ if (!pinCheck.ok) {
 
   function attachTooltipObserver() {
     const tt = document.getElementById('shipTooltip');
-    if (!tt || tt.__hpUnitObserved) return;
+    if (!tt || tt.__hpUnitObservedV2) return;
     const obs = new MutationObserver(() => enforceTooltipDisplay());
-    obs.observe(tt, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true, characterData: true });
-    tt.__hpUnitObserved = true;
+    obs.observe(tt, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true });
+    tt.__hpUnitObservedV2 = true;
+    enforceTooltipDisplay();
   }
 
   document.addEventListener('DOMContentLoaded', attachTooltipObserver);
-  setTimeout(attachTooltipObserver, 500);
+  document.addEventListener('click', () => setTimeout(enforceTooltipDisplay, 30), true);
+  setTimeout(attachTooltipObserver, 400);
   setTimeout(attachTooltipObserver, 1500);
 })();
 </script>
