@@ -13147,7 +13147,7 @@ if (!pinCheck.ok) {
   setTimeout(attachObservers, 1500);
 })();
 </script>
-   //=============RELOAD TRANG WEB====================== //
+   //=============RELOAD TRANG WEB 15p một lần kể cả để tĩnh ====================== //
 <script id="hp-auto-reload-15m">
 (function initAutoReload15Min() {
   const RELOAD_INTERVAL_MS = 15 * 60 * 1000; // 15 phút
@@ -13252,7 +13252,7 @@ if (!pinCheck.ok) {
   });
 })();
 </script>
-
+//======Tính toán các tàu Di chuyển trên lịch cảng vụ
 <script id="hp-cangvu-shifting-sync">
 (function () {
   window._cangVuShiftingRows = [];
@@ -13690,7 +13690,7 @@ if (!pinCheck.ok) {
   }, 15 * 60 * 1000);
 })();
 </script>
-  
+//========= Tinh chỉnh hiển thị và khi sửa tàu vẫn giữ nguyên thông số của cảng vào và bến
 <script id="hp-fix-edit-port-inherit">
 (function () {
   // Lưu chính xác ngữ cảnh cảng & bến của tàu vừa được click (Gantt / Tân Vũ / Bảng tra cứu)
@@ -13944,7 +13944,7 @@ if (!pinCheck.ok) {
   setTimeout(wrapEditAndSave, 2000);
 })();
 </script>
-
+//========Tinh chỉnh hiển thị trên đt popup không bị che dưới lớp phủ mờ
 <script id="hp-mobile-top-layer-dialog">
 (function () {
   // 1. CSS cho Top Layer <dialog> + tắt backdrop-filter gây lỗi mờ trên Chrome mobile ở Gantt
@@ -14124,6 +14124,302 @@ if (!pinCheck.ok) {
   setTimeout(bindObserver, 300);
   setTimeout(bindObserver, 1200);
 })();
-</script>  
+</script>
+//============thao tác khi reload không bị chuyển trang
+<script id="hp-keep-screen-state">
+(function () {
+  const STATE_KEY = 'hp_active_tab_state_v1';
+  let readyToSave = false;
+  let saveTimer = null;
+  let userScrolledAfterLoad = false;
+
+  const FORM_FIELD_IDS = [
+    // Bộ lọc chung & từng màn hình
+    'fromDate', 'toDate', 'planningSearch', 'days', 'search', 'catalogFilterInput',
+    // Form Bổ sung & Sửa tàu
+    'editVesselImo', 'editVesselName', 'editVesselType', 'editVesselYearBuilt',
+    'editVesselOperator', 'editVesselLastPort', 'editVesselDestination',
+    'editVesselTerminal', 'editVesselBerth', 'editVesselLoa', 'editVesselBeam',
+    'editVesselTeu', 'editVesselCapUnit', 'editVesselDwt', 'editVesselGt',
+    'editVesselEtb', 'editVesselEtd',
+    // Form Lập PA An Toàn
+    'sf_vessel', 'sf_agent', 'sf_imo', 'sf_berth', 'sf_loa', 'sf_dwt',
+    'sf_etb', 'sf_etd', 'sf_startWork', 'sf_endWork', 'sf_berthDepth', 'sf_draftArr',
+    'sf_cargoName', 'sf_cargoUnit', 'sf_cargoTotal', 'sf_cargoExport',
+    'sf_equipment', 'sf_rate', 'sf_tideHighTime', 'sf_tideHighVal',
+    'sf_tideLowTime', 'sf_tideLowVal', 'sf_tideNextHighTime', 'sf_tideNextHighVal',
+    'sf_autoSafeOnEdit',
+    // Form Báo cáo & Góp ý
+    'repName', 'repContact', 'repCompany', 'repType', 'repVessel', 'repContent'
+  ];
+
+  function getActivePageName() {
+    const visible = document.querySelector('.page:not(.hidden)');
+    if (visible && visible.id && visible.id.startsWith('page-')) {
+      return visible.id.slice(5);
+    }
+    const activeBtn = document.querySelector('.nav button.active');
+    return (activeBtn && activeBtn.dataset.page) || localStorage.getItem('hp_last_page') || 'overview';
+  }
+
+  function collectScrollState() {
+    const main = document.getElementById('mainScroll');
+    const gantt = document.getElementById('fullGantt');
+    const searchWrap = document.querySelector('#page-search .table-wrap');
+    const editWrap = document.querySelector('#page-edit-vessel .table-wrap');
+    const safetyWrap = document.querySelector('#page-safety-plan .table-wrap');
+    return {
+      mainTop: main ? main.scrollTop : 0,
+      ganttLeft: gantt ? gantt.scrollLeft : 0,
+      ganttTop: gantt ? gantt.scrollTop : 0,
+      searchTop: searchWrap ? searchWrap.scrollTop : 0,
+      searchLeft: searchWrap ? searchWrap.scrollLeft : 0,
+      editTop: editWrap ? editWrap.scrollTop : 0,
+      safetyTop: safetyWrap ? safetyWrap.scrollTop : 0
+    };
+  }
+
+  function applyScrollState(sc) {
+    if (!sc) return;
+    const main = document.getElementById('mainScroll');
+    const gantt = document.getElementById('fullGantt');
+    const searchWrap = document.querySelector('#page-search .table-wrap');
+    const editWrap = document.querySelector('#page-edit-vessel .table-wrap');
+    const safetyWrap = document.querySelector('#page-safety-plan .table-wrap');
+
+    if (main && sc.mainTop > 0) main.scrollTop = sc.mainTop;
+    if (gantt) {
+      if (sc.ganttLeft > 0) gantt.scrollLeft = sc.ganttLeft;
+      if (sc.ganttTop > 0) gantt.scrollTop = sc.ganttTop;
+    }
+    if (searchWrap) {
+      if (sc.searchTop > 0) searchWrap.scrollTop = sc.searchTop;
+      if (sc.searchLeft > 0) searchWrap.scrollLeft = sc.searchLeft;
+    }
+    if (editWrap && sc.editTop > 0) editWrap.scrollTop = sc.editTop;
+    if (safetyWrap && sc.safetyTop > 0) safetyWrap.scrollTop = sc.safetyTop;
+  }
+
+  function saveCurrentScreenState() {
+    if (!readyToSave) return;
+    try {
+      const fields = {};
+      FORM_FIELD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        fields[id] = el.type === 'checkbox' ? el.checked : el.value;
+      });
+
+      const snapshot = {
+        page: getActivePageName(),
+        planningArea: (typeof planningAreaFilter !== 'undefined') ? planningAreaFilter : 'ALL',
+        movement: (typeof movementMode !== 'undefined') ? movementMode : 'all',
+        rankingMetric: (typeof currentRankingMetric !== 'undefined') ? currentRankingMetric : 'calls',
+        tideOffset: (typeof tideViewDayOffset !== 'undefined') ? tideViewDayOffset : 0,
+        fields,
+        planRows: (typeof generatedPlanRows !== 'undefined' && Array.isArray(generatedPlanRows) && generatedPlanRows.length > 0)
+          ? generatedPlanRows
+          : [],
+        scroll: collectScrollState(),
+        savedAt: Date.now()
+      };
+
+      sessionStorage.setItem(STATE_KEY, JSON.stringify(snapshot));
+      localStorage.setItem('hp_last_page', snapshot.page);
+    } catch (e) {}
+  }
+
+  function scheduleSave(delay = 180) {
+    if (!readyToSave) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveCurrentScreenState, delay);
+  }
+
+  function restoreSavedState() {
+    let saved = null;
+    try {
+      const raw = sessionStorage.getItem(STATE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch (e) {}
+
+    if (!saved) {
+      // Tab mở mới: vẫn ưu tiên giữ lại trang gần nhất nếu có
+      const lastPage = localStorage.getItem('hp_last_page');
+      if (lastPage && lastPage !== 'overview' && typeof window.nav === 'function') {
+        window.nav(lastPage, false);
+      }
+      readyToSave = true;
+      return;
+    }
+
+    // 1. Khôi phục toàn bộ giá trị ô nhập liệu & bộ lọc
+    if (saved.fields && typeof saved.fields === 'object') {
+      Object.entries(saved.fields).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (!el || val === undefined || val === null) return;
+        if (el.type === 'checkbox') el.checked = Boolean(val);
+        else el.value = val;
+      });
+      if (typeof window.updateVesselAgePreview === 'function') {
+        try { window.updateVesselAgePreview(); } catch (e) {}
+      }
+    }
+
+    // 2. Khôi phục bộ lọc vùng cảng ở Kế hoạch cầu
+    if (saved.planningArea && typeof window.filterPlanningArea === 'function') {
+      const btns = document.querySelectorAll('#page-planning .toolbar button');
+      const targetBtn = [...btns].find(b => {
+        const oc = b.getAttribute('onclick') || '';
+        return oc.includes(`'${saved.planningArea}'`);
+      });
+      if (targetBtn) {
+        try { window.filterPlanningArea(saved.planningArea, targetBtn); } catch (e) {}
+      }
+    }
+
+    // 3. Khôi phục bộ lọc Điều động tàu ở Toàn cảnh
+    if (saved.movement && typeof window.filterMovement === 'function') {
+      const moveBtnMap = {
+        all: 'btnMoveAll',
+        arriving: 'btnMoveArr',
+        departing: 'btnMoveDep',
+        departed: 'btnMoveDepted'
+      };
+      const btn = document.getElementById(moveBtnMap[saved.movement]);
+      if (btn) {
+        try { window.filterMovement(saved.movement, btn); } catch (e) {}
+      }
+    }
+
+    // 4. Khôi phục tiêu chí Ranking ở Thống kê
+    if (saved.rankingMetric && typeof window.setStatsRankingMetric === 'function') {
+      const rankBtnMap = {
+        calls: 'btnRankCalls',
+        dwt: 'btnRankDwt',
+        teu: 'btnRankTeu',
+        loa: 'btnRankLoa'
+      };
+      const btn = document.getElementById(rankBtnMap[saved.rankingMetric]);
+      if (btn) {
+        try { window.setStatsRankingMetric(saved.rankingMetric, btn); } catch (e) {}
+      }
+    }
+
+    // 5. Khôi phục ngày xem thủy triều Hòn Dáu (Hôm nay / Ngày mai / Ngày kia)
+    if (typeof saved.tideOffset === 'number' && typeof tideViewDayOffset !== 'undefined') {
+      tideViewDayOffset = saved.tideOffset;
+      if (typeof window.updateRealtimeWidgets === 'function') {
+        try { window.updateRealtimeWidgets(); } catch (e) {}
+      }
+    }
+
+    // 6. Khôi phục bảng tính mớn nước UKC đang làm dở ở Lập PA An Toàn
+    if (Array.isArray(saved.planRows) && saved.planRows.length > 0 && typeof window.renderSafetyTable === 'function') {
+      window.generatedPlanRows = saved.planRows;
+      if (typeof generatedPlanRows !== 'undefined') generatedPlanRows = saved.planRows;
+      try { window.renderSafetyTable(); } catch (e) {}
+    }
+
+    // 7. Chuyển về đúng màn hình đang thao tác
+    if (saved.page && typeof window.nav === 'function') {
+      window.nav(saved.page, false);
+    }
+
+    // Cập nhật lại dữ liệu hiển thị theo bộ lọc vừa khôi phục
+    if (typeof window.renderAll === 'function') {
+      try { window.renderAll(); } catch (e) {}
+    }
+
+    // 8. Khôi phục vị trí cuộn (áp dụng lại sau khi dữ liệu bất đồng bộ load xong)
+    const savedScroll = saved.scroll;
+    const reapplyScroll = () => {
+      if (!userScrolledAfterLoad && savedScroll) applyScrollState(savedScroll);
+    };
+    requestAnimationFrame(reapplyScroll);
+    [250, 750, 1500, 2600].forEach(ms => {
+      setTimeout(() => {
+        if (saved.page && getActivePageName() !== saved.page && typeof window.nav === 'function') {
+          window.nav(saved.page, false);
+        }
+        reapplyScroll();
+      }, ms);
+    });
+
+    readyToSave = true;
+  }
+
+  // Giữ nguyên vị trí cuộn khi renderAll / renderGantt chạy lại (kể cả lúc Auto-Reload 15p)
+  function wrapRenderKeepScroll() {
+    ['renderAll', 'renderGantt'].forEach(fnName => {
+      const orig = window[fnName];
+      if (typeof orig === 'function' && !orig.__hpScrollKeep) {
+        window[fnName] = function () {
+          const sc = collectScrollState();
+          const res = orig.apply(this, arguments);
+          requestAnimationFrame(() => applyScrollState(sc));
+          return res;
+        };
+        window[fnName].__hpScrollKeep = true;
+      }
+    });
+
+    if (typeof window.nav === 'function' && !window.nav.__hpStateTrack) {
+      const origNav = window.nav;
+      window.nav = function () {
+        const res = origNav.apply(this, arguments);
+        scheduleSave(50);
+        return res;
+      };
+      window.nav.__hpStateTrack = true;
+    }
+  }
+
+  // Theo dõi mọi thao tác nhập liệu, chọn lọc, bấm nút và cuộn trang
+  document.addEventListener('input', () => scheduleSave(200), true);
+  document.addEventListener('change', () => scheduleSave(100), true);
+  document.addEventListener('click', (ev) => {
+    if (ev.target && ev.target.closest && ev.target.closest('.nav button, .toolbar button, .movement-tools button, #tideDayCycleBtn')) {
+      scheduleSave(120);
+    }
+  }, true);
+
+  function bindScrollTrackers() {
+    const main = document.getElementById('mainScroll');
+    const gantt = document.getElementById('fullGantt');
+    const markAndSave = () => {
+      if (readyToSave) userScrolledAfterLoad = true;
+      scheduleSave(200);
+    };
+    if (main && !main.__hpScrollBound) {
+      main.addEventListener('scroll', markAndSave, { passive: true });
+      main.__hpScrollBound = true;
+    }
+    if (gantt && !gantt.__hpScrollBound) {
+      gantt.addEventListener('scroll', markAndSave, { passive: true });
+      gantt.__hpScrollBound = true;
+    }
+  }
+
+  window.addEventListener('beforeunload', saveCurrentScreenState);
+  window.addEventListener('pagehide', saveCurrentScreenState);
+
+  function bootRestore() {
+    wrapRenderKeepScroll();
+    bindScrollTrackers();
+    // Chờ script khởi tạo mặc định chạy xong rồi khôi phục đè đúng trạng thái đang làm việc
+    setTimeout(() => {
+      wrapRenderKeepScroll();
+      bindScrollTrackers();
+      restoreSavedState();
+    }, 120);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootRestore);
+  } else {
+    bootRestore();
+  }
+})();
+</script>
 </body>
 </html>
