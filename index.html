@@ -12871,5 +12871,109 @@ if (!pinCheck.ok) {
   setTimeout(attachObservers, 1500);
 })();
 </script>
+<script id="hp-auto-reload-15m">
+(function initAutoReload15Min() {
+  const RELOAD_INTERVAL_MS = 15 * 60 * 1000; // 15 phút
+  let lastReloadAt = Date.now();
+  let isAutoReloading = false;
+  let retryTimer = null;
+
+  function getActivePageId() {
+    const visiblePage = document.querySelector('.page:not(.hidden)');
+    return visiblePage ? visiblePage.id : '';
+  }
+
+  function isUserBusyTypingOrModalOpen() {
+    if (document.querySelector('.modal-shade.open')) return true;
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) {
+      const pageId = getActivePageId();
+      // Đang gõ trong các màn hình nhập liệu/cài đặt -> hoãn 1 phút để không cắt ngang
+      if (['page-edit-vessel', 'page-draft-setup', 'page-safety-plan', 'page-report'].includes(pageId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function runSoftAutoReload(reason = '15m') {
+    if (isAutoReloading) return;
+
+    if (isUserBusyTypingOrModalOpen()) {
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => runSoftAutoReload('retry'), 60 * 1000);
+      return;
+    }
+
+    isAutoReloading = true;
+    lastReloadAt = Date.now();
+
+    try {
+      const activePage = getActivePageId();
+      const tasks = [];
+
+      // 1. Nạp lại đồng thời dữ liệu tàu, ePort, thời tiết, thủy triều, hòm thư
+      if (typeof window.loadData === 'function') tasks.push(window.loadData());
+      if (typeof window.loadEportTanVuJobs === 'function') tasks.push(window.loadEportTanVuJobs());
+      if (typeof window.fetchRealWeatherHaiPhong === 'function') tasks.push(window.fetchRealWeatherHaiPhong());
+      if (typeof window.fetchTideFromTheGioiMoiCau === 'function') tasks.push(window.fetchTideFromTheGioiMoiCau());
+      if (typeof window.loadFeedbacks === 'function') tasks.push(window.loadFeedbacks());
+
+      await Promise.allSettled(tasks);
+
+      // 2. Làm mới lại đúng màn hình đang mở (giữ nguyên bộ lọc ngày & không xóa form đang nhập)
+      if (activePage === 'page-overview') {
+        if (typeof window.renderAll === 'function') window.renderAll();
+        if (typeof window.updateRealtimeWidgets === 'function') window.updateRealtimeWidgets();
+      } else if (activePage === 'page-planning') {
+        if (typeof window.renderGantt === 'function') window.renderGantt();
+      } else if (activePage === 'page-search') {
+        if (typeof window.renderTable === 'function' && typeof window.getFilteredCalls === 'function') {
+          window.renderTable(window.getFilteredCalls());
+        }
+      } else if (activePage === 'page-stats') {
+        if (typeof window.renderStats === 'function') window.renderStats();
+      } else if (activePage === 'page-ops-report') {
+        // Reload lại iframe Báo cáo khai thác ngày
+        const iframe = document.querySelector('#page-ops-report iframe');
+        if (iframe && iframe.src) {
+          try {
+            const u = new URL(iframe.src);
+            u.searchParams.set('_r', Date.now());
+            iframe.src = u.toString();
+          } catch (e) {
+            iframe.src = iframe.src;
+          }
+        }
+      }
+
+      console.log(`🔄 [Auto-Reload 15p] Đã làm mới màn hình (${activePage || 'overview'}) lúc ${new Date().toLocaleTimeString('vi-VN')} [${reason}]`);
+    } catch (err) {
+      console.warn('⚠️ [Auto-Reload 15p] Lỗi làm mới:', err);
+    } finally {
+      isAutoReloading = false;
+    }
+  }
+
+  // Định kỳ 15 phút làm mới 1 lần
+  setInterval(() => {
+    if (!document.hidden) runSoftAutoReload('interval');
+  }, RELOAD_INTERVAL_MS);
+
+  // Khi mở lại tab / bật lại màn hình điện thoại sau >= 15 phút -> làm mới ngay lập tức
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && (Date.now() - lastReloadAt >= RELOAD_INTERVAL_MS)) {
+      runSoftAutoReload('wake');
+    }
+  });
+
+  // Khi mạng vừa có kết nối lại -> tự làm mới nếu đã quá 15 phút
+  window.addEventListener('online', () => {
+    if (Date.now() - lastReloadAt >= RELOAD_INTERVAL_MS) {
+      runSoftAutoReload('online');
+    }
+  });
+})();
+</script>
 </body>
 </html>
