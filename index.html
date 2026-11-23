@@ -10695,8 +10695,9 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         .replace(/đ/g, 'd').replace(/Đ/g, 'D')
         .replace(/\s+/g, ' ').trim().toUpperCase();
 
-      const isTugOrServiceVessel = (item, ep, isBarge) => {
-        // Không lọc nhầm tàu đang có sản lượng làm hàng thực tế trên ePort
+     const isOtherOrServiceVessel = (item, ep, isBarge) => {
+        // Luôn giữ tàu đang có dữ liệu làm hàng thực tế trên ePort hoặc là sà lan chở hàng
+        if (isBarge) return false;
         if (ep && (Number(ep.totalCont) > 0 || Number(ep.doneNum) > 0)) return false;
 
         const vKey = String(item.vessel || '').trim().toUpperCase();
@@ -10710,20 +10711,23 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         const loa = parseFloat(String(item.loa || specs.loa || 0).replace(',', '.')) || 0;
         const dwt = parseInt(String(item.dwt || specs.dwt || '').replace(/\D/g, ''), 10) || 0;
 
-        // 1. Khớp tên tàu lai / hoa tiêu / công vụ (VD: THONGNHATK1, THONG NHAT K2, TUG...)
-        if (/(THONG\s*NHAT|TUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|PILOT\b|CONG\s*VU|CUU\s*HO|CSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(nameNorm)) {
+        // 1. Nếu là tàu hàng / tàu khách thương mại -> KHÔNG BAO GIỜ ẨN dù đỗ lâu hay thiếu ETD
+        const isCommercialCargoType = /(CONTAINER|FEEDER|RO-?RO|VEHICLES|PCTC|O\s*TO|CAR\s*CARRIER|ROI|BULK|SAT|THEP|TONG\s*HOP|THIET\s*BI|PROJECT|HEAVY|DAU|FSO|FPSO|HOA\s*CHAT|LONG|KHI|GAS|LPG|LNG|TANKER|KHACH|PASSENGER|CRUISE)/i.test(typeNorm);
+        if (isCommercialCargoType) return false;
+
+        // 2. Nhóm "Tàu khác" (tàu lai, tàu kéo, hoa tiêu, quân sự, đánh cá, du thuyền, công vụ, Khác)
+        if (/(TUG|TAU\s*KEO|TAU\s*LAI|PILOT|HOA\s*TIEU|QUAN\s*SU|MILITARY|NAVAL|WARSHIP|DANH\s*CA|FISHING|TRAWLER|YACHT|AUX|CONG\s*VU|UNKNOWN|^KHAC$|^KHAC\b)/i.test(typeNorm)) {
           return true;
         }
-        // 2. Khớp đơn vị khai thác lai dắt / hoa tiêu
+        if (/(THONG\s*NHAT|\bTUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|\bPILOT\b|CONG\s*VU|CUU\s*HO|\bCSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(nameNorm)) {
+          return true;
+        }
         if (/(LAI\s*DAT|HOA\s*TIEU|TOWAGE|\bTUG\b|CUU\s*HO)/i.test(opNorm)) {
           return true;
         }
-        // 3. Khớp loại tàu phụ trợ / quân sự / đánh cá / tàu khác (không phải sà lan chở hàng)
-        if (!isBarge && /(TUG|TAU\s*KEO|TAU\s*LAI|PILOT|QUAN\s*SU|MILITARY|NAVAL|DANH\s*CA|FISHING|YACHT|AUX|CONG\s*VU|^KHAC$)/i.test(typeNorm)) {
-          return true;
-        }
-        // 4. Tàu kích thước rất nhỏ (LOA <= 42m hoặc DWT > 0 & <= 500T), không phải sà lan và không làm hàng ePort
-        if (!isBarge && ((loa > 0 && loa <= 42) || (dwt > 0 && dwt <= 500))) {
+
+        // 3. Chỉ áp dụng lọc theo kích thước nhỏ khi CHƯA rõ loại tàu (không áp dụng cho tàu hàng)
+        if (!typeNorm && ((loa > 0 && loa <= 42) || (dwt > 0 && dwt <= 500))) {
           return true;
         }
         return false;
@@ -10811,12 +10815,6 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         const t2 = (rawT2 > t1) ? rawT2 : 0;
         // Ẩn hoàn toàn tàu lai / tàu kéo / hoa tiêu / công vụ khỏi thẻ Tân Vũ (Tiêu điểm)
         if (isTugOrServiceVessel(item, ep, isBarge)) {
-          return;
-        }
-
-        // Ẩn các tàu không có giờ rời (ETD), không có dữ liệu ePort và đã đỗ treo quá 48 tiếng
-        const hasLiveEport = Boolean(ep && (Number(ep.totalCont) > 0 || Number(ep.doneNum) > 0 || Number(ep.pct) > 0));
-        if (isViewingToday && !isBarge && !hasLiveEport && t2 === 0 && t1 > 0 && (now - t1) > (48 * ONE_HOUR_MS)) {
           return;
         }
         const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
@@ -13320,23 +13318,34 @@ if (!pinCheck.ok) {
     const list = Array.isArray(calls) ? calls.map(c => ({ ...c })) : [];
 
     rows.forEach(r => {
-      // Bỏ qua tàu lai / tàu kéo / hoa tiêu / tàu công vụ (thường không có ETD, đỗ cố định lâu dài)
-      const _normShift = (s) => String(s || '')
+     const _normShift = (s) => String(s || '')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/đ/g, 'd').replace(/Đ/g, 'D')
         .replace(/\s+/g, ' ').trim().toUpperCase();
-      const _vNorm = _normShift(r.vessel);
+      const _vRaw = String(r.vessel || '').trim().toUpperCase();
+      const _vNorm = _normShift(_vRaw);
       const _opNorm = _normShift(r.operator);
       const _loaNum = Number(r.loa) || 0;
       const _dwtNum = parseInt(String(r.dwt || '').replace(/\D/g, ''), 10) || 0;
       const _isSbOrBarge = /\(SB\)|\b(BARGE|SA\s*LAN)\b/i.test(_vNorm);
 
-      if (
-        /(THONG\s*NHAT|TUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|PILOT\b|CONG\s*VU|CUU\s*HO|CSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(_vNorm) ||
-        /(LAI\s*DAT|HOA\s*TIEU|TOWAGE|\bTUG\b|CUU\s*HO)/i.test(_opNorm) ||
-        (!_isSbOrBarge && ((_loaNum > 0 && _loaNum <= 42) || (_dwtNum > 0 && _dwtNum <= 500)))
-      ) {
-        return;
+      // Kiểm tra xem tàu đã được khai báo là tàu hàng thương mại trong Catalog/Override chưa
+      const _savedRec =
+        (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(_vRaw)) ||
+        (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap.get(_vRaw)) || null;
+      const _savedTypeNorm = _normShift(_savedRec && _savedRec.vessel_type);
+      const _isSavedCommercial = /(CONTAINER|FEEDER|RO-?RO|VEHICLES|PCTC|O\s*TO|ROI|BULK|SAT|THEP|TONG\s*HOP|THIET\s*BI|PROJECT|HEAVY|DAU|HOA\s*CHAT|LONG|KHI|GAS|LPG|LNG|TANKER|KHACH|PASSENGER)/i.test(_savedTypeNorm);
+      const _isSavedOther = /(TUG|TAU\s*KEO|TAU\s*LAI|PILOT|QUAN\s*SU|MILITARY|NAVAL|DANH\s*CA|FISHING|YACHT|AUX|CONG\s*VU|^KHAC$|^KHAC\b)/i.test(_savedTypeNorm);
+
+      if (!_isSavedCommercial && !_isSbOrBarge) {
+        if (
+          _isSavedOther ||
+          /(THONG\s*NHAT|\bTUG\b|TAU\s*LAI|TAU\s*KEO|HOA\s*TIEU|\bPILOT\b|CONG\s*VU|CUU\s*HO|\bCSB\b|CANH\s*SAT\s*BIEN|KIEM\s*NGU|AZIMUTH)/i.test(_vNorm) ||
+          /(LAI\s*DAT|HOA\s*TIEU|TOWAGE|\bTUG\b|CUU\s*HO)/i.test(_opNorm) ||
+          (!_savedTypeNorm && ((_loaNum > 0 && _loaNum <= 42) || (_dwtNum > 0 && _dwtNum <= 500)))
+        ) {
+          return;
+        }
       }
       const vName = String(r.vessel || '').trim().toUpperCase();
       const moveIso = r.moveAt || '';
