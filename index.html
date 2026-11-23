@@ -10596,7 +10596,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
     let badge = `⚡ Cần ${reqRate} Moves/h`;
     let advice = `Duy trì tiến độ ổn định${curRate > 0 ? ` (Đang đạt ${curRate} Moves/h)` : ''}`;
 
-    if (reqRate >= 70 || (curRate > 0 && reqRate > curRate * 1.25)) {
+    if (reqRate >= 68 || (curRate > 0 && reqRate > curRate * 1.25)) {
       level = 'danger';
       badge = `🔥 Tăng tốc: ${reqRate} Moves/h`;
       advice = `CẦN TĂNG TỐC NGAY (Bổ sung thêm cần trục/đầu kéo/nhân lực & Kiểm tra giao thông · Đang đạt ${curRate || '~'} Moves/h)`;
