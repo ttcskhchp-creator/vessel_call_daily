@@ -13175,21 +13175,17 @@ if (!pinCheck.ok) {
 (function () {
   window._cangVuShiftingRows = [];
 
-  // Khu neo đậu / phao (không xếp vào cầu bến cảng)
   function isAnchorageZone(portStr) {
     const p = String(portStr || '').trim().toUpperCase();
     if (!p) return true;
     return /(HON\s*DAU|HÒN\s*DÁU|LACH\s*HUYEN\s*[12]|LẠCH\s*HUYỆN\s*[12]|KHU\s*NEO|VUNG\s*NEO|VÙNG\s*NEO|PHAO\s*0|BACH\s*DANG|BEN\s*GOT|ANCH)/i.test(p);
   }
 
-  // Cấu hình cầu bến thực tế từng cảng để xếp cầu không chồng lấn thời gian
   function getPortBerthPool(termStr, isRoRo, isBulk, loa) {
     const t = String(termStr || '').trim().toUpperCase();
     if (t.includes('EURO')) return ['B1', 'B2', 'B3'];
     if (t.includes('TÂN VŨ') || t.includes('TAN VU')) {
-      if (isRoRo) return ['B5', 'B4', 'B3', 'B2', 'B1'];
-      if (loa > 170) return ['B1', 'B2', 'B3', 'B4', 'B5'];
-      return ['B1', 'B2', 'B3', 'B4', 'B5'];
+      return isRoRo ? ['B5', 'B4', 'B3', 'B2', 'B1'] : ['B1', 'B2', 'B3', 'B4', 'B5'];
     }
     if (t.includes('CHÙA VẼ') || t.includes('CHUA VE')) {
       return isBulk ? ['B1', 'B2', 'B3', 'B4', 'B5'] : ['B4', 'B5', 'B1', 'B2', 'B3'];
@@ -13210,7 +13206,7 @@ if (!pinCheck.ok) {
     const v = String(row.vessel || '').toUpperCase();
     if (/\b(GAS|LPG|LNG)\b/i.test(v)) return 'Tàu khí (LPG / LNG)';
     if (/\b(OIL|PETRO|TANK|CHEM|GASOLINE)\b/i.test(v)) return 'Tàu dầu / FSO / Hóa chất';
-    if (Number(row.loa) > 0 && Number(row.loa) < 40) return 'Khác'; // Tàu lai / tàu dịch vụ
+    if (Number(row.loa) > 0 && Number(row.loa) < 40) return 'Khác';
     if (/\(SB\)/i.test(v)) return 'Hàng rời / tổng hợp';
     return '';
   }
@@ -13228,7 +13224,6 @@ if (!pinCheck.ok) {
     const DEFAULT_STAY_MS = 18 * 3600000;
     const BUFFER_MS = 30 * 60000;
 
-    // Ưu tiên giữ nguyên bến các tàu đã có từ lịch chính, tàu di chuyển mới bổ sung tự tìm bến trống
     const sorted = calls.map((c, idx) => ({ c, idx })).sort((a, b) => {
       const aShift = a.c._fromShifting ? 1 : 0;
       const bShift = b.c._fromShifting ? 1 : 0;
@@ -13287,7 +13282,6 @@ if (!pinCheck.ok) {
       const toIsBerth = !isAnchorageZone(toPort);
       const samePortShift = fromIsBerth && toIsBerth && normTermForMatch(fromPort) === normTermForMatch(toPort);
 
-      // 1. Xử lý cảng ĐI (Từ): cập nhật giờ rời ETD để giải phóng cầu bến cũ
       if (fromIsBerth && !samePortShift) {
         const fromNorm = normTermForMatch(fromPort);
         const existOrigin = list.find(c =>
@@ -13302,7 +13296,6 @@ if (!pinCheck.ok) {
           }
           if (!existOrigin.destination) existOrigin.destination = toPort;
         } else if (!toIsBerth) {
-          // Tàu chỉ có lệnh rời cảng ra khu neo đậu (VD: LADY FAVIA rời EURO DINH VU -> LACH HUYEN 1 lúc 01:30)
           const estEtb = new Date(moveMs - 4 * 3600000).toISOString();
           const guessedType = guessShiftingVesselType(r);
           const specs = typeof window.getVesselEnrichedSpecs === 'function'
@@ -13332,7 +13325,6 @@ if (!pinCheck.ok) {
         }
       }
 
-      // 2. Xử lý cảng ĐẾN (Đến): thêm lượt tàu mới & tự xếp vào cầu trống hợp lý
       if (toIsBerth) {
         const toNorm = normTermForMatch(toPort);
         const existDest = list.find(c =>
@@ -13356,7 +13348,6 @@ if (!pinCheck.ok) {
             ? window.getVesselEnrichedSpecs(vName, { loa: r.loa, dwt: r.dwt, gt: r.gt, operator: r.operator, vessel_type: guessedType })
             : {};
 
-          // Ưu tiên loại tàu từ Catalog/Override nếu đã lưu, nếu chưa thì dùng loại nhận diện (Gas/SB/Tàu nhỏ)
           const hasSavedCat = (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap.has(vName)) ||
                               (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.has(vName));
           const finalType = hasSavedCat ? (specs.vessel_type || guessedType || 'Container') : (guessedType || specs.vessel_type || 'Container');
@@ -13389,22 +13380,23 @@ if (!pinCheck.ok) {
     return assignSmartBerthsAllPorts(list);
   }
 
-  // Bọc filterAndDeduplicateCalls để luôn hợp nhất Kế hoạch tàu di chuyển mỗi khi tải dữ liệu
   if (typeof window.filterAndDeduplicateCalls === 'function' && !window.filterAndDeduplicateCalls.__hpShiftingWrapped) {
     const origFilter = window.filterAndDeduplicateCalls;
-    window.filterAndDeduplicateCalls = function (rawList) {
+    window.filterAndDeduplicateCalls = function () {
       const baseCalls = origFilter.apply(this, arguments);
       return mergeShiftingIntoCalls(baseCalls);
     };
     window.filterAndDeduplicateCalls.__hpShiftingWrapped = true;
   }
 
- window.loadCangVuShiftingData = async function () {
+  window.loadCangVuShiftingData = async function () {
     const collected = [];
     const seen = new Set();
+    let sourceUsed = '';
 
-    const addRows = (rows) => {
-      if (!Array.isArray(rows)) return;
+    const addRows = (rows, srcName) => {
+      if (!Array.isArray(rows) || !rows.length) return;
+      if (!sourceUsed) sourceUsed = srcName;
       rows.forEach(r => {
         const key = `${String(r.vessel || '').trim().toUpperCase()}_${r.moveAt || ''}_${String(r.toPort || '').trim().toUpperCase()}`;
         if (r.vessel && !seen.has(key)) {
@@ -13414,17 +13406,15 @@ if (!pinCheck.ok) {
       });
     };
 
-    // 1. Ưu tiên lấy trực tiếp từ Vercel Serverless (/api/cangvu) cho hôm nay & ngày mai
     try {
       const [r0, r1] = await Promise.allSettled([
-        fetch(`/api/cangvu?d=0&format=json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`/api/cangvu?d=1&format=json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
+        fetch('/api/cangvu?d=0&format=json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch('/api/cangvu?d=1&format=json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
       ]);
-      if (r0.status === 'fulfilled' && r0.value && Array.isArray(r0.value.rows)) addRows(r0.value.rows);
-      if (r1.status === 'fulfilled' && r1.value && Array.isArray(r1.value.rows)) addRows(r1.value.rows);
+      if (r0.status === 'fulfilled' && r0.value && Array.isArray(r0.value.rows)) addRows(r0.value.rows, 'Vercel API');
+      if (r1.status === 'fulfilled' && r1.value && Array.isArray(r1.value.rows)) addRows(r1.value.rows, 'Vercel API');
     } catch (e) {}
 
-    // 2. Dự phòng đọc từ Supabase Bucket nếu Vercel API không lấy được
     if (collected.length === 0 && typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) {
       try {
         const res = await fetch(
@@ -13433,20 +13423,30 @@ if (!pinCheck.ok) {
         );
         if (res.ok) {
           const data = await res.json();
-          if (data && Array.isArray(data.rows)) addRows(data.rows);
+          if (data && Array.isArray(data.rows)) addRows(data.rows, 'Supabase Bucket');
         }
       } catch (e) {}
     }
 
+    console.log(`🚢 [Tàu di chuyển] Đã nạp ${collected.length} lượt từ ${sourceUsed || 'không có nguồn'}`);
+
     if (collected.length > 0) {
       window._cangVuShiftingRows = collected;
-      if (typeof allCalls !== 'undefined' && Array.isArray(allCalls) && allCalls.length > 0) {
+      if (typeof allCalls !== 'undefined' && Array.isArray(allCalls)) {
         allCalls = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
         if (typeof window.renderAll === 'function') window.renderAll();
+        if (typeof window.renderGantt === 'function') window.renderGantt();
       }
     }
   };
+
+  setTimeout(() => window.loadCangVuShiftingData(), 1200);
+  setInterval(() => {
+    if (!document.hidden) window.loadCangVuShiftingData();
+  }, 15 * 60 * 1000);
+})();
 </script>
+  
 <script id="hp-fix-edit-port-inherit">
 (function () {
   // Lưu chính xác ngữ cảnh cảng & bến của tàu vừa được click (Gantt / Tân Vũ / Bảng tra cứu)
