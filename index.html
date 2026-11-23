@@ -12710,6 +12710,37 @@ if (!pinCheck.ok) {
     return { qty: n, teu: 0 };
   }
 
+  function parseAnyDateMs(v) {
+    if (!v) return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (typeof window.parsePortDateTimeMs === 'function') {
+      const p = window.parsePortDateTimeMs(v);
+      if (p > 0) return p;
+    }
+    const s = String(v).trim();
+    const d1 = new Date(s);
+    if (!isNaN(d1.getTime())) return d1.getTime();
+    let m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime();
+    m = s.match(/(\d{1,2}):(\d{2})\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (m) return new Date(+m[5], +m[4] - 1, +m[3], +m[1], +m[2]).getTime();
+    return 0;
+  }
+
+  function formatTooltipDate(v) {
+    if (!v) return '—';
+    if (typeof window.dt === 'function') {
+      const out = window.dt(v);
+      if (out && out !== '—') return out;
+    }
+    const ms = parseAnyDateMs(v);
+    if (!ms) return '—';
+    return new Date(ms).toLocaleString('vi-VN', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+      hour12: false, timeZone: 'Asia/Ho_Chi_Minh'
+    });
+  }
+
   function isRoRoVessel(vName, vType, ep) {
     if (ep && (ep.isRoRoCargo || ep.cargoUnit === 'Units' || /xe|ô\s*tô|o\s*to|ro-?ro|car|unit/i.test(ep.cargoType || ''))) {
       return true;
@@ -12734,23 +12765,119 @@ if (!pinCheck.ok) {
     return null;
   }
 
-  // 2. Đổi "Moves/h" -> "Units/h" trên các thẻ tàu Ro-Ro tại khung Cảng Tân Vũ
-  function fixTanVuChipsForRoRo() {
-    const layout = document.getElementById('tanvuBerthsLayout');
-    if (!layout) return;
-    layout.querySelectorAll('.ship-chip[data-vessel-key]').forEach(chip => {
-      const vKey = (chip.getAttribute('data-vessel-key') || '').trim().toUpperCase();
-      const ep = getEportRecord(vKey);
-      if (!isRoRoVessel(vKey, '', ep)) return;
-      chip.querySelectorAll('span').forEach(sp => {
-        if (sp.children.length === 0 && /Moves/i.test(sp.textContent || '')) {
-          sp.textContent = sp.textContent.replace(/Moves\/h/gi, 'Units/h').replace(/Moves/gi, 'Units');
-        }
+  // Tìm bản ghi chuyến tàu đầy đủ ETB / ETD cho MỌI CẢNG (HTIT, HHIT, HICT, Đình Vũ, Chùa Vẽ...)
+  function findBestCallRecord(vName, hintCtx) {
+    if (!vName) return null;
+    const key = String(vName).trim().toUpperCase();
+    const pools = [];
+
+    if (typeof window.getFilteredCalls === 'function') {
+      try {
+        const fc = window.getFilteredCalls();
+        if (Array.isArray(fc) && fc.length) pools.push(fc);
+      } catch (e) {}
+    }
+    if (typeof allCalls !== 'undefined' && Array.isArray(allCalls) && allCalls.length) {
+      pools.push(allCalls);
+    } else if (Array.isArray(window.allCalls) && window.allCalls.length) {
+      pools.push(window.allCalls);
+    }
+
+    const hintBerth = String((hintCtx && hintCtx.berth) || '').trim().toUpperCase();
+    const hintTerm = String((hintCtx && hintCtx.terminal) || '').trim().toUpperCase();
+    const now = Date.now();
+
+    for (const pool of pools) {
+      const matches = pool.filter(c =>
+        String(c.vessel || '').trim().toUpperCase() === key &&
+        (c.etb || c.etd || c.eb || c.ed)
+      );
+      if (!matches.length) continue;
+      if (matches.length === 1) return matches[0];
+
+      const filtered = matches.filter(c =>
+        (!hintBerth || String(c.berth || '').toUpperCase().includes(hintBerth)) &&
+        (!hintTerm || String(c.terminal || '').toUpperCase().includes(hintTerm))
+      );
+      const list = filtered.length ? filtered : matches;
+
+      list.sort((a, b) => {
+        const a1 = parseAnyDateMs(a.etb || a.eb);
+        const a2 = parseAnyDateMs(a.etd || a.ed) || (a1 + 20 * 3600000);
+        const b1 = parseAnyDateMs(b.etb || b.eb);
+        const b2 = parseAnyDateMs(b.etd || b.ed) || (b1 + 20 * 3600000);
+        const aActive = (a1 > 0 && now >= a1 && now <= a2) ? 0 : 1;
+        const bActive = (b1 > 0 && now >= b1 && now <= b2) ? 0 : 1;
+        if (aActive !== bActive) return aActive - bActive;
+        return Math.abs(a1 - now) - Math.abs(b1 - now);
       });
-    });
+      return list[0];
+    }
+
+    if (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get) {
+      const ov = vesselOverridesMap.get(key);
+      if (ov && (ov.etb || ov.etd)) return ov;
+    }
+    return null;
   }
 
-  // 3. Chuẩn hóa toàn bộ Popup chi tiết tàu
+  let lastClickedContext = { vessel: '', terminal: '', berth: '' };
+
+  // 2. Đổi "Moves/h" -> "Units/h" trên cả thẻ Cảng Tân Vũ và thanh Gantt của tàu Ro-Ro
+  function fixRoRoRateLabels() {
+    const layout = document.getElementById('tanvuBerthsLayout');
+    if (layout) {
+      layout.querySelectorAll('.ship-chip[data-vessel-key]').forEach(chip => {
+        const vKey = (chip.getAttribute('data-vessel-key') || '').trim().toUpperCase();
+        const ep = getEportRecord(vKey);
+        if (!isRoRoVessel(vKey, '', ep)) return;
+        chip.querySelectorAll('span').forEach(sp => {
+          if (sp.children.length === 0 && /Moves/i.test(sp.textContent || '')) {
+            sp.textContent = sp.textContent.replace(/Moves\/h/gi, 'Units/h').replace(/Moves/gi, 'Units');
+          }
+        });
+      });
+    }
+
+    const gantt = document.getElementById('fullGantt');
+    if (gantt) {
+      gantt.querySelectorAll('.shipbar').forEach(bar => {
+        if (!/Moves/i.test(bar.textContent || '')) return;
+        const vKey = (bar.getAttribute('data-vessel-key') || (bar.textContent || '').split('[')[0] || '').trim().toUpperCase();
+        const ep = getEportRecord(vKey);
+        if (!isRoRoVessel(vKey, '', ep)) return;
+        bar.textContent = bar.textContent.replace(/Moves\/h/gi, 'Units/h').replace(/Moves/gi, 'Units');
+      });
+    }
+  }
+
+  // 3. Bọc showTooltip để bù ETB / ETD ngay từ đầu vào (cho tàu ở mọi cảng)
+  function wrapShowTooltip() {
+    if (typeof window.showTooltip !== 'function' || window.showTooltip.__hpEtbWrapped) return;
+    const orig = window.showTooltip;
+    window.showTooltip = function (e, s) {
+      if (s && typeof s === 'object' && (!s.etb || !s.etd)) {
+        const vKey = String(s.vessel || '').trim().toUpperCase();
+        const matched = findBestCallRecord(vKey, {
+          terminal: s.terminal || lastClickedContext.terminal,
+          berth: s.berth || lastClickedContext.berth
+        });
+        if (matched) {
+          if (!s.etb && (matched.etb || matched.eb)) s.etb = matched.etb || matched.eb;
+          if (!s.etd && (matched.etd || matched.ed)) s.etd = matched.etd || matched.ed;
+          if (!s.dwt && matched.dwt) s.dwt = matched.dwt;
+          if (!s.terminal && matched.terminal) s.terminal = matched.terminal;
+          if (!s.berth && matched.berth) s.berth = matched.berth;
+        }
+      }
+      const res = orig.apply(this, arguments);
+      setTimeout(enforceTooltipDisplay, 0);
+      return res;
+    };
+    window.showTooltip.__hpEtbWrapped = true;
+  }
+
+  // 4. Chuẩn hóa toàn bộ Popup chi tiết tàu (Mobile + Đơn vị + ETB/ETD cho mọi cảng)
   let isFixingTooltip = false;
   function enforceTooltipDisplay() {
     if (isFixingTooltip) return;
@@ -12779,6 +12906,10 @@ if (!pinCheck.ok) {
       const dwtEl = tt.querySelector('#ttDwt');
       const opEl = tt.querySelector('#ttOperator');
       const rateBox = tt.querySelector('#ttReqRateBox');
+      const etbEl = tt.querySelector('#ttEtb');
+      const etdEl = tt.querySelector('#ttEtd');
+      const dockedEl = tt.querySelector('#ttDocked');
+      const remEl = tt.querySelector('#ttRemaining');
 
       const vName = (nameEl ? nameEl.textContent : '').trim().toUpperCase();
       const vType = (typeEl ? typeEl.textContent : '').trim();
@@ -12786,11 +12917,57 @@ if (!pinCheck.ok) {
       const isRoRo = isRoRoVessel(vName, vType, ep);
       const rule = getStrictUnitRule(vType);
 
-      // A. Sửa dòng tiến độ ePort (#ttOperator): tách rõ Units cho Ro-Ro và Cont/TEUs cho Container
+      // A. Bù ETB / ETD / Đã ở cầu / Còn lại cho tàu ở các cảng khác khi bị trống "—"
+      const curEtbTxt = (etbEl ? etbEl.textContent : '').trim();
+      const curEtdTxt = (etdEl ? etdEl.textContent : '').trim();
+      if (vName && (curEtbTxt === '' || curEtbTxt === '—' || curEtdTxt === '' || curEtdTxt === '—')) {
+        const matched = findBestCallRecord(vName, lastClickedContext.vessel === vName ? lastClickedContext : null);
+        if (matched) {
+          const rawEtb = (ep && ep.atb) || matched.etb || matched.eb || '';
+          const rawEtd = (ep && ep.etd) || matched.etd || matched.ed || '';
+
+          if (etbEl && (curEtbTxt === '' || curEtbTxt === '—') && rawEtb) {
+            etbEl.textContent = formatTooltipDate(rawEtb);
+          }
+          if (etdEl && (curEtdTxt === '' || curEtdTxt === '—') && rawEtd) {
+            etdEl.textContent = formatTooltipDate(rawEtd);
+          }
+
+          const t1 = parseAnyDateMs(rawEtb);
+          const rawT2 = parseAnyDateMs(rawEtd);
+          const t2 = (rawT2 > t1) ? rawT2 : 0;
+          const nowMs = Date.now();
+          const fmtDur = (ms) => (typeof window.formatDuration === 'function')
+            ? window.formatDuration(ms)
+            : `${Math.floor(ms / 3600000)} giờ ${Math.floor((ms % 3600000) / 60000)} phút`;
+
+          if (dockedEl && t1 > 0) {
+            const dockedTxt = (nowMs >= t1)
+              ? fmtDur((t2 > 0 && nowMs > t2) ? (t2 - t1) : (nowMs - t1))
+              : 'Chưa cập';
+            if (dockedEl.textContent !== dockedTxt) dockedEl.textContent = dockedTxt;
+          }
+          if (remEl && t2 > 0) {
+            const remTxt = (t2 > nowMs) ? fmtDur(t2 - nowMs) : 'Đã rời bến';
+            if (remEl.textContent !== remTxt) remEl.textContent = remTxt;
+          }
+          if (dwtEl && matched.dwt && /—\s*T\b/.test(dwtEl.textContent || '')) {
+            dwtEl.textContent = dwtEl.textContent.replace(/—\s*T\b/, `${matched.dwt} T`);
+          }
+          if (typeof selectedShipForReport !== 'undefined' && selectedShipForReport && String(selectedShipForReport.vessel || '').toUpperCase() === vName) {
+            if (!selectedShipForReport.etb && rawEtb) selectedShipForReport.etb = rawEtb;
+            if (!selectedShipForReport.etd && rawEtd) selectedShipForReport.etd = rawEtd;
+            if (!selectedShipForReport.terminal && matched.terminal) selectedShipForReport.terminal = matched.terminal;
+            if (!selectedShipForReport.berth && matched.berth) selectedShipForReport.berth = matched.berth;
+            if (!selectedShipForReport.dwt && matched.dwt) selectedShipForReport.dwt = matched.dwt;
+          }
+        }
+      }
+
+      // B. Sửa dòng tiến độ ePort (#ttOperator)
       if (opEl && ep) {
         const totalPair = parsePairText(ep.contTeuStr || ep.total || '');
         const donePair = parsePairText(ep.donePlanStr || ep.done || '');
-
         const totalQty = Number(ep.totalCont) || Number(ep.planNum) || totalPair.qty || 0;
         const doneQty = (ep.doneCont !== undefined && ep.doneCont !== null && ep.doneCont !== '')
           ? Number(ep.doneCont)
@@ -12819,7 +12996,7 @@ if (!pinCheck.ok) {
         }
       }
 
-      // B. Sửa ô Sức chở / DWT (#ttDwt): không để TEU cho tàu Ro-Ro/khác
+      // C. Sửa ô Sức chở / DWT (#ttDwt)
       if (dwtEl && typeEl) {
         const rawText = (dwtEl.textContent || '').trim();
         const parts = rawText.split('·').map(x => x.trim()).filter(Boolean);
@@ -12836,7 +13013,7 @@ if (!pinCheck.ok) {
         }
       }
 
-      // C. Sửa khung "Năng suất cần giải phóng" (#ttReqRateBox): Moves -> Units cho tàu Ro-Ro
+      // D. Sửa khung Năng suất (#ttReqRateBox): Moves -> Units cho tàu Ro-Ro
       if (rateBox && isRoRo && /Moves/i.test(rateBox.innerHTML)) {
         rateBox.innerHTML = rateBox.innerHTML
           .replace(/Moves\/h/gi, 'Units/h')
@@ -12848,29 +13025,47 @@ if (!pinCheck.ok) {
   }
 
   function attachObservers() {
+    wrapShowTooltip();
     const tt = document.getElementById('shipTooltip');
-    if (tt && !tt.__hpUnitObservedV4) {
+    if (tt && !tt.__hpUnitObservedV5) {
       const obs = new MutationObserver(() => enforceTooltipDisplay());
       obs.observe(tt, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true });
-      tt.__hpUnitObservedV4 = true;
+      tt.__hpUnitObservedV5 = true;
       enforceTooltipDisplay();
     }
 
-    const tv = document.getElementById('tanvuBerthsLayout');
-    if (tv && !tv.__hpChipObservedV4) {
-      const obsTv = new MutationObserver(() => fixTanVuChipsForRoRo());
-      obsTv.observe(tv, { childList: true, subtree: true });
-      tv.__hpChipObservedV4 = true;
-      fixTanVuChipsForRoRo();
-    }
+    ['tanvuBerthsLayout', 'fullGantt'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.__hpChipObservedV5) {
+        const obsEl = new MutationObserver(() => fixRoRoRateLabels());
+        obsEl.observe(el, { childList: true, subtree: true });
+        el.__hpChipObservedV5 = true;
+        fixRoRoRateLabels();
+      }
+    });
   }
 
+  document.addEventListener('click', (ev) => {
+    const bar = ev.target && ev.target.closest ? ev.target.closest('.shipbar, .ship-chip, .tv-compact-chip') : null;
+    if (bar) {
+      const row = bar.closest('.gantt-row');
+      const lbl = row ? (row.querySelector('.berth-label')?.textContent || '') : '';
+      const vAttr = bar.getAttribute('data-vessel-key') || (bar.textContent || '').split('[')[0] || '';
+      lastClickedContext = {
+        vessel: vAttr.trim().toUpperCase(),
+        berth: (lbl.match(/B\d+/i) || [''])[0].toUpperCase(),
+        terminal: ''
+      };
+    }
+    setTimeout(enforceTooltipDisplay, 30);
+  }, true);
+
   document.addEventListener('DOMContentLoaded', attachObservers);
-  document.addEventListener('click', () => setTimeout(enforceTooltipDisplay, 30), true);
   setTimeout(attachObservers, 400);
   setTimeout(attachObservers, 1500);
 })();
 </script>
+   //=============RELOAD TRANG WEB====================== //
 <script id="hp-auto-reload-15m">
 (function initAutoReload15Min() {
   const RELOAD_INTERVAL_MS = 15 * 60 * 1000; // 15 phút
