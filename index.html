@@ -12955,7 +12955,7 @@ if (!pinCheck.ok) {
 
     isFixingTooltip = true;
     try {
-      if (tt.parentElement !== document.body) document.body.appendChild(tt);
+      if (tt.parentElement !== document.body && !tt.closest('#hpMobileTopDialog')) document.body.appendChild(tt);
 
       if (window.innerWidth <= 760) {
         tt.style.left = '';
@@ -13944,5 +13944,186 @@ if (!pinCheck.ok) {
   setTimeout(wrapEditAndSave, 2000);
 })();
 </script>
+
+<script id="hp-mobile-top-layer-dialog">
+(function () {
+  // 1. CSS cho Top Layer <dialog> + tắt backdrop-filter gây lỗi mờ trên Chrome mobile ở Gantt
+  if (!document.getElementById('hpMobileTopDialogCss')) {
+    const st = document.createElement('style');
+    st.id = 'hpMobileTopDialogCss';
+    st.textContent = `
+      @media (max-width: 760px) {
+        #fullGantt .shipbar {
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+        #hpMobileTopDialog {
+          padding: 0 !important;
+          border: 0 !important;
+          background: transparent !important;
+          width: calc(100vw - 24px) !important;
+          max-width: 400px !important;
+          max-height: 86dvh !important;
+          overflow: visible !important;
+          margin: auto !important;
+          outline: none !important;
+        }
+        #hpMobileTopDialog::backdrop {
+          background: rgba(10, 22, 36, 0.52) !important;
+        }
+        #hpMobileTopDialog #shipTooltip {
+          position: relative !important;
+          inset: auto !important;
+          left: auto !important;
+          right: auto !important;
+          top: auto !important;
+          bottom: auto !important;
+          transform: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          max-height: 84dvh !important;
+          overflow-y: auto !important;
+          margin: 0 !important;
+          padding: 14px !important;
+          border-radius: 14px !important;
+          background: var(--card, #ffffff) !important;
+          color: var(--ink, #14283c) !important;
+          border: 1px solid var(--line, #cbd5e1) !important;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45) !important;
+          opacity: 1 !important;
+          filter: none !important;
+          pointer-events: auto !important;
+          box-sizing: border-box !important;
+        }
+        #hpMobileTopDialog #shipTooltip > div:first-child {
+          padding-right: 34px !important;
+        }
+        #hpMobileTopDialog #shipTooltip #ttVesselType {
+          margin-right: 4px !important;
+        }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  let dlg = document.getElementById('hpMobileTopDialog');
+  if (!dlg) {
+    dlg = document.createElement('dialog');
+    dlg.id = 'hpMobileTopDialog';
+    document.body.appendChild(dlg);
+  }
+
+  function hideStrayBackdrops(tt) {
+    // Ẩn các lớp phủ tối cũ nếu còn tồn tại để tránh bị tối 2 lớp
+    document.querySelectorAll('body > *').forEach(el => {
+      if (el === dlg || el === tt || el.classList.contains('app') || el.classList.contains('modal-shade')) return;
+      if (/^(SCRIPT|STYLE|LINK|META)$/i.test(el.tagName)) return;
+      const cs = window.getComputedStyle(el);
+      if (cs.position === 'fixed' && cs.display !== 'none') {
+        const r = el.getBoundingClientRect();
+        if (r.width >= window.innerWidth * 0.8 && r.height >= window.innerHeight * 0.8) {
+          el.style.setProperty('display', 'none', 'important');
+        }
+      }
+    });
+  }
+
+  let syncing = false;
+  function syncTooltipToTopLayer() {
+    if (syncing) return;
+    const tt = document.getElementById('shipTooltip');
+    if (!tt) return;
+
+    syncing = true;
+    try {
+      const isMobile = window.innerWidth <= 760;
+      const isVisible = tt.style.display !== 'none' && window.getComputedStyle(tt).display !== 'none';
+
+      if (!isMobile) {
+        if (dlg.open) dlg.close();
+        if (tt.parentElement === dlg) document.body.appendChild(tt);
+        return;
+      }
+
+      if (isVisible) {
+        // Chặn hẹn giờ tự ẩn sau 3 giây khi sự kiện mouseleave bắn lúc chạm trên điện thoại
+        if (typeof tooltipHideTimeout !== 'undefined' && tooltipHideTimeout) {
+          clearTimeout(tooltipHideTimeout);
+          tooltipHideTimeout = null;
+        }
+        hideStrayBackdrops(tt);
+        if (tt.parentElement !== dlg) dlg.appendChild(tt);
+        if (!dlg.open) {
+          if (typeof dlg.showModal === 'function') dlg.showModal();
+          else dlg.setAttribute('open', '');
+        }
+      } else {
+        if (dlg.open) dlg.close();
+      }
+    } finally {
+      syncing = false;
+    }
+  }
+
+  function closePopupCleanly() {
+    const tt = document.getElementById('shipTooltip');
+    if (dlg.open) dlg.close();
+    if (typeof window.hideTooltip === 'function') window.hideTooltip();
+    else if (tt) tt.style.display = 'none';
+  }
+
+  // Chạm ra ngoài nền tối -> đóng popup
+  dlg.addEventListener('click', (ev) => {
+    if (ev.target === dlg) closePopupCleanly();
+  });
+
+  // Bấm nút Back điện thoại -> đóng gọn không để treo
+  dlg.addEventListener('cancel', (ev) => {
+    ev.preventDefault();
+    closePopupCleanly();
+  });
+
+  // Bấm 3 nút Sửa / Lập PA / Báo lỗi -> tự đóng dialog để chuyển màn hình mượt
+  dlg.addEventListener('click', (ev) => {
+    if (ev.target && ev.target.closest && ev.target.closest('.tt-actions button')) {
+      setTimeout(() => { if (dlg.open) dlg.close(); }, 30);
+    }
+  });
+
+  function bindObserver() {
+    const tt = document.getElementById('shipTooltip');
+    if (!tt || tt.__hpTopLayerBound) return;
+    tt.__hpTopLayerBound = true;
+
+    const obs = new MutationObserver(() => syncTooltipToTopLayer());
+    obs.observe(tt, { attributes: true, attributeFilter: ['style', 'class'] });
+
+    // Bọc thêm showTooltip & hideTooltip để phản hồi tức thì ngay khi chạm thanh tàu Gantt
+    if (typeof window.showTooltip === 'function' && !window.showTooltip.__hpTopDlgWrap) {
+      const origShow = window.showTooltip;
+      window.showTooltip = function () {
+        const res = origShow.apply(this, arguments);
+        syncTooltipToTopLayer();
+        return res;
+      };
+      window.showTooltip.__hpTopDlgWrap = true;
+    }
+    if (typeof window.hideTooltip === 'function' && !window.hideTooltip.__hpTopDlgWrap) {
+      const origHide = window.hideTooltip;
+      window.hideTooltip = function () {
+        const res = origHide.apply(this, arguments);
+        if (dlg.open) dlg.close();
+        return res;
+      };
+      window.hideTooltip.__hpTopDlgWrap = true;
+    }
+  }
+
+  window.addEventListener('resize', syncTooltipToTopLayer);
+  document.addEventListener('DOMContentLoaded', bindObserver);
+  setTimeout(bindObserver, 300);
+  setTimeout(bindObserver, 1200);
+})();
+</script>  
 </body>
 </html>
