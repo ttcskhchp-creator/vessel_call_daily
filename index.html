@@ -10814,7 +10814,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         const rawT2 = _toShipMs((ep && ep.etd) || item.etd);
         const t2 = (rawT2 > t1) ? rawT2 : 0;
         // Ẩn hoàn toàn tàu lai / tàu kéo / hoa tiêu / công vụ khỏi thẻ Tân Vũ (Tiêu điểm)
-        if (isTugOrServiceVessel(item, ep, isBarge)) {
+        if (isOtherOrServiceVessel(item, ep, isBarge)) {
           return;
         }
         const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
@@ -10852,9 +10852,9 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
 
      const countEl = document.getElementById('tanvuCount');
       if (countEl) {
-        const mTime = countEl.textContent.match(/(\d{1,2}:\d{2}\s*\(Nạp [^)]+\))/);
-        const oldSuffix = mTime ? ` · ${mTime[1]}` : '';
-        countEl.textContent = `${shipCount} lượt tàu · ${bargeCount} sà lan${oldSuffix}`;
+        const matches = countEl.textContent.match(/\d{1,2}:\d{2}\s*\(Nạp [^)]+\)/g);
+        const lastStamp = matches && matches.length ? ` · ${matches[matches.length - 1]}` : '';
+        countEl.textContent = `${shipCount} lượt tàu · ${bargeCount} sà lan${lastStamp}`;
       }
 
       window._tanVuRenderedMap = mergedMap;
