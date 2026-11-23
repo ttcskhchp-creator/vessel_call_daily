@@ -5907,6 +5907,10 @@ function applyPortBerthAllocationRules(callsList) {
 
   enrichedList.sort((a, b) => {
     if (a._info.priorityOrder !== b._info.priorityOrder) return a._info.priorityOrder - b._info.priorityOrder;
+    // Cùng là tàu Ro-Ro: con có LOA dài hơn được xếp trước để lấy B5, con ngắn hơn tự động vào cầu trống còn lại
+    if (a._info.isRoRo && b._info.isRoRo && a._info.loa !== b._info.loa) {
+      return b._info.loa - a._info.loa;
+    }
     return (a.etb ? new Date(a.etb).getTime() : 0) - (b.etb ? new Date(b.etb).getTime() : 0);
   });
 
@@ -12526,7 +12530,7 @@ if (!pinCheck.ok) {
 
 <script id="hp-mobile-and-unit-master-fix">
 (function () {
-  // 1. CSS KHÓA CHẶT POPUP TRÊN ĐIỆN THOẠI (KHÔNG BAO GIỜ BỊ CẮT MÉP TRÁI/PHẢI)
+  // 1. CSS khóa chặt popup giữa màn hình trên điện thoại
   if (!document.getElementById('hpMobileStrictFixCss')) {
     const st = document.createElement('style');
     st.id = 'hpMobileStrictFixCss';
@@ -12550,90 +12554,55 @@ if (!pinCheck.ok) {
           z-index: 3000 !important;
           box-sizing: border-box !important;
         }
-        #shipTooltip .tt-grid {
-          grid-template-columns: 1fr 1fr !important;
-          gap: 8px 10px !important;
-        }
-        #shipTooltip .tt-item b {
-          word-break: break-word !important;
-          white-space: normal !important;
-        }
-        #shipTooltip .tt-actions {
-          display: grid !important;
-          grid-template-columns: 1fr 1fr 1fr !important;
-          gap: 6px !important;
-        }
-        #shipTooltip .tt-actions button {
-          min-height: 36px !important;
-          padding: 6px 4px !important;
-          font-size: 11px !important;
-        }
+        #shipTooltip .tt-grid { grid-template-columns: 1fr 1fr !important; gap: 8px 10px !important; }
+        #shipTooltip .tt-item b { word-break: break-word !important; white-space: normal !important; }
+        #shipTooltip .tt-actions { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 6px !important; }
+        #shipTooltip .tt-actions button { min-height: 36px !important; padding: 6px 4px !important; font-size: 11px !important; }
       }
     `;
     document.head.appendChild(st);
   }
 
-  // Đảm bảo #shipTooltip luôn nằm trực tiếp dưới <body> để position:fixed không bị lệch theo khung cuộn
-  document.addEventListener('DOMContentLoaded', () => {
-    const tt = document.getElementById('shipTooltip');
-    if (tt && tt.parentElement !== document.body) {
-      document.body.appendChild(tt);
-    }
-  });
-
-  // 2. BỘ QUY TẮC ĐƠN VỊ SỨC CHỞ CHUẨN THEO LOẠI TÀU
+  // 2. Quy tắc đơn vị chuẩn theo Loại tàu
   function getStrictUnitRule(vesselType) {
     const t = String(vesselType || '').trim().toUpperCase();
     if (!t) return { allowed: [], defaultUnit: '' };
 
-    // Tàu quân sự, đánh cá, tàu kéo, du thuyền, tàu khác -> KHÔNG tính đơn vị sức chở
     if (
       t.includes('QUÂN SỰ') || t.includes('MILITARY') || t.includes('NAVAL') || t.includes('WARSHIP') ||
       t.includes('ĐÁNH CÁ') || t.includes('FISHING') || t.includes('TRAWLER') ||
       t.includes('TUG') || t.includes('TÀU KÉO') || t.includes('YACHT') ||
       t.includes('AUX') || t.includes('UNKNOWN') || t === 'KHÁC' || t.startsWith('KHÁC')
-    ) {
-      return { allowed: [], defaultUnit: '' };
-    }
-    // Tàu Ro-Ro / Ô tô -> Units
+    ) return { allowed: [], defaultUnit: '' };
+
     if (t.includes('RO-RO') || t.includes('RORO') || t.includes('VEHICLES') || t.includes('PCTC') || t.includes('Ô TÔ') || t.includes('CAR CARRIER')) {
       return { allowed: ['Units'], defaultUnit: 'Units' };
     }
-    // Tàu khách -> Pax
     if (t.includes('KHÁCH') || t.includes('PASSENGER') || t.includes('CRUISE')) {
       return { allowed: ['Pax'], defaultUnit: 'Pax' };
     }
-    // Tàu lỏng, dầu, hóa chất, gas -> m³ hoặc MT
     if (t.includes('DẦU') || t.includes('FSO') || t.includes('FPSO') || t.includes('HÓA CHẤT') || t.includes('LỎNG') || t.includes('KHÍ') || t.includes('GAS') || t.includes('LPG') || t.includes('LNG') || t.includes('TANKER')) {
       return { allowed: ['m³', 'MT'], defaultUnit: 'm³' };
     }
-    // Tàu hàng rời, sắt thép, tổng hợp, thiết bị -> Tấn (hoặc MT)
     if (t.includes('RỜI') || t.includes('BULK') || t.includes('SẮT') || t.includes('THÉP') || t.includes('TỔNG HỢP') || t.includes('THIẾT BỊ') || t.includes('PROJECT') || t.includes('HEAVY')) {
       return { allowed: ['Tấn', 'MT'], defaultUnit: 'Tấn' };
     }
-    // Tàu Container / Feeder -> TEU
     if (t.includes('CONTAINER') || t.includes('FEEDER')) {
       return { allowed: ['TEU'], defaultUnit: 'TEU' };
     }
     return { allowed: [], defaultUnit: '' };
   }
 
-  // 3. BỌC LẠI showTooltip Ở CUỐI CÙNG ĐỂ ÉP ĐÚNG ĐƠN VỊ & ĐÚNG VỊ TRÍ MOBILE
-  function wrapShowTooltip() {
-    if (typeof window.showTooltip !== 'function' || window.showTooltip.__hpStrictWrapped) return;
-    const orig = window.showTooltip;
+  let isFixingTooltip = false;
+  function enforceTooltipDisplay() {
+    if (isFixingTooltip) return;
+    const tt = document.getElementById('shipTooltip');
+    if (!tt || tt.style.display === 'none') return;
 
-    window.showTooltip = function (e, s) {
-      const res = orig.apply(this, arguments);
-      const tt = document.getElementById('shipTooltip');
-      if (!tt) return res;
+    isFixingTooltip = true;
+    try {
+      if (tt.parentElement !== document.body) document.body.appendChild(tt);
 
-      // Ép đưa về trực tiếp dưới body nếu chưa ở body
-      if (tt.parentElement !== document.body) {
-        document.body.appendChild(tt);
-      }
-
-      // Trên điện thoại: xóa bỏ inline left/top/right để CSS căn giữa 12px lề trái-phải luôn có hiệu lực
       if (window.innerWidth <= 760) {
         tt.style.left = '';
         tt.style.right = '';
@@ -12642,44 +12611,47 @@ if (!pinCheck.ok) {
         tt.style.transform = '';
       }
 
-      // Chuẩn hóa lại hiển thị "Sức chở / DWT" theo đúng loại tàu
-      try {
-        const specs = (typeof getVesselEnrichedSpecs === 'function' && s)
-          ? getVesselEnrichedSpecs(s.vessel, s)
-          : (s || {});
-        const vType = specs.vessel_type || (s && s.vessel_type) || '';
-        const rule = getStrictUnitRule(vType);
-        const dwtEl = document.getElementById('ttDwt');
+      const typeEl = document.getElementById('ttVesselType');
+      const dwtEl = document.getElementById('ttDwt');
+      if (!typeEl || !dwtEl) return;
 
-        if (dwtEl) {
-          const dwtStr = specs.dwt ? `${specs.dwt} T` : '—';
-          if (rule.allowed.length === 0) {
-            // Quân sự, đánh cá, tàu khác -> chỉ hiện DWT, không hiện đơn vị sức chở
-            dwtEl.textContent = dwtStr;
-          } else {
-            let unit = rule.allowed.includes(specs.capacity_unit) ? specs.capacity_unit : rule.defaultUnit;
-            let capVal = Number(specs.teu) || 0;
-            if ((!rule.allowed.includes(specs.capacity_unit) || capVal <= 0) && typeof estimateStandardCapacityByDesign === 'function') {
-              const est = estimateStandardCapacityByDesign({ ...specs, vessel_type: vType, capacity_unit: unit });
-              capVal = est.capacity || 0;
-              unit = est.unit || unit;
-            }
-            const capPart = capVal > 0 ? `${capVal.toLocaleString('vi-VN')} ${unit} · ` : '';
-            dwtEl.textContent = capPart + dwtStr;
-          }
-        }
-      } catch (err) {}
+      const vType = (typeEl.textContent || '').trim();
+      const rule = getStrictUnitRule(vType);
+      const rawText = (dwtEl.textContent || '').trim();
+      const parts = rawText.split('·').map(x => x.trim()).filter(Boolean);
+      const dwtPart = parts.length > 1 ? parts[parts.length - 1] : (/\d+\s*T\b/i.test(rawText) ? rawText : '—');
 
-      return res;
-    };
-    window.showTooltip.__hpStrictWrapped = true;
+      if (rule.allowed.length === 0) {
+        // Quân sự, đánh cá, tàu khác -> bỏ hoàn toàn đơn vị sức chở, chỉ giữ DWT
+        if (dwtEl.textContent !== dwtPart) dwtEl.textContent = dwtPart;
+        return;
+      }
+
+      // Nếu đang có số sức chở ở vế trái, thay đúng đơn vị theo loại tàu (VD: 4.929 TEU -> 4.929 Units)
+      if (parts.length > 1) {
+        const mNum = parts[0].match(/[\d.,]+/);
+        const curUnitMatch = parts[0].replace(/[\d.,\s]+/g, '').trim();
+        const finalUnit = rule.allowed.includes(curUnitMatch) ? curUnitMatch : rule.defaultUnit;
+        const fixedText = mNum ? `${mNum[0]} ${finalUnit} · ${dwtPart}` : dwtPart;
+        if (dwtEl.textContent !== fixedText) dwtEl.textContent = fixedText;
+      }
+    } finally {
+      isFixingTooltip = false;
+    }
   }
 
-  wrapShowTooltip();
-  setTimeout(wrapShowTooltip, 800);
-  setTimeout(wrapShowTooltip, 2000);
+  function attachTooltipObserver() {
+    const tt = document.getElementById('shipTooltip');
+    if (!tt || tt.__hpUnitObserved) return;
+    const obs = new MutationObserver(() => enforceTooltipDisplay());
+    obs.observe(tt, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true, characterData: true });
+    tt.__hpUnitObserved = true;
+  }
+
+  document.addEventListener('DOMContentLoaded', attachTooltipObserver);
+  setTimeout(attachTooltipObserver, 500);
+  setTimeout(attachTooltipObserver, 1500);
 })();
-  
 </script>
 </body>
 </html>
