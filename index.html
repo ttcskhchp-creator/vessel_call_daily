@@ -2679,13 +2679,6 @@ function dt(v){
   return isNaN(d) ? esc(v) : d.toLocaleString(locale, {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Ho_Chi_Minh'});
 }
 
-function formatDateTimeLocal(v) {
-  if (!v) return '';
-  let d = new Date(v);
-  if (isNaN(d)) return '';
-  let pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function formatDuration(ms) {
   let d = dict[currentLang];
@@ -2697,15 +2690,6 @@ function formatDuration(ms) {
   return `${mins} ${d.minUnit}`;
 }
 
-function parseEtbEtd(etbStr, etdStr) {
-  let t1 = etbStr ? new Date(etbStr).getTime() : 0;
-  let t2 = etdStr ? new Date(etdStr).getTime() : 0;
-  if (t1 > 0 && t2 > 0 && t2 <= t1) {
-    etdStr = '';
-    t2 = 0;
-  }
-  return { etb: etbStr || '', etd: etdStr || '', t1, t2 };
-}
 
 // --- MODULE QUẢN LÝ HÒM THƯ ---
 async function loadFeedbacks() {
@@ -3068,36 +3052,6 @@ function calculateDayExtremes(hourlyList) {
   };
 }
 
-function parseTheGioiMoiCauColumn(columnText) {
-  let map = new Map();
-  let regex = /([0-2]?\d)\s*h[^\d\n\r]*([0-4][.,]\d+)\s*m/gi;
-  let matches = [...columnText.matchAll(regex)];
-
-  for (let m of matches) {
-    let h = parseInt(m[1], 10);
-    let val = parseFloat(m[2].replace(',', '.'));
-    if (!isNaN(h) && !isNaN(val) && h >= 0 && h <= 23 && val >= 0.1 && val <= 5.5) {
-      if (!map.has(h)) map.set(h, val);
-    }
-  }
-
-  if (map.size < 18) {
-    let regexSplit = /([0-2]?\d)\s*h[\s\r\n\t]+([0-4][.,]\d+)\s*m?/gi;
-    let matches2 = [...columnText.matchAll(regexSplit)];
-    for (let m of matches2) {
-      let h = parseInt(m[1], 10);
-      let val = parseFloat(m[2].replace(',', '.'));
-      if (h >= 0 && h <= 23 && val >= 0.1 && val <= 5.5) {
-        if (!map.has(h)) map.set(h, val);
-      }
-    }
-  }
-
-  let list = [];
-  map.forEach((val, hour) => list.push({ hour, val }));
-  list.sort((a, b) => a.hour - b.hour);
-  return list;
-}
 
 async function fetchTideFromTheGioiMoiCau() {
   if ($('tideStatusBadge')) {
@@ -3901,31 +3855,6 @@ function filterMovement(m, btn) {
   renderMovement(getFilteredCalls());
 }
 
-function renderTable(list) {
-  let q = ($('search')?.value || '').toLowerCase();
-  let filtered = list.filter(c => !q || [c.vessel, c.vessel_type, c.operator, c.terminal, c.berth, c.imo].join(' ').toLowerCase().includes(q));
-  if ($('rows')) {
-    $('rows').innerHTML = filtered.length ? filtered.map((c, i) => {
-      let typeBadgeColor = (c.vessel_type || '').includes('Hàng rời') ? 'background:#dcfce7;color:#166534' : ((c.vessel_type || '').includes('PCTC') ? 'background:#fef3c7;color:#92400e' : 'background:#e0f2fe;color:#0369a1');
-      let beamStr = c.beam ? `${Number(c.beam).toFixed(1)}m` : '—';
-      let teuStr = c.teu > 0 ? `${Number(c.teu).toLocaleString('vi-VN')}` : '—';
-      return `
-      <tr onclick="populateEditForm('${esc(c.vessel)}')" style="cursor:pointer" title="Nhấp để xem/sửa hoặc tra cứu VesselFinder">
-        <td>${i+1}</td>
-        <td class="vessel">${esc(c.vessel)} ${c.imo ? `<small class="muted">(${esc(c.imo)})</small>` : ''}</td>
-        <td><span class="badge" style="${typeBadgeColor}">${esc(c.vessel_type || 'Container')}</span></td>
-        <td><span class="badge">${esc(c.operator || '—')}</span></td>
-        <td><b>${c.loa || '—'}</b></td>
-        <td style="color:#0284c7;font-weight:700">${beamStr}</td>
-        <td style="color:#059669;font-weight:700">${teuStr}</td>
-        <td>${esc(c.dwt || '—')}</td>
-        <td>${esc(c.terminal)} · ${esc(c.berth)}</td>
-        <td>${dt(c.etb)}</td>
-        <td>${dt(c.etd)}</td>
-      </tr>`;
-    }).join('') : `<tr><td colspan="11" class="empty">Không tìm thấy bản ghi.</td></tr>`;
-  }
-}
 
 function filterPlanningArea(area, btn) {
   planningAreaFilter = area;
@@ -4255,43 +4184,6 @@ async function exportConfigAsCSVProtected() {
   if (await verifyAdminPinPrompt('xuất báo cáo Excel/CSV')) exportConfigAsCSV();
 }
 
-function exportConfigAsCSV() {
-  let list = getFilteredCalls();
-  if (!list || list.length === 0) {
-    alert(currentLang === 'vi' ? 'Không có dữ liệu trong khoảng thời gian đã chọn!' : 'No data in selected date range!');
-    return;
-  }
-  let csvRows = [
-    `"${dict[currentLang].hpPort} - ${dict[currentLang].topTitle}"`,
-    `"Trung tâm Khai thác & Dịch vụ khách hàng - Cảng Hải Phòng"`,
-    `"Exported: ${new Date().toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')}"`,
-    `""`,
-    `"STT","Vessel Name","Operator","Terminal","Berth","LOA (m)","DWT","ETB","ETD"`
-  ];
-
-  list.forEach((c, i) => {
-    csvRows.push([
-      i + 1,
-      `"${c.vessel}"`,
-      `"${c.operator || '—'}"`,
-      `"${c.terminal || '—'}"`,
-      `"${c.berth || '—'}"`,
-      c.loa || 0,
-      `"${c.dwt || '—'}"`,
-      `"${dt(c.etb)}"`,
-      `"${dt(c.etd)}"`
-    ].join(','));
-  });
-
-  const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `HaiPhongPort_Schedule_${getTodayString()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
-}
 
 async function triggerImportConfig() {
   if (await verifyAdminPinPrompt('nạp dữ liệu từ file')) $('importFileInput')?.click();
@@ -4357,36 +4249,8 @@ async function handleManualSave() {
   if (await verifyAdminPinPrompt('lưu Snapshot lên Cloud')) saveCurrentDataToSupabase(false);
 }
 
-async function loadShiftConfigFromSupabase() {
-  if (!supabaseClient || !$('dispShift')) return;
-  let today = getTodayString();
-  try {
-    let { data, error } = await supabaseClient.from('shift_configs').select('*').eq('shift_date', today).maybeSingle();
-    if (data && !error) {
-      if ($('dispShift')) $('dispShift').textContent = data.shift_name || 'Ca 1';
-      if ($('dispCommander')) $('dispCommander').textContent = data.commander || 'Chưa thiết lập';
-      if ($('dispSafety')) $('dispSafety').textContent = data.safety || 'Chưa thiết lập';
-    }
-  } catch(e) {}
-}
 
-async function saveShiftConfigToSupabase(shiftData) {
-  if (!supabaseClient) return;
-  let today = getTodayString();
-  try {
-    await supabaseClient.from('shift_configs').upsert({
-      shift_date: today,
-      shift_name: shiftData.shift,
-      commander: shiftData.commander,
-      safety: shiftData.safety,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'shift_date' });
-  } catch(err) {}
-}
 
-async function openShiftModalWithPassword() {
-  if (await verifyAdminPinPrompt('thiết lập ca trực')) $('modalShade')?.classList.add('open');
-}
 
 /* ==================== MODULE TÍNH TOÁN UKC, HÀNG XUẤT & BẢNG TƯƠNG TÁC EXCEL ==================== */
 var generatedPlanRows = window.generatedPlanRows || [];
@@ -5493,52 +5357,7 @@ var vesselCatalogMap = window.vesselCatalogMap || new Map();
 window.vesselCatalogMap = vesselCatalogMap;
 
 // 1. Nâng cấp danh sách Loại tàu & Đơn vị sức chở trên Form
-function ensureVesselTypeSelectOptions() {
-  const sel = $('editVesselType');
-  if (sel && !sel.dataset.upgraded) {
-    sel.innerHTML = `
-      <option value="Tàu mẹ Container">Tàu mẹ Container (Container Ship)</option>
-      <option value="Container Feeder (General Cargo)">Tàu Container Feeder (General Cargo Ship)</option>
-      <option value="Container">Container (Tiêu chuẩn)</option>
-      <option value="Tàu hàng rời (Bulk Carrier)">Tàu hàng rời (Bulk Carrier)</option>
-      <option value="Hàng rời / tổng hợp">Hàng rời / tổng hợp</option>
-      <option value="Tàu Ro-Ro (Vehicles Carrier)">Tàu Ro-Ro / Ô tô (Vehicles Carrier / PCTC)</option>
-      <option value="Ô tô (PCTC)">Ô tô (PCTC)</option>
-      <option value="Tàu dầu / FSO / Hóa chất">Tàu dầu / FSO / Hóa chất (Tanker / FSO)</option>
-      <option value="Tàu khí (LPG / LNG)">Tàu khí LPG / LNG (Gas Tanker)</option>
-      <option value="Tàu chở khách (Passenger/Cruise)">Tàu chở khách (Passenger / Cruise Ship)</option>
-      <option value="Tàu thiết bị / Project">Tàu thiết bị / Siêu trường (Heavy Load)</option>
-      <option value="Khác">Khác (Tug / Aux / Unknown)</option>
-    `;
-    sel.dataset.upgraded = '1';
-  }
-  const unitSel = $('editVesselCapUnit');
-  if (unitSel && !unitSel.dataset.upgraded) {
-    unitSel.innerHTML = `
-      <option value="TEU">TEU</option>
-      <option value="Units">Units (Xe)</option>
-      <option value="Tấn">Tấn (MT)</option>
-      <option value="m³">Khối (m³)</option>
-      <option value="Pax">Khách (Pax)</option>
-    `;
-    unitSel.dataset.upgraded = '1';
-  }
-}
 
-function mapVesselFinderShipType(rawVfType) {
-  let s = String(rawVfType || '').trim().toLowerCase();
-  if (!s) return '';
-  if (s.includes('container')) return 'Tàu mẹ Container';
-  if (s.includes('general cargo') || s.includes('reefer') || s.includes('multi-purpose')) return 'Container Feeder (General Cargo)';
-  if (s.includes('vehicles carrier') || s.includes('ro-ro') || s.includes('roro') || s.includes('car carrier')) return 'Tàu Ro-Ro (Vehicles Carrier)';
-  if (s.includes('passenger') || s.includes('cruise')) return 'Tàu chở khách (Passenger/Cruise)';
-  if (s.includes('lng') || s.includes('lpg') || s.includes('gas carrier') || s.includes('gas tanker')) return 'Tàu khí (LPG / LNG)';
-  if (s.includes('fso') || s.includes('fpso') || s.includes('tanker') || s.includes('crude') || s.includes('chemical') || s.includes('asphalt') || s.includes('bitumen') || s.includes('bunkering')) return 'Tàu dầu / FSO / Hóa chất';
-  if (s.includes('bulk') || s.includes('cement') || s.includes('wood chips') || s.includes('urea') || s.includes('aggregates') || s.includes('limestone') || s.includes('ore carrier')) return 'Tàu hàng rời (Bulk Carrier)';
-  if (s.includes('heavy load') || s.includes('landing craft') || s.includes('project') || s.includes('livestock')) return 'Tàu thiết bị / Project';
-  if (s.includes('tug') || s.includes('fishing') || s.includes('yacht') || s.includes('military') || s.includes('auxiliary')) return 'Khác';
-  return '';
-}
 
 function getAllowedCapacityUnitsByType(vesselType) {
   let t = String(vesselType || 'Container').toUpperCase();
@@ -6808,7 +6627,7 @@ function populateEditForm(vesselOrName) {
   if ($('editVesselEtd')) $('editVesselEtd').value = formatDateTimeLocal(ov.etd || item.etd);
 
   nav('edit-vessel', true);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  (document.getElementById('mainScroll')||window).scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function saveVesselOverrideProtected() {
@@ -7299,137 +7118,7 @@ function renderOverrideTable() {
   }).join('');
 }
 
-function renderGantt() {
-  let days = +$('days')?.value || 4;
-  let start = new Date($('fromDate')?.value || getTodayString()); start.setHours(0,0,0,0);
-  let end = new Date(start.getTime() + days * 86400000);
-  let list = getFilteredCalls();
-  let searchQuery = ($('planningSearch')?.value || '').toLowerCase();
 
-  let headerHtml = buildVesselColorLegendHtml() + `<div class="gantt-head"><div class="berth-label">CẦU BẾN</div><div class="gantt-timeline-header">`;
-  for (let d = 0; d < days; d++) {
-    let curDate = new Date(start.getTime() + d * 86400000);
-    let dateStr = `${curDate.getDate()}/${curDate.getMonth() + 1}`;
-    headerHtml += `
-      <div class="gantt-time-slot">${dateStr} <span>00:00 - 12:00</span></div>
-      <div class="gantt-time-slot">${dateStr} <span>12:00 - 24:00</span></div>
-    `;
-  }
-  headerHtml += `</div></div>`;
-
-  let terms = {};
-  list.forEach(c => {
-    if (!c.etb) return;
-    if (planningAreaFilter !== 'ALL' && !(c.terminal || '').toUpperCase().includes(planningAreaFilter)) return;
-    if (searchQuery && ![c.vessel, c.operator, c.terminal, c.berth].join(' ').toLowerCase().includes(searchQuery)) return;
-    let key = (c.terminal || 'Other') + ' · ' + (c.berth || 'B1');
-    if (!terms[key]) terms[key] = [];
-    terms[key].push(c);
-  });
-
-  const DEFAULT_STAY_MS = 20 * 3600000;
-  let out = headerHtml;
-  let hasData = false;
-
-  for (let [name, ships] of Object.entries(terms)) {
-    hasData = true;
-    out += `<div class="gantt-row"><div class="berth-label">${esc(name)}</div><div class="track">`;
-    ships.forEach((c, idx) => {
-      let t1 = new Date(c.etb).getTime();
-      let t2 = c.etd ? new Date(c.etd).getTime() : 0;
-      let a = t1;
-      let b = (t2 > t1 && (t2 - t1) <= 7 * 86400000) ? t2 : (t1 + DEFAULT_STAY_MS);
-
-      if (b >= start.getTime() && a <= end.getTime()) {
-        let left = Math.max(0, Math.min(100, (a - start.getTime()) / (end.getTime() - start.getTime()) * 100));
-        let right = Math.max(left + 2, Math.min(100, (b - start.getTime()) / (end.getTime() - start.getTime()) * 100));
-        let zIdx = 2 + idx;
-        let { colorClass, specs } = getVesselUnitColorClass(c);
-        let unitTag = specs.teu > 0 ? ` (${specs.capacity_unit || 'TEU'})` : '';
-
-        out += `<div class="shipbar ${colorClass}" 
-                     style="left:${left}%;width:${right-left}%;z-index:${zIdx}" 
-                     onclick="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
-                     onmouseenter="showTooltip(event, ${JSON.stringify(c).replace(/"/g, '&quot;')})" 
-                     onmouseleave="scheduleHideTooltip()">${esc(c.vessel)}${unitTag}</div>`;
-      }
-    });
-    out += `</div></div>`;
-  }
-  if (!hasData) out += `<div class="empty">Không có dữ liệu kế hoạch phù hợp.</div>`;
-  if ($('fullGantt')) $('fullGantt').innerHTML = out;
-  if ($('planningCount')) $('planningCount').textContent = `${Object.keys(terms).length} bến có tàu`;
-}
-
-function renderTanVuLayout(list) {
-  try {
-    let now = Date.now();
-    let selectedDateStr = ($('fromDate') && $('fromDate').value) ? $('fromDate').value : getTodayString();
-    let todayStr = getTodayString();
-
-    let tanVuShips = list.filter(c => {
-      let term = (c.terminal || '').toUpperCase();
-      if (!term.includes('TÂN VŨ') && !term.includes('TAN VU')) return false;
-      if (!c.etb) return false;
-      let etbDate = c.etb.split('T')[0];
-      let etdDate = c.etd ? c.etd.split('T')[0] : '';
-      let shipEnd = etdDate || '9999-12-31';
-      return (etbDate <= selectedDateStr && shipEnd >= selectedDateStr);
-    });
-
-    let d = (dict && dict[currentLang]) ? dict[currentLang] : (dict['vi'] || {});
-    if ($('tanvuCount')) $('tanvuCount').textContent = `${tanVuShips.length} ${d.shipsUnit || 'lượt tàu'}`;
-
-    let berthMap = {};
-    ['B1', 'B2', 'B3', 'B4', 'B5'].forEach(b => { berthMap[b] = []; });
-    tanVuShips.forEach(c => {
-      let b = (c.berth || 'B1').trim().toUpperCase();
-      if (!berthMap[b]) berthMap[b] = [];
-      berthMap[b].push(c);
-    });
-
-    let html = buildVesselColorLegendHtml() + `<div class="berth-group"><div class="berth-group-head"><span class="berth-group-title">${d.berthTitle || 'CẢNG TÂN VŨ'}</span></div>`;
-
-    Object.keys(berthMap).sort().forEach(bName => {
-      let ships = berthMap[bName].sort((a,b) => new Date(a.etb||0) - new Date(b.etb||0));
-      html += `<div class="berth-row"><div class="berth-name">${bName}</div><div class="berth-ships" style="flex-wrap:wrap;">`;
-      if (ships.length === 0) {
-        html += `<span class="empty-berth">${d.berthEmpty || 'Trống'}</span>`;
-      } else {
-        ships.forEach(s => {
-          let t1 = new Date(s.etb).getTime();
-          let t2 = s.etd ? new Date(s.etd).getTime() : 0;
-          let etdDate = s.etd ? s.etd.split('T')[0] : '';
-          let statusLabel = '', extraOpacity = '';
-
-          if (t2 > 0 && t2 <= now) { statusLabel = '✔️ Đã rời'; extraOpacity = 'opacity: 0.72;'; }
-          else if (etdDate === todayStr && t2 > now) { statusLabel = '🚩 Rời trong ngày'; }
-          else if (t1 <= now && (t2 === 0 || t2 > now)) { statusLabel = '🏗️ Đang làm hàng'; }
-          else { statusLabel = '⏳ Sắp cập'; }
-
-          let { colorClass, specs } = getVesselUnitColorClass(s);
-          let capBadge = specs.teu > 0 ? `${specs.teu.toLocaleString('vi-VN')} ${specs.capacity_unit || 'TEU'}` : `${specs.loa || ''}m`;
-
-          html += `
-            <div class="ship-chip ${colorClass}" 
-                 style="${extraOpacity}"
-                 onclick="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseenter="showTooltip(event, ${JSON.stringify(s).replace(/"/g, '&quot;')})" 
-                 onmouseleave="scheduleHideTooltip()">
-              <span style="font-size: 10.5px; font-weight: 800;">${esc(s.vessel)}</span>
-              <span style="font-size: 9px; padding: 1px 4px; background: rgba(255,255,255,0.22); border-radius: 3px; font-weight: 700;">${esc(capBadge)}</span>
-              <span class="chip-time" style="font-size: 9px; padding: 2px 5px; background: rgba(0,0,0,0.32); border-radius: 4px; font-weight: 700; white-space: nowrap;">${statusLabel}</span>
-            </div>`;
-        });
-      }
-      html += `</div></div>`;
-    });
-    html += `</div>`;
-    if ($('tanvuBerthsLayout')) $('tanvuBerthsLayout').innerHTML = html;
-  } catch (err) {
-    console.error("Lỗi tại renderTanVuLayout:", err);
-  }
-}
 
 function showTooltip(e, s) {
   if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
@@ -7578,38 +7267,6 @@ function injectAllUpgradedStylesAndModals() {
   }
 }
 
-function classifyPortGeography(rawPortName) {
-  let p = String(rawPortName || 'CHƯA PHÂN CẢNG').trim().toUpperCase();
-  if (p.includes('HHIT') || p.includes('HTIT') || p.includes('HICT') || p.includes('LẠCH HUYỆN') || p.includes('LACH HUYEN') || p.includes('TIL')) {
-    let order = p.includes('HHIT') ? 11 : (p.includes('HTIT') ? 12 : (p.includes('HICT') ? 13 : 19));
-    return { zoneId: 1, zoneCode: 'ZONE_1', zoneName: '1. Cảng nước sâu Lạch Huyện (Cửa biển: HHIT · HTIT · HICT)', zoneShort: 'Khu vực Nước sâu Lạch Huyện', portOrder: order, portName: p };
-  }
-  if (
-    p.includes('TÂN VŨ') || p.includes('TAN VU') || p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV') ||
-    p.includes('VIP GREEN') || p.includes('VGP') || p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV') ||
-    p.includes('ĐÌNH VŨ') || p.includes('DINH VU') || p.includes('HẢI AN') || p.includes('HAI AN') || p.includes('PTSC') || p.includes('MIPEC') || p.includes('MPC')
-  ) {
-    let order = 29;
-    if (p.includes('TÂN VŨ') || p.includes('TAN VU')) order = 21;
-    else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) order = 22;
-    else if (p.includes('VIP GREEN') || p.includes('VGP')) order = 23;
-    else if (p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV')) order = 24;
-    else if (p.includes('ĐÌNH VŨ') || p.includes('DINH VU')) order = 25;
-    else if (p.includes('PTSC')) order = 26;
-    else if (p.includes('HẢI AN') || p.includes('HAI AN')) order = 27;
-    else if (p.includes('MIPEC') || p.includes('MPC')) order = 28;
-    return { zoneId: 2, zoneCode: 'ZONE_2', zoneName: '2. Khu vực Bán đảo Đình Vũ – Tân Vũ (Tân Vũ · Nam Đình Vũ · VIP Green · NHDV · Đình Vũ...)', zoneShort: 'Khu vực Đình Vũ – Tân Vũ', portOrder: order, portName: p };
-  }
-  if (p.includes('GREEN') || p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP') || p.includes('CHÙA VẼ') || p.includes('CHUA VE') || p.includes('NAM HẢI') || p.includes('NAM HAI') || p.includes('TRANSVINA') || p.includes('128')) {
-    let order = p.includes('GREEN') ? 31 : ((p.includes('ĐOẠN XÁ') || p.includes('DOAN XA') || p.includes('DXP')) ? 32 : ((p.includes('CHÙA VẼ') || p.includes('CHUA VE')) ? 33 : (p.includes('NAM HẢI') ? 34 : 35)));
-    return { zoneId: 3, zoneCode: 'ZONE_3', zoneName: '3. Khu vực Trung lưu Sông Cấm (Green Port · Đoạn Xá · Chùa Vẽ · Nam Hải...)', zoneShort: 'Trung lưu Sông Cấm', portOrder: order, portName: p };
-  }
-  if (p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU') || p.includes('VẬT CÁCH') || p.includes('VAT CACH') || p.includes('THỦY SẢN')) {
-    let order = (p.includes('HOÀNG DIỆU') || p.includes('HOANG DIEU')) ? 41 : 42;
-    return { zoneId: 4, zoneCode: 'ZONE_4', zoneName: '4. Khu vực Thượng lưu Sông Cấm – Nội đô (Hoàng Diệu · Vật Cách...)', zoneShort: 'Thượng lưu Sông Cấm (Hoàng Diệu)', portOrder: order, portName: p };
-  }
-  return { zoneId: 5, zoneCode: 'ZONE_5', zoneName: '5. Khu vực Bến phao / Cảng liên kết khác', zoneShort: 'Khu vực khác', portOrder: 59, portName: p };
-}
 
 function setupUpgradedSearchPageDOM() {
   injectAllUpgradedStylesAndModals();
@@ -7774,52 +7431,6 @@ function setupUpgradedSearchPageDOM() {
   }
 }
 
-function enrichCallForSearchTable(rawCall) {
-  let specs = getVesselEnrichedSpecs(rawCall.vessel, rawCall);
-  let loa = parseFloat(String(specs.loa || rawCall.loa || 0).replace(',', '.')) || 0;
-  let beam = parseFloat(String(specs.beam || rawCall.beam || 0).replace(',', '.')) || 0;
-  let dwtMt = parseDwtToMetricTons(specs.dwt || rawCall.dwt, loa);
-  let vType = specs.vessel_type || rawCall.vessel_type || 'Container';
-  let capUnit = specs.capacity_unit || rawCall.capacity_unit || getDefaultCapacityUnitByType(vType);
-  let capVal = Number(specs.teu !== undefined ? specs.teu : (rawCall.teu || 0));
-
-  let curYear = new Date().getFullYear();
-  let yearBuilt = parseInt(specs.year_built || rawCall.year_built || 0, 10);
-  let vesselAge = null;
-  if (yearBuilt >= 1950 && yearBuilt <= curYear + 1) {
-    vesselAge = Math.max(0, curYear - yearBuilt);
-  } else {
-    yearBuilt = loa >= 250 ? 2015 : (loa >= 180 ? 2014 : (loa >= 150 ? 2012 : 2010));
-    vesselAge = curYear - yearBuilt;
-  }
-
-  let t1 = rawCall.etb ? new Date(rawCall.etb).getTime() : 0;
-  let t2 = rawCall.etd ? new Date(rawCall.etd).getTime() : 0;
-  let now = Date.now();
-  let portStayHours = 0, isOngoingStay = false;
-
-  if (t1 > 0 && t2 > t1) portStayHours = (t2 - t1) / 3600000;
-  else if (t1 > 0 && now > t1) { portStayHours = (now - t1) / 3600000; isOngoingStay = true; }
-
-  let lastPort = specs.last_port || rawCall.last_port || '';
-  let destination = specs.destination || rawCall.destination || '';
-  let routeStr = (lastPort || destination) ? `${lastPort || '—'} ➔ ${destination || '—'}` : '';
-  let berthCombined = `${rawCall.terminal || ''} · ${rawCall.berth || ''}`.trim();
-
-  return {
-    ...rawCall,
-    imo: specs.imo || rawCall.imo || '',
-    vessel_type: vType,
-    year_built: yearBuilt,
-    vessel_age: vesselAge,
-    operator: rawCall.operator || specs.operator || '',
-    loa, beam, teu: capVal, capacity_unit: capUnit, dwtMt,
-    dwtDisplay: dwtMt > 0 ? dwtMt.toLocaleString('vi-VN') : (rawCall.dwt || '—'),
-    last_port: lastPort, destination, routeStr, berthCombined,
-    etbMs: t1, etdMs: t2, etbText: dt(rawCall.etb), etdText: dt(rawCall.etd),
-    portStayHours: Number(portStayHours.toFixed(1)), isOngoingStay
-  };
-}
 
 function matchSmartColumnFilter(cellValue, numericVal, filterExpr) {
   let expr = String(filterExpr || '').trim();
@@ -8243,74 +7854,6 @@ function getSegmentAgeStatsWithVessels(rows, mode = 'loa') {
   }));
 }
 
-function getPortGeographicalAndRankingStats(rows) {
-  let portMap = {};
-  rows.forEach(r => {
-    let geo = classifyPortGeography(r.terminal);
-    let pKey = geo.portName;
-    if (!portMap[pKey]) {
-      portMap[pKey] = {
-        port: pKey, zoneId: geo.zoneId, zoneCode: geo.zoneCode, zoneName: geo.zoneName, zoneShort: geo.zoneShort,
-        portOrder: geo.portOrder, calls: 0, sumStay: 0, stayCnt: 0, sumDwt: 0, sumTeu: 0, vessels: []
-      };
-    }
-    let p = portMap[pKey];
-    p.calls++;
-    if (r.portStayHours > 0) { p.sumStay += r.portStayHours; p.stayCnt++; }
-    p.sumDwt += (r.dwtMt || 0);
-    if (r.capacity_unit === 'TEU') p.sumTeu += (r.teu || 0);
-    p.vessels.push(r);
-  });
-
-  let allPorts = Object.values(portMap).map(p => {
-    let avgStay = p.stayCnt > 0 ? Number((p.sumStay / p.stayCnt).toFixed(1)) : 0;
-    let sumStay = Number(p.sumStay.toFixed(1));
-    let avgDwt = p.calls > 0 ? Math.round(p.sumDwt / p.calls) : 0;
-    let effectiveHours = sumStay > 0 ? sumStay : (p.calls * 16);
-    let dwtPerHour = Math.round(p.sumDwt / Math.max(1, effectiveHours));
-    return { ...p, avgStay, sumStay, avgDwt, dwtPerHour };
-  });
-
-  let maxCalls = Math.max(1, ...allPorts.map(p => p.calls));
-  let maxDwt = Math.max(1, ...allPorts.map(p => p.sumDwt));
-  let maxSpeed = Math.max(1, ...allPorts.map(p => p.dwtPerHour));
-  let maxStay = Math.max(24, ...allPorts.map(p => p.avgStay));
-
-  allPorts.forEach(p => {
-    p.pesiScore = Number((0.40 * (p.sumDwt / maxDwt) * 100 + 0.30 * (p.calls / maxCalls) * 100 + 0.30 * (p.dwtPerHour / maxSpeed) * 100).toFixed(1));
-  });
-
-  let zonesMap = new Map();
-  allPorts.forEach(p => {
-    if (!zonesMap.has(p.zoneId)) {
-      zonesMap.set(p.zoneId, {
-        zoneId: p.zoneId, zoneCode: p.zoneCode, zoneName: p.zoneName, zoneShort: p.zoneShort,
-        ports: [], calls: 0, sumDwt: 0, sumStay: 0, stayCnt: 0, vessels: []
-      });
-    }
-    let z = zonesMap.get(p.zoneId);
-    z.ports.push(p); z.calls += p.calls; z.sumDwt += p.sumDwt; z.sumStay += p.sumStay; z.stayCnt += p.stayCnt;
-    z.vessels.push(...p.vessels);
-  });
-
-  let zonesList = Array.from(zonesMap.values()).sort((a, b) => a.zoneId - b.zoneId);
-  let maxZoneDwt = Math.max(1, ...zonesList.map(z => z.sumDwt));
-  let maxZoneCalls = Math.max(1, ...zonesList.map(z => z.calls));
-  let maxZoneSpeed = Math.max(1, ...zonesList.map(z => z.sumDwt / Math.max(1, z.sumStay || z.calls * 16)));
-
-  zonesList.forEach(z => {
-    z.avgStay = z.stayCnt > 0 ? Number((z.sumStay / z.stayCnt).toFixed(1)) : 0;
-    z.avgDwt = z.calls > 0 ? Math.round(z.sumDwt / z.calls) : 0;
-    let zSpeed = Math.round(z.sumDwt / Math.max(1, z.sumStay || z.calls * 16));
-    z.zonePesiScore = Number((0.40 * (z.sumDwt / maxZoneDwt) * 100 + 0.30 * (z.calls / maxZoneCalls) * 100 + 0.30 * (zSpeed / maxZoneSpeed) * 100).toFixed(1));
-
-    let rankedByScore = [...z.ports].sort((a, b) => b.pesiScore - a.pesiScore);
-    rankedByScore.forEach((p, idx) => { p.rankInZone = idx + 1; });
-    z.ports.sort((a, b) => a.portOrder !== b.portOrder ? a.portOrder - b.portOrder : b.pesiScore - a.pesiScore);
-  });
-
-  return { zonesList, allPorts, maxCalls, maxDwt, maxStay, maxSpeed };
-}
 
 function getPortComparisonStats(rows) {
   let geoData = getPortGeographicalAndRankingStats(rows);
@@ -9913,34 +9456,6 @@ function openVesselDetailPopup(shipObj) {
 window.openVesselDetailPopup = openVesselDetailPopup;
 
 // 4. Nạp dữ liệu tiến độ ePort BerthMap
-async function loadEportTanVuJobs() {
-  try {
-    let localRaw = localStorage.getItem('hp_eport_tanvu_jobs');
-    if (localRaw) {
-      let obj = JSON.parse(localRaw);
-      Object.entries(obj).forEach(([k, v]) => eportTanVuJobsMap.set(k.toUpperCase(), v));
-    }
-  } catch (e) {}
-
-  if (supabaseClient) {
-    try {
-      const { data: files } = await supabaseClient.storage.from('port-documents').list('', { search: 'eport_tanvu_jobs.json' });
-      if (Array.isArray(files) && files.some(f => f.name === 'eport_tanvu_jobs.json')) {
-        const { data, error } = await supabaseClient.storage.from('port-documents').download('eport_tanvu_jobs.json');
-        if (data && !error) {
-          let obj = JSON.parse(await data.text());
-          Object.entries(obj).forEach(([k, v]) => eportTanVuJobsMap.set(k.toUpperCase(), v));
-          localStorage.setItem('hp_eport_tanvu_jobs', JSON.stringify(obj));
-        }
-      }
-    } catch (e) {}
-  }
-
-  if (typeof renderTanVuLayout === 'function' && Array.isArray(allCalls)) {
-    renderTanVuLayout(getFilteredCalls());
-  }
-}
-window.loadEportTanVuJobs = loadEportTanVuJobs;
 
 function parseEportBerthMapText(rawText) {
   let lines = String(rawText || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
@@ -10212,10 +9727,8 @@ window.renderGantt = renderGantt;
 
 setTimeout(() => {
   ensureVesselDetailPopupModal();
-  loadEportTanVuJobs();
   if ($('fullGantt')) renderGantt();
 }, 300);
-setInterval(loadEportTanVuJobs, 60000);
 
 /* ==================== MODULE HIỂN THỊ SÀ LAN TỪ EPORT (PUBLIC NO-CACHE) & BỎ NÚT NẠP EPORT ==================== */
 
@@ -10273,42 +9786,7 @@ setInterval(loadEportTanVuJobs, 60000);
 
 /* ==================== ĐỌC LỊCH TÀU TỐI ƯU TỪ SUPABASE BUCKET ('cangvu_calls.json') ==================== */
 
-function expandCallsFromStorage(rawArray) {
-  if (!Array.isArray(rawArray)) return [];
-  return rawArray.map(item => {
-    if (item.vessel) return item;
-    return {
-      vessel: item.v || '',
-      terminal: item.t || '',
-      berth: item.b || 'B1',
-      loa: Number(item.l) || 0,
-      etb: item.eb || '',
-      etd: item.ed || '',
-      operator: item.op || '',
-      dwt: item.dw || '',
-      draft: item.dr || 0,
-      from_port: item.fp || '',
-      to_port: item.tp || '',
-      pilot: item.pl || '',
-      tug: item.tg || '',
-      source: 'Cảng vụ HP (Cloud)'
-    };
-  });
-}
 
-function applyNewCallsToApp(rawCallsArray, sourceLabel) {
-  if (!Array.isArray(rawCallsArray) || rawCallsArray.length === 0) return false;
-  let processed = (typeof filterAndDeduplicateCalls === 'function')
-    ? filterAndDeduplicateCalls(rawCallsArray)
-    : rawCallsArray;
-  allCalls = processed;
-  window.allCalls = processed;
-  if ($('sideStatus')) $('sideStatus').textContent = `${sourceLabel} (${allCalls.length} tàu)`;
-  if (typeof renderAll === 'function') renderAll();
-  if (typeof renderGantt === 'function') renderGantt();
-  if (typeof renderTanVuLayout === 'function') renderTanVuLayout(getFilteredCalls());
-  return true;
-}
 
 
 
@@ -10354,7 +9832,7 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
   }
   function runMq(){if(busy)return;busy=true;try{document.querySelectorAll(SEL).forEach(mq)}catch(e){}busy=false}
   var t;function sched(){clearTimeout(t);t=setTimeout(runMq,250)}
-  new MutationObserver(sched).observe(document.body,{childList:true,subtree:true,characterData:true});
+  new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var a=ms[i].addedNodes;for(var j=0;j<a.length;j++){if(a[j].nodeType===1&&!a[j].classList.contains('mq-in')){sched();return}}}}).observe(document.body,{childList:true,subtree:true});
   addEventListener('resize',sched);document.addEventListener('click',function(){setTimeout(runMq,150)});
   setTimeout(runMq,600);
   /* --- Dọn snapshot cũ (>45 ngày) mỗi ngày 1 lần để tiết kiệm dung lượng Bucket --- */
@@ -12699,9 +12177,6 @@ if (!pinCheck.ok) {
 
 </script>
 
-<!-- ... cuối file index.html ... -->
-</script>
-
 <!-- DÁN ĐOẠN NÀY NGAY DƯỚI THẺ </script> CUỐI CÙNG VÀ NGAY TRÊN </body> -->
 <script id="hp-mobile-and-unit-master-fix">
 (function () {
@@ -13147,7 +12622,7 @@ if (!pinCheck.ok) {
   setTimeout(attachObservers, 1500);
 })();
 </script>
-   //=============RELOAD TRANG WEB 15p một lần kể cả để tĩnh ====================== //
+<!-- RELOAD TRANG WEB 15p một lần kể cả để tĩnh -->
 <script id="hp-auto-reload-15m">
 (function initAutoReload15Min() {
   const RELOAD_INTERVAL_MS = 15 * 60 * 1000; // 15 phút
@@ -13252,7 +12727,7 @@ if (!pinCheck.ok) {
   });
 })();
 </script>
-//======Tính toán các tàu Di chuyển trên lịch cảng vụ
+<!-- Tính toán các tàu di chuyển trên lịch cảng vụ -->
 <script id="hp-cangvu-shifting-sync">
 (function () {
   window._cangVuShiftingRows = [];
@@ -13690,7 +13165,7 @@ if (!pinCheck.ok) {
   }, 15 * 60 * 1000);
 })();
 </script>
-//========= Tinh chỉnh hiển thị và khi sửa tàu vẫn giữ nguyên thông số của cảng vào và bến
+<!-- Tinh chỉnh hiển thị: khi sửa tàu vẫn giữ nguyên thông số cảng và bến -->
 <script id="hp-fix-edit-port-inherit">
 (function () {
   // Lưu chính xác ngữ cảnh cảng & bến của tàu vừa được click (Gantt / Tân Vũ / Bảng tra cứu)
@@ -13944,7 +13419,7 @@ if (!pinCheck.ok) {
   setTimeout(wrapEditAndSave, 2000);
 })();
 </script>
-//========Tinh chỉnh hiển thị trên đt popup không bị che dưới lớp phủ mờ
+<!-- Tinh chỉnh hiển thị trên đt popup không bị che dưới lớp phủ mờ -->
 <script id="hp-mobile-top-layer-dialog">
 (function () {
   // 1. CSS cho Top Layer <dialog> + tắt backdrop-filter gây lỗi mờ trên Chrome mobile ở Gantt
@@ -14125,7 +13600,7 @@ if (!pinCheck.ok) {
   setTimeout(bindObserver, 1200);
 })();
 </script>
-//============thao tác khi reload không bị chuyển trang
+<!-- thao tác khi reload không bị chuyển trang -->
 <script id="hp-keep-screen-state">
 (function () {
   const STATE_KEY = 'hp_active_tab_state_v1';
