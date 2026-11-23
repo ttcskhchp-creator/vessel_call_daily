@@ -10689,8 +10689,52 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
       let bargeCount = 0;
       const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 
+      const parseContTeuPair = (str) => {
+        const m = String(str || '').match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+        if (m) {
+          return {
+            cont: Math.round(parseFloat(m[1].replace(',', '.')) || 0),
+            teu: Math.round(parseFloat(m[2].replace(',', '.')) || 0)
+          };
+        }
+        const single = String(str || '').match(/(\d+)/);
+        return { cont: single ? parseInt(single[1], 10) : 0, teu: 0 };
+      };
+
       mergedMap.forEach(item => {
         const ep = item._eport || rawStore[item.vessel] || null;
+        if (ep && typeof ep === 'object') {
+          const totalPair = parseContTeuPair(ep.contTeuStr || ep.total || '');
+          const donePair = parseContTeuPair(ep.donePlanStr || ep.done || '');
+
+          const totalCont = Number(ep.totalCont) > 0 ? Number(ep.totalCont) : totalPair.cont;
+          const totalTeu = Number(ep.totalTeu) > 0 ? Number(ep.totalTeu) : totalPair.teu;
+          const doneContRaw = (ep.doneCont !== undefined && ep.doneCont !== null && ep.doneCont !== '')
+            ? Number(ep.doneCont)
+            : donePair.cont;
+          const doneTeuRaw = (ep.doneTeu !== undefined && ep.doneTeu !== null && ep.doneTeu !== '')
+            ? Number(ep.doneTeu)
+            : donePair.teu;
+
+          const remCont = totalCont > 0 ? Math.max(0, totalCont - doneContRaw) : 0;
+          const remTeu = totalTeu > 0 ? Math.max(0, totalTeu - doneTeuRaw) : 0;
+          const completedCont = totalCont > 0 ? Math.max(0, totalCont - remCont) : doneContRaw;
+          const completedTeu = totalTeu > 0 ? Math.max(0, totalTeu - remTeu) : doneTeuRaw;
+
+          ep.totalCont = totalCont;
+          ep.totalTeu = totalTeu;
+          ep.doneCont = completedCont;
+          ep.doneTeu = completedTeu;
+          ep.remCont = remCont;
+          ep.remTeu = remTeu;
+          ep.doneNum = completedCont;
+          ep.planNum = totalCont;
+          ep.totalNum = totalCont;
+          ep.pct = totalCont > 0
+            ? Math.min(100, Math.round((completedCont / totalCont) * 100))
+            : (totalTeu > 0 ? Math.min(100, Math.round((completedTeu / totalTeu) * 100)) : 0);
+        }
+
         const isBarge = checkIsBarge(item.vessel, ep);
         item._isBarge = isBarge;
         item._eport = ep;
@@ -12775,12 +12819,34 @@ if (!pinCheck.ok) {
         }
       }
 
-      const nameEl = tt.querySelector('#ttName');
-      const typeEl = tt.querySelector('#ttVesselType') || tt.querySelector('.badge');
-      const dwtEl = tt.querySelector('#ttDwt');
-      if (!typeEl || !dwtEl) return;
+      // Chuẩn hóa hiển thị sản lượng ePort: tách rõ "Cont / TEUs" và tính % = (Tổng Cont - Còn lại) / Tổng Cont
+      const opEl = tt.querySelector('#ttOperator');
+      if (opEl && vName) {
+        const renderedItem = (window._tanVuRenderedMap && typeof window._tanVuRenderedMap.get === 'function')
+          ? window._tanVuRenderedMap.get(vName)
+          : null;
+        const ep = renderedItem && renderedItem._eport;
+        if (ep && (Number(ep.totalCont) > 0 || Number(ep.totalTeu) > 0)) {
+          const totalCont = Number(ep.totalCont) || 0;
+          const totalTeu = Number(ep.totalTeu) || 0;
+          const remCont = ep.remCont !== undefined ? Number(ep.remCont) : Math.max(0, totalCont - (Number(ep.doneCont) || 0));
+          const completedCont = Math.max(0, totalCont - remCont);
+          const realPct = totalCont > 0
+            ? Math.min(100, Math.round((completedCont / totalCont) * 100))
+            : (totalTeu > 0 ? Math.min(100, Math.round(((Number(ep.doneTeu) || 0) / totalTeu) * 100)) : 0);
 
-      const vName = (nameEl ? nameEl.textContent : '').trim().toUpperCase();
+          const rawOp = (opEl.textContent || '').trim();
+          const opPrefix = rawOp.split('·')[0].trim() || '—';
+          const totalLabel = totalTeu > 0
+            ? `${totalCont.toLocaleString('vi-VN')} Cont / ${totalTeu.toLocaleString('vi-VN')} TEUs`
+            : `${totalCont.toLocaleString('vi-VN')} Cont`;
+
+          const newOpText = `${opPrefix} · Đã làm: ${completedCont.toLocaleString('vi-VN')}/${totalCont.toLocaleString('vi-VN')} Cont (${realPct}%) · Tổng: ${totalLabel}`;
+          if (opEl.textContent !== newOpText) {
+            opEl.textContent = newOpText;
+          }
+        }
+      }
       const vType = (typeEl.textContent || '').trim();
       const rule = getStrictUnitRule(vType);
 
