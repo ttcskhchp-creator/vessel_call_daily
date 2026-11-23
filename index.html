@@ -13399,33 +13399,53 @@ if (!pinCheck.ok) {
     window.filterAndDeduplicateCalls.__hpShiftingWrapped = true;
   }
 
-  window.loadCangVuShiftingData = async function () {
-    if (typeof SUPABASE_URL === 'undefined' || !SUPABASE_URL) return;
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_shifting.json?t=${Date.now()}`,
-        { cache: 'no-store' }
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && Array.isArray(data.rows)) {
-        window._cangVuShiftingRows = data.rows;
-        if (typeof allCalls !== 'undefined' && Array.isArray(allCalls) && allCalls.length > 0) {
-          allCalls = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
-          if (typeof window.renderAll === 'function') window.renderAll();
+ window.loadCangVuShiftingData = async function () {
+    const collected = [];
+    const seen = new Set();
+
+    const addRows = (rows) => {
+      if (!Array.isArray(rows)) return;
+      rows.forEach(r => {
+        const key = `${String(r.vessel || '').trim().toUpperCase()}_${r.moveAt || ''}_${String(r.toPort || '').trim().toUpperCase()}`;
+        if (r.vessel && !seen.has(key)) {
+          seen.add(key);
+          collected.push(r);
         }
+      });
+    };
+
+    // 1. Ưu tiên lấy trực tiếp từ Vercel Serverless (/api/cangvu) cho hôm nay & ngày mai
+    try {
+      const [r0, r1] = await Promise.allSettled([
+        fetch(`/api/cangvu?d=0&format=json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`/api/cangvu?d=1&format=json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
+      ]);
+      if (r0.status === 'fulfilled' && r0.value && Array.isArray(r0.value.rows)) addRows(r0.value.rows);
+      if (r1.status === 'fulfilled' && r1.value && Array.isArray(r1.value.rows)) addRows(r1.value.rows);
+    } catch (e) {}
+
+    // 2. Dự phòng đọc từ Supabase Bucket nếu Vercel API không lấy được
+    if (collected.length === 0 && typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/public/port-documents/cangvu_shifting.json?t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.rows)) addRows(data.rows);
+        }
+      } catch (e) {}
+    }
+
+    if (collected.length > 0) {
+      window._cangVuShiftingRows = collected;
+      if (typeof allCalls !== 'undefined' && Array.isArray(allCalls) && allCalls.length > 0) {
+        allCalls = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
+        if (typeof window.renderAll === 'function') window.renderAll();
       }
-    } catch (e) {
-      console.warn('⚠️ Không tải được cangvu_shifting.json:', e.message);
     }
   };
-
-  // Tải ngay khi mở trang và lặp lại mỗi 15 phút
-  setTimeout(() => window.loadCangVuShiftingData(), 1200);
-  setInterval(() => {
-    if (!document.hidden) window.loadCangVuShiftingData();
-  }, 15 * 60 * 1000);
-})();
 </script>
 </body>
 </html>
