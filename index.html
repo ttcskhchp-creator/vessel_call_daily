@@ -13447,5 +13447,258 @@ if (!pinCheck.ok) {
     }
   };
 </script>
+<script id="hp-fix-edit-port-inherit">
+(function () {
+  // Lưu chính xác ngữ cảnh cảng & bến của tàu vừa được click (Gantt / Tân Vũ / Bảng tra cứu)
+  let lastPickedShip = { vessel: '', terminal: '', berth: '', etb: '', etd: '', operator: '', dwt: '', loa: 0 };
+
+  function cleanPortHeaderText(rawText) {
+    let s = String(rawText || '').trim();
+    // Bỏ phần badge số cầu bến ở bên phải (VD: "2 cầu bến thực tế · 5 lượt tàu")
+    s = s.replace(/\d+\s*cầu\s*bến.*$/i, '');
+    // Bỏ icon và chữ "CẢNG " ở đầu
+    s = s.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^CẢNG\s+/i, '').trim();
+    return s.toUpperCase();
+  }
+
+  function extractPortFromGanttRow(rowEl) {
+    if (!rowEl) return { terminal: '', berth: '' };
+    const lblText = (rowEl.querySelector('.berth-label')?.textContent || '').trim();
+    const mBerth = lblText.match(/\b(B\d+)\b/i) || lblText.match(/Bến\s*(\d+)/i);
+    const berth = mBerth ? (mBerth[1].toUpperCase().startsWith('B') ? mBerth[1].toUpperCase() : 'B' + mBerth[1]) : '';
+
+    // Trường hợp label dạng "HTIT · B3"
+    if (lblText.includes('·')) {
+      const left = cleanPortHeaderText(lblText.split('·')[0]);
+      if (left) return { terminal: left, berth };
+    }
+
+    // Trường hợp gom nhóm theo từng Cảng: dò ngược sibling phía trên để lấy tên cảng (VD: "CẢNG HHIT")
+    let prev = rowEl.previousElementSibling;
+    let steps = 0;
+    while (prev && steps < 40) {
+      if (!prev.classList.contains('gantt-row')) {
+        const txt = (prev.textContent || '').trim();
+        if (/CẢNG\s+/i.test(txt) || /HTIT|HHIT|HICT|TÂN VŨ|TAN VU|ĐÌNH VŨ|DINH VU|CHÙA VẼ|CHUA VE|HOÀNG DIỆU|GREEN|MIPEC|PTSC|VẬT CÁCH/i.test(txt)) {
+          return { terminal: cleanPortHeaderText(txt), berth };
+        }
+      }
+      prev = prev.previousElementSibling;
+      steps++;
+    }
+
+    // Kiểm tra thêm thẻ cha bao quanh nhóm cảng (nếu có)
+    const groupParent = rowEl.parentElement;
+    if (groupParent) {
+      const head = groupParent.querySelector('.gantt-port-header, .port-group-head, .berth-group-title, h4, h3');
+      if (head) return { terminal: cleanPortHeaderText(head.textContent), berth };
+    }
+    return { terminal: '', berth };
+  }
+
+  function findExactCallForEdit(vName, ctx) {
+    const key = String(vName || '').trim().toUpperCase();
+    if (!key) return null;
+
+    const pools = [];
+    if (typeof window.getFilteredCalls === 'function') {
+      try {
+        const fc = window.getFilteredCalls();
+        if (Array.isArray(fc) && fc.length) pools.push(fc);
+      } catch (e) {}
+    }
+    if (typeof allCalls !== 'undefined' && Array.isArray(allCalls) && allCalls.length) {
+      pools.push(allCalls);
+    }
+
+    const wantTerm = String((ctx && ctx.terminal) || '').trim().toUpperCase();
+    const wantBerth = String((ctx && ctx.berth) || '').trim().toUpperCase();
+
+    for (const pool of pools) {
+      const list = pool.filter(c => String(c.vessel || '').trim().toUpperCase() === key);
+      if (!list.length) continue;
+
+      if (wantTerm) {
+        const byTermBerth = list.find(c =>
+          String(c.terminal || '').toUpperCase().includes(wantTerm) &&
+          (!wantBerth || String(c.berth || '').toUpperCase().includes(wantBerth))
+        );
+        if (byTermBerth) return byTermBerth;
+
+        const byTerm = list.find(c => String(c.terminal || '').toUpperCase().includes(wantTerm));
+        if (byTerm) return byTerm;
+      }
+      return list[0];
+    }
+    return null;
+  }
+
+  function syncEditFormPortFromRealCall(vesselName, explicitItem) {
+    const vName = String(vesselName || document.getElementById('editVesselName')?.value || '').trim().toUpperCase();
+    if (!vName) return;
+
+    const ctx = (lastPickedShip.vessel === vName) ? lastPickedShip : {};
+    const liveCall = findExactCallForEdit(vName, ctx);
+
+    // Ưu tiên: ngữ cảnh vừa click -> chuyến thực tế trong allCalls -> dữ liệu truyền vào (KHÔNG mặc định TÂN VŨ)
+    const itemTerm = String((explicitItem && explicitItem.terminal) || '').trim();
+    const itemBerth = String((explicitItem && explicitItem.berth) || '').trim();
+
+    let realTerminal = ctx.terminal || (liveCall && liveCall.terminal) || itemTerm || '';
+    let realBerth = ctx.berth || (liveCall && liveCall.berth) || itemBerth || '';
+
+    // Chặn lỗi cũ: nếu liveCall thuộc cảng khác mà input đang bị ép thành TÂN VŨ
+    if (liveCall && liveCall.terminal) {
+      const liveTermUp = String(liveCall.terminal).trim().toUpperCase();
+      const curTermUp = String(realTerminal).trim().toUpperCase();
+      const liveIsTanVu = liveTermUp.includes('TÂN VŨ') || liveTermUp.includes('TAN VU');
+      if (!liveIsTanVu && (!curTermUp || curTermUp.includes('TÂN VŨ') || curTermUp.includes('TAN VU'))) {
+        realTerminal = liveCall.terminal;
+        realBerth = liveCall.berth || realBerth;
+      }
+    }
+
+    const termEl = document.getElementById('editVesselTerminal');
+    const berthEl = document.getElementById('editVesselBerth');
+    const opEl = document.getElementById('editVesselOperator');
+    const etbEl = document.getElementById('editVesselEtb');
+    const etdEl = document.getElementById('editVesselEtd');
+    const nameEl = document.getElementById('editVesselName');
+
+    if (termEl && realTerminal) termEl.value = realTerminal;
+    if (berthEl && realBerth) berthEl.value = realBerth;
+
+    if (opEl && (!opEl.value || opEl.value === '—') && (ctx.operator || (liveCall && liveCall.operator))) {
+      opEl.value = ctx.operator || liveCall.operator;
+    }
+    if (typeof window.formatDateTimeLocal === 'function') {
+      if (etbEl && !etbEl.value && (ctx.etb || (liveCall && liveCall.etb))) {
+        etbEl.value = window.formatDateTimeLocal(ctx.etb || liveCall.etb);
+      }
+      if (etdEl && !etdEl.value && (ctx.etd || (liveCall && liveCall.etd))) {
+        etdEl.value = window.formatDateTimeLocal(ctx.etd || liveCall.etd);
+      }
+    }
+
+    // Lưu dấu cảng/bến gốc để cảnh báo nếu người dùng vô tình sửa nhầm sang Tân Vũ
+    if (nameEl) {
+      nameEl.dataset.origVessel = vName;
+      nameEl.dataset.origTerminal = realTerminal;
+      nameEl.dataset.origBerth = realBerth;
+    }
+  }
+
+  // 1. Bắt chính xác ngữ cảnh tàu khi click trên Gantt, Tân Vũ hoặc nút Sửa trong Popup
+  document.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (!t || !t.closest) return;
+
+    // A. Click trên thanh tàu Gantt (#fullGantt)
+    const ganttBar = t.closest('#fullGantt .shipbar');
+    if (ganttBar) {
+      const row = ganttBar.closest('.gantt-row');
+      const { terminal, berth } = extractPortFromGanttRow(row);
+      setTimeout(() => {
+        const fullName = (document.getElementById('ttName')?.textContent || '').trim().toUpperCase();
+        const liveCall = findExactCallForEdit(fullName, { terminal, berth });
+        lastPickedShip = {
+          vessel: fullName,
+          terminal: (liveCall && liveCall.terminal) || terminal || '',
+          berth: (liveCall && liveCall.berth) || berth || '',
+          etb: (liveCall && liveCall.etb) || '',
+          etd: (liveCall && liveCall.etd) || '',
+          operator: (liveCall && liveCall.operator) || ''
+        };
+        if (typeof selectedShipForReport !== 'undefined' && selectedShipForReport && String(selectedShipForReport.vessel || '').toUpperCase() === fullName) {
+          if (lastPickedShip.terminal) selectedShipForReport.terminal = lastPickedShip.terminal;
+          if (lastPickedShip.berth) selectedShipForReport.berth = lastPickedShip.berth;
+          if (lastPickedShip.etb) selectedShipForReport.etb = lastPickedShip.etb;
+          if (lastPickedShip.etd) selectedShipForReport.etd = lastPickedShip.etd;
+        }
+      }, 15);
+      return;
+    }
+
+    // B. Click trên thẻ tàu Cảng Tân Vũ (#tanvuBerthsLayout)
+    const tvChip = t.closest('#tanvuBerthsLayout .ship-chip, #tanvuBerthsLayout .tv-compact-chip');
+    if (tvChip) {
+      const vKey = (tvChip.getAttribute('data-vessel-key') || '').trim().toUpperCase();
+      const row = tvChip.closest('.berth-row');
+      const berth = (row?.querySelector('.berth-name')?.textContent || '').trim().toUpperCase();
+      const liveCall = findExactCallForEdit(vKey, { terminal: 'TÂN VŨ', berth });
+      lastPickedShip = {
+        vessel: vKey,
+        terminal: (liveCall && liveCall.terminal) || 'TÂN VŨ',
+        berth: berth || (liveCall && liveCall.berth) || '',
+        etb: (liveCall && liveCall.etb) || '',
+        etd: (liveCall && liveCall.etd) || '',
+        operator: (liveCall && liveCall.operator) || ''
+      };
+      return;
+    }
+
+    // C. Click nút "✏️ Sửa" trên Popup (#ttEditBtn) -> đồng bộ lại ngay sau khi form mở
+    if (t.closest('#ttEditBtn')) {
+      const ttName = (document.getElementById('ttName')?.textContent || '').trim().toUpperCase();
+      setTimeout(() => {
+        syncEditFormPortFromRealCall(ttName, typeof selectedShipForReport !== 'undefined' ? selectedShipForReport : null);
+      }, 40);
+    }
+  }, true);
+
+  // 2. Bọc populateEditForm để luôn kế thừa đúng Cảng & Bến thực tế của tàu
+  function wrapEditAndSave() {
+    if (typeof window.populateEditForm === 'function' && !window.populateEditForm.__hpPortSafe) {
+      const origPopulate = window.populateEditForm;
+      window.populateEditForm = function (vesselOrName) {
+        const res = origPopulate.apply(this, arguments);
+        const vName = typeof vesselOrName === 'string'
+          ? vesselOrName.trim().toUpperCase()
+          : String((vesselOrName && (vesselOrName.vessel || vesselOrName.vessel_name)) || '').trim().toUpperCase();
+        syncEditFormPortFromRealCall(vName, typeof vesselOrName === 'object' ? vesselOrName : null);
+        return res;
+      };
+      window.populateEditForm.__hpPortSafe = true;
+    }
+
+    // 3. Khóa an toàn khi bấm Lưu: cảnh báo nếu đổi cảng từ cảng khác sang TÂN VŨ (hoặc đổi cảng ngoài ý muốn)
+    if (typeof window.saveVesselOverrideProtected === 'function' && !window.saveVesselOverrideProtected.__hpPortGuard) {
+      const origSave = window.saveVesselOverrideProtected;
+      window.saveVesselOverrideProtected = async function () {
+        const nameEl = document.getElementById('editVesselName');
+        const termEl = document.getElementById('editVesselTerminal');
+        const berthEl = document.getElementById('editVesselBerth');
+        const vName = (nameEl?.value || '').trim().toUpperCase();
+        const newTerm = (termEl?.value || '').trim().toUpperCase();
+        const origTerm = (nameEl?.dataset.origVessel === vName ? (nameEl.dataset.origTerminal || '') : '').trim().toUpperCase();
+        const origBerth = (nameEl?.dataset.origVessel === vName ? (nameEl.dataset.origBerth || '') : '').trim().toUpperCase();
+
+        if (origTerm && newTerm && origTerm !== newTerm) {
+          const okMove = confirm(
+            `⚠️ CẢNH BÁO THAY ĐỔI CẢNG (TERMINAL):\n\n` +
+            `• Tàu: ${vName}\n` +
+            `• Cảng gốc: ${origTerm}${origBerth ? ' (' + origBerth + ')' : ''}\n` +
+            `• Cảng đang nhập: ${newTerm}${berthEl?.value ? ' (' + berthEl.value + ')' : ''}\n\n` +
+            `Bạn có CHẮC CHẮN muốn chuyển tàu này sang cảng "${newTerm}" không?\n` +
+            `(Nhấn Hủy để tự động khôi phục lại cảng gốc "${origTerm}")`
+          );
+          if (!okMove) {
+            if (termEl) termEl.value = origTerm;
+            if (berthEl && origBerth) berthEl.value = origBerth;
+            return;
+          }
+        }
+        return await origSave.apply(this, arguments);
+      };
+      window.saveVesselOverrideProtected.__hpPortGuard = true;
+    }
+  }
+
+  wrapEditAndSave();
+  document.addEventListener('DOMContentLoaded', wrapEditAndSave);
+  setTimeout(wrapEditAndSave, 800);
+  setTimeout(wrapEditAndSave, 2000);
+})();
+</script>
 </body>
 </html>
