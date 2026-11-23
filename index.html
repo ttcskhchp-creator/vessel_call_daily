@@ -10697,7 +10697,10 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
         if (isBarge) bargeCount++;
         else shipCount++;
 
-        const b = normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
+        const vKey = String(item.vessel || '').trim().toUpperCase();
+        const ovRec = (typeof vesselOverridesMap !== 'undefined') ? vesselOverridesMap.get(vKey) : null;
+        const manualBerth = (ovRec && !ovRec.is_hidden && ovRec.berth) ? normTanVuBerth(ovRec.berth) : '';
+        const b = manualBerth || normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
         item.berth = b;
         if (!berthMap[b]) berthMap[b] = [];
         berthMap[b].push(item);
