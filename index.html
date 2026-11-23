@@ -10689,59 +10689,112 @@ function applyNewCallsToApp(rawCallsArray, sourceLabel) {
       let bargeCount = 0;
       const berthMap = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 
+      const ONE_HOUR_MS = 60 * 60 * 1000;
+      const _toShipMs = (v) =>
+        typeof parsePortDateTimeMs === 'function'
+          ? parsePortDateTimeMs(v)
+          : (v ? new Date(v).getTime() || 0 : 0);
+
+      // Chỉ tự động ẩn tàu rời quá 1 tiếng khi đang xem lịch ngày hôm nay (xem ngày cũ vẫn hiện đủ)
+      const viewFromEl = document.getElementById('fromDate');
+      const viewDateStr = (viewFromEl && viewFromEl.value) ? viewFromEl.value : todayStr;
+      const isViewingToday = (viewDateStr === todayStr);
+
+      // Lưu mốc thời điểm tàu đạt 100% trên ePort (dùng cho trường hợp xong hàng sớm hơn ETD hoặc thiếu ETD)
+      let doneSeenMap = {};
+      try {
+        doneSeenMap = JSON.parse(localStorage.getItem('hp_tv_done_seen_map') || '{}') || {};
+        let dirty = false;
+        Object.keys(doneSeenMap).forEach(k => {
+          if (now - doneSeenMap[k] > 48 * ONE_HOUR_MS) { delete doneSeenMap[k]; dirty = true; }
+        });
+        if (dirty) localStorage.setItem('hp_tv_done_seen_map', JSON.stringify(doneSeenMap));
+      } catch (e) { doneSeenMap = {}; }
+
       const parseContTeuPair = (str) => {
-        const m = String(str || '').match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+        const clean = String(str || '').trim();
+        const m = clean.match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
         if (m) {
           return {
-            cont: Math.round(parseFloat(m[1].replace(',', '.')) || 0),
-            teu: Math.round(parseFloat(m[2].replace(',', '.')) || 0)
+            cont: parseInt(m[1].replace(/[^\d]/g, ''), 10) || 0,
+            teu: parseInt(m[2].replace(/[^\d]/g, ''), 10) || 0
           };
         }
-        const single = String(str || '').match(/(\d+)/);
+        const single = clean.match(/(\d+)/);
         return { cont: single ? parseInt(single[1], 10) : 0, teu: 0 };
       };
 
       mergedMap.forEach(item => {
         const ep = item._eport || rawStore[item.vessel] || null;
         if (ep && typeof ep === 'object') {
+          const isRoRoEp = Boolean(ep.isRoRoCargo || ep.cargoUnit === 'Units' || /xe|ô\s*tô|o\s*to|ro-?ro|car|unit/i.test(ep.cargoType || ''));
           const totalPair = parseContTeuPair(ep.contTeuStr || ep.total || '');
           const donePair = parseContTeuPair(ep.donePlanStr || ep.done || '');
 
-          const totalCont = Number(ep.totalCont) > 0 ? Number(ep.totalCont) : totalPair.cont;
-          const totalTeu = Number(ep.totalTeu) > 0 ? Number(ep.totalTeu) : totalPair.teu;
-          const doneContRaw = (ep.doneCont !== undefined && ep.doneCont !== null && ep.doneCont !== '')
+          const totalQty = Number(ep.totalCont) || Number(ep.planNum) || totalPair.cont || 0;
+          const totalTeu = isRoRoEp ? 0 : (Number(ep.totalTeu) || totalPair.teu || 0);
+          const doneQtyRaw = (ep.doneCont !== undefined && ep.doneCont !== null && ep.doneCont !== '')
             ? Number(ep.doneCont)
-            : donePair.cont;
-          const doneTeuRaw = (ep.doneTeu !== undefined && ep.doneTeu !== null && ep.doneTeu !== '')
-            ? Number(ep.doneTeu)
-            : donePair.teu;
+            : (donePair.cont || Number(ep.doneNum) || 0);
+          const doneTeuRaw = isRoRoEp ? 0 : (
+            (ep.doneTeu !== undefined && ep.doneTeu !== null && ep.doneTeu !== '')
+              ? Number(ep.doneTeu)
+              : donePair.teu
+          );
 
-          const remCont = totalCont > 0 ? Math.max(0, totalCont - doneContRaw) : 0;
-          const remTeu = totalTeu > 0 ? Math.max(0, totalTeu - doneTeuRaw) : 0;
-          const completedCont = totalCont > 0 ? Math.max(0, totalCont - remCont) : doneContRaw;
-          const completedTeu = totalTeu > 0 ? Math.max(0, totalTeu - remTeu) : doneTeuRaw;
+          const remQty = totalQty > 0 ? Math.max(0, totalQty - doneQtyRaw) : 0;
+          const completedQty = totalQty > 0 ? Math.max(0, totalQty - remQty) : doneQtyRaw;
 
-          ep.totalCont = totalCont;
+          ep.totalCont = totalQty;
           ep.totalTeu = totalTeu;
-          ep.doneCont = completedCont;
-          ep.doneTeu = completedTeu;
-          ep.remCont = remCont;
-          ep.remTeu = remTeu;
-          ep.doneNum = completedCont;
-          ep.planNum = totalCont;
-          ep.totalNum = totalCont;
-          ep.pct = totalCont > 0
-            ? Math.min(100, Math.round((completedCont / totalCont) * 100))
-            : (totalTeu > 0 ? Math.min(100, Math.round((completedTeu / totalTeu) * 100)) : 0);
+          ep.doneCont = completedQty;
+          ep.doneTeu = doneTeuRaw;
+          ep.remCont = remQty;
+          ep.doneNum = completedQty;
+          ep.planNum = totalQty;
+          ep.totalNum = totalQty;
+
+          const mProg = String(ep.progressStr || '').match(/(\d+(?:[.,]\d+)?)\s*%/);
+          ep.pct = mProg
+            ? Math.min(100, Math.round(parseFloat(mProg[1].replace(',', '.'))))
+            : (totalQty > 0
+                ? Math.min(100, Math.round((completedQty / totalQty) * 100))
+                : (totalTeu > 0 ? Math.min(100, Math.round((doneTeuRaw / totalTeu) * 100)) : 0));
         }
 
         const isBarge = checkIsBarge(item.vessel, ep);
         item._isBarge = isBarge;
         item._eport = ep;
+
+        const vKey = String(item.vessel || '').trim().toUpperCase();
+        const t1 = _toShipMs((ep && ep.atb) || item.etb);
+        const rawT2 = _toShipMs((ep && ep.etd) || item.etd);
+        const t2 = (rawT2 > t1) ? rawT2 : 0;
+        const isPctDone = Boolean(ep && Number(ep.pct) >= 100);
+        const isDepartedShip = !isBarge && (isPctDone || (t2 > 0 && t2 <= now));
+
+        // Ẩn tàu đã rời sau đúng 01 tiếng khỏi tiêu điểm Cảng Tân Vũ
+        if (isViewingToday && isDepartedShip) {
+          const seenKey = `${vKey}_${t1 || todayStr}`;
+          if (isPctDone && !doneSeenMap[seenKey]) {
+            doneSeenMap[seenKey] = now;
+            try { localStorage.setItem('hp_tv_done_seen_map', JSON.stringify(doneSeenMap)); } catch (e) {}
+          }
+          const seenMs = doneSeenMap[seenKey] || 0;
+          let departMs = 0;
+          if (t2 > 0 && t2 <= now) {
+            departMs = seenMs > 0 ? Math.min(t2, seenMs) : t2;
+          } else if (isPctDone) {
+            departMs = seenMs || now;
+          }
+          if (departMs > 0 && (now - departMs) > ONE_HOUR_MS) {
+            return; // Quá 01 tiếng -> không cộng vào tổng và không hiển thị trên thẻ Tân Vũ
+          }
+        }
+
         if (isBarge) bargeCount++;
         else shipCount++;
 
-        const vKey = String(item.vessel || '').trim().toUpperCase();
         const ovRec = (typeof vesselOverridesMap !== 'undefined') ? vesselOverridesMap.get(vKey) : null;
         const manualBerth = (ovRec && !ovRec.is_hidden && ovRec.berth) ? normTanVuBerth(ovRec.berth) : '';
         const b = manualBerth || normTanVuBerth((ep && ep.berth) || item.berth) || 'B1';
