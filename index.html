@@ -1610,7 +1610,7 @@ html body .badge[data-kind]{background:color-mix(in srgb,var(--kc) 16%,var(--car
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <span class="badge" id="eodAuditStatusBadge" style="padding:6px 10px;font-size:11px;background:rgba(38,189,200,0.15);color:var(--navy2);">
-              🕒 Tự động rà soát lúc 23:55
+  🕒 Tự động rà soát mỗi 12 giờ
             </span>
             <button id="hpStatsExportBtn" class="primary" style="background:#059669;color:#fff;" onclick="exportConfigAsCSVProtected()" title="Xuất dữ liệu thống kê ra Excel/CSV">📤 Xuất Excel</button>
             <button class="primary" style="background:#0284c7;color:#fff;" onclick="runEndOfDayVesselAudit(false)">
@@ -3308,19 +3308,22 @@ async function openTideConfigPrompt() {
 }
 
 function startMidnightCountdown() {
+ const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
   setInterval(() => {
     let now = new Date();
     let midnight = new Date();
     midnight.setHours(24, 0, 0, 0); 
     let diffMs = midnight.getTime() - now.getTime();
 
-    // TỰ ĐỘNG RÀ SOÁT & BỔ SUNG THÔNG SỐ TÀU CÒN THIẾU VÀO 23:55 CUỐI MỖI NGÀY
-    let todayKey = getTodayString();
-    if (now.getHours() === 23 && now.getMinutes() === 55 && lastEodAuditDate !== todayKey && !isEodAuditRunning) {
+    // TỰ ĐỘNG RÀ SOÁT & QUÉT HÀNH TRÌNH MỖI 12 TIẾNG / LẦN
+    let lastAuditTs = Number(localStorage.getItem('hp_last_12h_audit_ts') || 0);
+    if (!isEodAuditRunning && allCalls.length > 0 && (Date.now() - lastAuditTs >= TWELVE_HOURS_MS)) {
+      localStorage.setItem('hp_last_12h_audit_ts', String(Date.now()));
       runEndOfDayVesselAudit(true);
     }
 
-    // Tự động lưu Snapshot (đã đầy đủ thông số) và quét dữ liệu mới khi qua 00h00
+    // Tự động lưu Snapshot và quét dữ liệu mới khi qua 00h00
     if (diffMs <= 1000) {
       saveCurrentDataToSupabase(true);
       loadData();
@@ -6877,6 +6880,81 @@ function diffAndReplaceChangedFields(vesselName, imo, parsedNew) {
   return { hasChanged: changedLogs.length > 0, changedLogs, supabaseChangedCols };
 }
 
+var vesselAuditFailedMap = new Map(JSON.parse(localStorage.getItem('hp_audit_failed_map') || '[]'));
+
+// Hàm tìm thông tin đối chiếu chéo từ danh mục lưu thủ công (Override & Catalog) theo Tên tàu hoặc IMO
+function lookupManualVesselFallback(vName, currentImo) {
+  let cleanName = String(vName || '').trim().toUpperCase();
+  let cleanImo = String(currentImo || '').trim().replace(/\D/g, '');
+  let foundImo = '';
+  let foundAltName = '';
+
+  // 1. Tra cứu trực tiếp theo tên tàu trong Override & Catalog
+  let ov = vesselOverridesMap.get(cleanName);
+  let cat = vesselCatalogMap.get(cleanName);
+  let directImo = String((ov && ov.imo) || (cat && cat.imo) || '').replace(/\D/g, '');
+  if (directImo.length === 7) foundImo = directImo;
+
+  // 2. Tra cứu chéo qua toàn bộ danh mục thủ công (tìm tên gần đúng hoặc trùng IMO)
+  const scanMap = (mapObj) => {
+    if (!mapObj) return;
+    mapObj.forEach((val, key) => {
+      let kNorm = String(key || '').trim().toUpperCase();
+      let vImo = String(val.imo || '').replace(/\D/g, '');
+      if (!foundImo && (kNorm === cleanName || kNorm.includes(cleanName) || cleanName.includes(kNorm)) && vImo.length === 7) {
+        foundImo = vImo;
+      }
+      if (cleanImo.length === 7 && vImo === cleanImo && kNorm !== cleanName) {
+        foundAltName = kNorm;
+      }
+    });
+  };
+  scanMap(vesselOverridesMap);
+  scanMap(vesselCatalogMap);
+
+  return { foundImo, foundAltName };
+}
+
+// Hàm quét chi tiết 1 tàu trên VesselFinder (lấy cả thông số kỹ thuật + hành trình mới nhất)
+async function querySingleVesselFromVF(searchName, explicitImo) {
+  let targetImo = String(explicitImo || '').replace(/\D/g, '');
+  let searchMatchedType = '';
+
+  if (targetImo.length !== 7 && searchName) {
+    let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(searchName)}`;
+    let sRes = await fetch(searchUrl, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
+    if (!sRes.ok) sRes = await fetch(searchUrl);
+    if (sRes.ok) {
+      let sText = await sRes.text();
+      let bestCand = selectBestVesselFromSearchHtml(sText, searchName);
+      if (bestCand && bestCand.imo) {
+        targetImo = bestCand.imo;
+        searchMatchedType = mapVesselFinderShipType(bestCand.rawType);
+      } else {
+        let m = sText.match(/\/vessels\/details\/(\d{7})/);
+        if (m) targetImo = m[1];
+      }
+    }
+  }
+
+  if (targetImo.length !== 7) return null;
+
+  let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
+  let rawHtml = '';
+  let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
+  if (rHtml.ok) rawHtml = await rHtml.text();
+  else {
+    let rMd = await fetch(`https://r.jina.ai/${detailUrl}`);
+    if (rMd.ok) rawHtml = await rMd.text();
+  }
+
+  if (!rawHtml || rawHtml.length < 100) return null;
+  let parsed = parseVesselFinderContent(rawHtml);
+  if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
+  parsed.imo = parsed.imo || targetImo;
+  return parsed;
+}
+
 async function runEndOfDayVesselAudit(isSilentAuto = false) {
   if (isEodAuditRunning) return;
   isEodAuditRunning = true;
@@ -6910,97 +6988,108 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
     return;
   }
 
-  let newAddedCount = 0, updatedVesselCount = 0, checkedCount = 0, detailReport = [];
+  let newAddedCount = 0, updatedVesselCount = 0, checkedCount = 0, failedVessels = [], detailReport = [];
 
   for (let i = 0; i < vesselsInFilter.length; i++) {
     let item = vesselsInFilter[i];
-    let progressMsg = `⏳ (${i + 1}/${vesselsInFilter.length}) ${item.name}...`;
+    let progressMsg = `⏳ (${i + 1}/${vesselsInFilter.length}) Đang quét ${item.name}...`;
     if (badge) { badge.textContent = progressMsg; badge.style.color = '#d97706'; }
     if (syncBtn) syncBtn.textContent = progressMsg;
     if (vfStatus) { vfStatus.textContent = progressMsg; vfStatus.style.color = '#d97706'; }
 
+    let parsed = null;
     try {
-      let targetImo = item.imo;
-      let searchMatchedType = '';
+      // LẦN 1: Quét trực tiếp theo IMO hiện có hoặc tên tàu trên lịch
+      parsed = await querySingleVesselFromVF(item.name, item.imo);
 
-      if (!targetImo) {
-        let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(item.name)}`;
-        let sRes = await fetch(searchUrl, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
-        if (!sRes.ok) sRes = await fetch(searchUrl);
-        if (sRes.ok) {
-          let sText = await sRes.text();
-          let bestCand = selectBestVesselFromSearchHtml(sText, item.name);
-          if (bestCand && bestCand.imo) {
-            targetImo = bestCand.imo;
-            searchMatchedType = mapVesselFinderShipType(bestCand.rawType);
-          } else {
-            let m = sText.match(/\/vessels\/details\/(\d{7})/);
-            if (m) targetImo = m[1];
+      // LẦN 2: Nếu không tìm thấy -> Đối chiếu chéo với danh sách đã lưu thủ công (Tên tàu / IMO) để quét lại
+      if (!parsed) {
+        let fb = lookupManualVesselFallback(item.name, item.imo);
+        if (fb.foundImo && fb.foundImo !== item.imo) {
+          parsed = await querySingleVesselFromVF(item.name, fb.foundImo);
+        }
+        if (!parsed && fb.foundAltName) {
+          parsed = await querySingleVesselFromVF(fb.foundAltName, fb.foundImo || item.imo);
+        }
+      }
+    } catch (e) {
+      parsed = null;
+    }
+
+    if (parsed && parsed.imo) {
+      // Quét thành công -> Xóa khỏi danh sách cảnh báo lỗi (nếu từng lỗi trước đó)
+      vesselAuditFailedMap.delete(item.name);
+      checkedCount++;
+
+      // Cập nhật thông số kỹ thuật + hành trình mới nhất (Last Port -> Destination)
+      let finalType = parsed.type || 'Container';
+      let finalLoa = parsed.loa || item.call.loa || 0;
+      let finalBeam = parsed.beam || (finalLoa >= 200 ? 32.2 : (finalLoa >= 170 ? 27.6 : 25.0));
+      let finalDwt = parsed.dwt || item.call.dwt || '';
+      let finalGt = parsed.gt || '';
+      let finalYear = parsed.year_built || '';
+      let finalUnit = parsed.capacity_unit || getDefaultCapacityUnitByType(finalType);
+      let finalTeu = parsed.teu || 0;
+
+      if (!finalTeu || finalTeu <= 0) {
+        let est = estimateStandardCapacityByDesign({
+          vessel_type: finalType, loa: finalLoa, beam: finalBeam, dwt: finalDwt, gt: finalGt, year_built: finalYear, capacity_unit: finalUnit
+        });
+        finalTeu = est.capacity;
+        finalUnit = est.unit;
+      }
+
+      if (item.isNewVessel) {
+        vesselCatalogMap.set(item.name, {
+          type: finalType, year_built: finalYear,
+          last_port: parsed.last_port || '', destination: parsed.destination || '',
+          loa: finalLoa, beam: finalBeam, teu: finalTeu, capacity_unit: finalUnit,
+          dwt: finalDwt, gt: finalGt, imo: parsed.imo,
+          agent: item.call.operator || '', updated_at: new Date().toISOString()
+        });
+        newAddedCount++;
+        detailReport.push(`🟢 [GHI MỚI] ${item.name} (IMO ${parsed.imo}): ${parsed.last_port || '?'} ➔ ${parsed.destination || '?'}`);
+      } else {
+        let diffResult = diffAndReplaceChangedFields(item.name, parsed.imo, parsed);
+        if (diffResult.hasChanged) {
+          updatedVesselCount++;
+          detailReport.push(`🔄 [CẬP NHẬT] ${item.name} (IMO ${parsed.imo}):\n   ${diffResult.changedLogs.join('\n   ')}`);
+          if (supabaseClient && vesselOverridesMap.has(item.name) && Object.keys(diffResult.supabaseChangedCols).length > 0) {
+            try {
+              await supabaseClient.from('vessel_overrides').update({ ...diffResult.supabaseChangedCols, updated_at: new Date().toISOString() }).eq('vessel_name', item.name);
+            } catch (dbErr) {}
           }
         }
       }
 
-      if (targetImo && targetImo.length === 7) {
-        let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
-        let rawHtml = '';
-        let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
-        if (rHtml.ok) rawHtml = await rHtml.text();
-        else {
-          let rMd = await fetch(`https://r.jina.ai/${detailUrl}`);
-          if (rMd.ok) rawHtml = await rMd.text();
+      // Gắn trực tiếp hành trình mới nhất vào các lượt tàu của chuyến hiện tại trong allCalls
+      allCalls.forEach(c => {
+        if ((c.vessel || '').trim().toUpperCase() === item.name) {
+          if (parsed.last_port) c.last_port = parsed.last_port;
+          if (parsed.destination) c.destination = parsed.destination;
+          if (parsed.dwt) c.dwt = parsed.dwt;
+          if (parsed.imo) c.imo = parsed.imo;
         }
+      });
 
-        if (rawHtml && rawHtml.length > 100) {
-          let parsed = parseVesselFinderContent(rawHtml);
-          if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
-          checkedCount++;
-
-          if (item.isNewVessel) {
-            let finalType = parsed.type || 'Container';
-            let finalLoa = parsed.loa || item.call.loa || 0;
-            let finalBeam = parsed.beam || (finalLoa >= 200 ? 32.2 : (finalLoa >= 170 ? 27.6 : 25.0));
-            let finalDwt = parsed.dwt || item.call.dwt || '';
-            let finalGt = parsed.gt || '';
-            let finalYear = parsed.year_built || '';
-            let finalUnit = parsed.capacity_unit || getDefaultCapacityUnitByType(finalType);
-            let finalTeu = parsed.teu || 0;
-
-            if (!finalTeu || finalTeu <= 0) {
-              let est = estimateStandardCapacityByDesign({
-                vessel_type: finalType, loa: finalLoa, beam: finalBeam, dwt: finalDwt, gt: finalGt, year_built: finalYear, capacity_unit: finalUnit
-              });
-              finalTeu = est.capacity;
-              finalUnit = est.unit;
-            }
-
-            vesselCatalogMap.set(item.name, {
-              type: finalType, year_built: finalYear, last_port: parsed.last_port || '', destination: parsed.destination || '',
-              loa: finalLoa, beam: finalBeam, teu: finalTeu, capacity_unit: finalUnit, dwt: finalDwt, gt: finalGt, imo: targetImo,
-              agent: item.call.operator || '', updated_at: new Date().toISOString()
-            });
-            newAddedCount++;
-            detailReport.push(`🟢 [GHI MỚI] ${item.name} (IMO ${targetImo}): ${finalType}, ${finalLoa}x${finalBeam}m, ${finalTeu} ${finalUnit}`);
-          } else {
-            let returnedImo = String(parsed.imo || targetImo).replace(/\D/g, '');
-            if (returnedImo === item.imo) {
-              let diffResult = diffAndReplaceChangedFields(item.name, item.imo, parsed);
-              if (diffResult.hasChanged) {
-                updatedVesselCount++;
-                detailReport.push(`🔄 [CẬP NHẬT] ${item.name} (IMO ${item.imo}):\n   ${diffResult.changedLogs.join('\n   ')}`);
-                if (supabaseClient && vesselOverridesMap.has(item.name) && Object.keys(diffResult.supabaseChangedCols).length > 0) {
-                  try {
-                    await supabaseClient.from('vessel_overrides').update({ ...diffResult.supabaseChangedCols, updated_at: new Date().toISOString() }).eq('vessel_name', item.name);
-                  } catch (dbErr) {}
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {}
+    } else {
+      // Vẫn không tìm thấy sau khi đối chiếu thủ công -> Để trống & gắn cờ cảnh báo để hiện ở mép màn hình
+      vesselAuditFailedMap.set(item.name, {
+        vessel: item.name,
+        terminal: item.call.terminal || '',
+        berth: item.call.berth || '',
+        etb: item.call.etb || '',
+        checkedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      });
+      failedVessels.push(item.name);
+    }
 
     if (i < vesselsInFilter.length - 1) await new Promise(r => setTimeout(r, 800));
   }
+
+  // Lưu trạng thái lỗi và danh mục tàu
+  localStorage.setItem('hp_audit_failed_map', JSON.stringify(Array.from(vesselAuditFailedMap.entries())));
+  localStorage.setItem('hp_last_12h_audit_ts', String(Date.now()));
 
   if (newAddedCount > 0 || updatedVesselCount > 0) {
     let catalogObj = Object.fromEntries(vesselCatalogMap);
@@ -7013,25 +7102,83 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
     }
   }
 
-  lastEodAuditDate = getTodayString();
-  localStorage.setItem('hp_last_eod_audit_date', lastEodAuditDate);
   isEodAuditRunning = false;
 
   updateCatalogBadgeCount();
   allCalls = filterAndDeduplicateCalls(allCalls);
   renderAll();
   renderOverrideTable();
+  renderAuditMissingAlerts(); // Cập nhật thẻ cảnh báo nhỏ ở mép Kế hoạch cầu & Chi tiết lịch tàu
 
-  let doneMsg = `✓ Đã quét ${checkedCount} tàu (Ghi mới: ${newAddedCount} · Cập nhật: ${updatedVesselCount})`;
-  if (badge) { badge.textContent = doneMsg; badge.style.color = '#059669'; }
+  let nowHm = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  let doneMsg = `✓ Quét 12h lúc ${nowHm}: Đạt ${checkedCount}/${vesselsInFilter.length} tàu` + (failedVessels.length ? ` (⚠️ ${failedVessels.length} thiếu)` : '');
+  if (badge) { badge.textContent = doneMsg; badge.style.color = failedVessels.length ? '#d97706' : '#059669'; }
   if (syncBtn) syncBtn.innerHTML = '🔄 Quét IMO (Tàu trong bộ lọc)';
   if (vfStatus) { vfStatus.textContent = doneMsg; vfStatus.style.color = '#10b981'; }
 
   if (!isSilentAuto) {
-    alert(`Hoàn tất quét các tàu trong bộ lọc!\n- Tổng tàu kiểm tra: ${checkedCount}/${vesselsInFilter.length} tàu\n- Tàu mới ghi thêm: ${newAddedCount} tàu\n- Tàu cũ cập nhật: ${updatedVesselCount} tàu\n\n${detailReport.slice(0, 15).join('\n')}`);
+    let failText = failedVessels.length ? `\n⚠️ Không tìm thấy trên AIS (${failedVessels.length} tàu - đã gắn cảnh báo): ${failedVessels.join(', ')}` : '';
+    alert(`Hoàn tất rà soát thông số & hành trình!\n- Quét thành công: ${checkedCount}/${vesselsInFilter.length} tàu\n- Ghi mới: ${newAddedCount} | Cập nhật: ${updatedVesselCount}${failText}\n\n${detailReport.slice(0, 12).join('\n')}`);
   }
 }
 
+function renderAuditMissingAlerts() {
+  let activeCalls = getFilteredCalls();
+  let activeNames = new Set(activeCalls.map(c => (c.vessel || '').trim().toUpperCase()));
+  
+  // Lọc ra các tàu thuộc lịch hiện tại nhưng quét tự động chưa tìm thấy thông tin
+  let missingList = Array.from(vesselAuditFailedMap.values()).filter(item => activeNames.has(item.vessel));
+
+  const targetContainers = [
+    { pageId: 'page-planning', boxId: 'planningAuditAlertEdge' },
+    { pageId: 'page-search', boxId: 'searchAuditAlertEdge' }
+  ];
+
+  targetContainers.forEach(({ pageId, boxId }) => {
+    let pageEl = $(pageId);
+    if (!pageEl) return;
+
+    let alertBox = $(boxId);
+    if (missingList.length === 0) {
+      if (alertBox) alertBox.remove();
+      return;
+    }
+
+    if (!alertBox) {
+      alertBox = document.createElement('div');
+      alertBox.id = boxId;
+      alertBox.style.cssText = `
+        display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+        background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(217, 119, 6, 0.45);
+        border-left: 4px solid #d97706; border-radius: 7px; padding: 6px 10px;
+        margin: 0 0 8px 0; font-size: 11px; color: var(--ink);
+      `;
+      let panelEl = pageEl.querySelector('.panel');
+      if (panelEl) pageEl.insertBefore(alertBox, panelEl);
+    }
+
+    let shipBadges = missingList.map(m => `
+      <span onclick="populateEditForm('${esc(m.vessel)}')" 
+            title="Nhấp để tra cứu thủ công qua Web/IMO hoặc nhập tay"
+            style="cursor:pointer;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:1px 6px;font-weight:800;display:inline-flex;align-items:center;gap:3px;">
+        🚢 ${esc(m.vessel)} <small style="font-weight:600;opacity:0.8;">(${esc(m.terminal || '—')})</small>
+      </span>
+    `).join(' ');
+
+    alertBox.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
+        <span style="color:#d97706;font-weight:850;white-space:nowrap;">⚠️ Chưa quét được dữ liệu AIS (${missingList.length} tàu):</span>
+        ${shipBadges}
+        <span class="muted" style="font-size:10px;">(Bấm vào tên tàu để tra cứu nguồn khác / nhập thủ công)</span>
+      </div>
+      <button type="button" onclick="this.parentElement.style.display='none'" 
+              style="padding:2px 6px;font-size:10px;background:transparent;border:1px solid var(--line);color:var(--muted);">
+        ✕ Ẩn
+      </button>
+    `;
+  });
+}
+  
 /* ==================== MODULE GIAO DIỆN RESPONSIVE, NÚT TÍNH THEO TK, BẢNG MÀU TÀU & POPUP HƯỚNG DẪN ==================== */
 
 function openVfGuideModal() {
