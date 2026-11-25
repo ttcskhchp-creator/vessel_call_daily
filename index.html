@@ -7005,16 +7005,29 @@ function lookupManualVesselFallback(vName, currentImo) {
   return { foundImo, foundManualName, cleanCoreName: cleanCore };
 }
 // Hàm quét chi tiết 1 tàu trên VesselFinder (lấy cả thông số kỹ thuật + hành trình mới nhất)
+async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    return res.ok ? await res.text() : '';
+  } catch (e) {
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function querySingleVesselFromVF(searchName, explicitImo) {
   let targetImo = String(explicitImo || '').replace(/\D/g, '');
   let searchMatchedType = '';
 
   if (targetImo.length !== 7 && searchName) {
     let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(searchName)}`;
-    let sRes = await fetch(searchUrl, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
-    if (!sRes.ok) sRes = await fetch(searchUrl);
-    if (sRes.ok) {
-      let sText = await sRes.text();
+    let sText = await fetchWithTimeout(searchUrl, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } }, 6500);
+    if (!sText) sText = await fetchWithTimeout(searchUrl, {}, 6500);
+
+    if (sText) {
       let bestCand = selectBestVesselFromSearchHtml(sText, searchName);
       if (bestCand && bestCand.imo) {
         targetImo = bestCand.imo;
@@ -7029,38 +7042,24 @@ async function querySingleVesselFromVF(searchName, explicitImo) {
   if (targetImo.length !== 7) return null;
 
   let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
-  let rawHtml = '', jinaText = '';
+  // Chỉ gọi 1 request HTML (đã bao gồm cả hành trình .vi__sbt/.vi__stp và thông số kỹ thuật)
+  let rawContent = await fetchWithTimeout(`https://r.jina.ai/${detailUrl}`, {
+    headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
+  }, 7500);
 
-  // Gọi đồng thời cả bản HTML và bản Markdown (y hệt nút Tự lấy dữ liệu thủ công)
-  const [resHtml, resMd] = await Promise.allSettled([
-    fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } }).then(r => r.ok ? r.text() : ''),
-    fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-No-Cache': 'true' } }).then(r => r.ok ? r.text() : '')
-  ]);
+  // Chỉ gọi dự phòng Markdown nếu HTML bị rỗng
+  if (!rawContent || rawContent.length < 100) {
+    rawContent = await fetchWithTimeout(`https://r.jina.ai/${detailUrl}`, {}, 7500);
+  }
 
-  if (resHtml.status === 'fulfilled') rawHtml = resHtml.value || '';
-  if (resMd.status === 'fulfilled') jinaText = resMd.value || '';
+  if (!rawContent || rawContent.length < 100) return null;
 
-  if ((!rawHtml || rawHtml.length < 100) && (!jinaText || jinaText.length < 100)) return null;
-
-  let parsedHtml = rawHtml ? parseVesselFinderContent(rawHtml) : {};
-  let parsedJina = jinaText ? parseVesselFinderContent(jinaText) : {};
-  let parsed = { ...parsedJina, ...parsedHtml };
-
-  parsed.type = parsedHtml.type || parsedJina.type || searchMatchedType || '';
-  parsed.destination = parsedHtml.destination || parsedJina.destination || '';
-  parsed.last_port = parsedHtml.last_port || parsedJina.last_port || '';
-  parsed.year_built = parsedHtml.year_built || parsedJina.year_built || '';
-  parsed.loa = parsedHtml.loa || parsedJina.loa || 0;
-  parsed.beam = parsedHtml.beam || parsedJina.beam || 0;
-  parsed.dwt = parsedHtml.dwt || parsedJina.dwt || '';
-  parsed.gt = parsedHtml.gt || parsedJina.gt || '';
-  parsed.teu = parsedHtml.teu || parsedJina.teu || 0;
-  parsed.capacity_unit = parsedHtml.capacity_unit || parsedJina.capacity_unit || '';
+  let parsed = parseVesselFinderContent(rawContent);
+  if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
   parsed.imo = parsed.imo || targetImo;
-
   return parsed;
 }
-
+  
 async function runEndOfDayVesselAudit(isSilentAuto = false) {
   if (isEodAuditRunning) return;
   isEodAuditRunning = true;
@@ -7102,37 +7101,38 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
 
     let newAddedCount = 0, updatedVesselCount = 0, checkedCount = 0, failedVessels = [], detailReport = [];
 
-    for (let i = 0; i < vesselsInFilter.length; i++) {
-      let item = vesselsInFilter[i];
-      let progressMsg = `⏳ (${i + 1}/${vesselsInFilter.length}) Đang quét ${item.name}...`;
-      if (badge) { badge.textContent = progressMsg; badge.style.color = '#d97706'; }
-      if (syncBtn) syncBtn.textContent = progressMsg;
-      if (vfStatus) { vfStatus.textContent = progressMsg; vfStatus.style.color = '#d97706'; }
+   let newAddedCount = 0, updatedVesselCount = 0, checkedCount = 0, failedVessels = [], detailReport = [];
+    let processedCount = 0;
+    const BATCH_SIZE = 4; // Quét đồng thời 4 tàu cùng lúc (tăng tốc ~4-5 lần)
 
+    const processOneVessel = async (item) => {
       let parsed = null;
       try {
-        // Lần 1: Quét trực tiếp bằng mã IMO lấy từ danh mục thủ công (hoặc tên sạch đã bỏ (SB))
         parsed = await querySingleVesselFromVF(item.coreName, item.imo);
 
-        // Lần 2: Nếu chưa ra -> dò lại danh mục thủ công lần nữa theo tên gốc và quét lại
+        // Chỉ quét lại Lần 2 khi danh mục thủ công có IMO khác với IMO vừa thử
         if (!parsed) {
           let fbRetry = lookupManualVesselFallback(item.name, item.imo);
           if (fbRetry.foundImo && fbRetry.foundImo !== item.imo) {
             parsed = await querySingleVesselFromVF('', fbRetry.foundImo);
-          }
-          if (!parsed && fbRetry.foundManualName && fbRetry.foundManualName !== item.coreName) {
-            parsed = await querySingleVesselFromVF(fbRetry.foundManualName, fbRetry.foundImo || item.imo);
+          } else if (fbRetry.foundManualName && fbRetry.foundManualName !== item.coreName) {
+            parsed = await querySingleVesselFromVF(fbRetry.foundManualName, item.imo);
           }
         }
       } catch (e) {
         parsed = null;
       }
 
+      processedCount++;
+      let progressMsg = `⚡ (${processedCount}/${vesselsInFilter.length}) Đã quét ${item.name}...`;
+      if (badge) { badge.textContent = progressMsg; badge.style.color = '#d97706'; }
+      if (syncBtn) syncBtn.textContent = progressMsg;
+      if (vfStatus) { vfStatus.textContent = progressMsg; vfStatus.style.color = '#d97706'; }
+
       if (parsed && parsed.imo) {
         vesselAuditFailedMap.delete(item.name);
         checkedCount++;
 
-        // Lưu hành trình mới nhất theo chuyến để không bị mất sau khi filterAndDeduplicateCalls() chạy lại
         if (parsed.last_port || parsed.destination) {
           saveVoyageRouteRecord(item.name, item.call.etb, parsed.last_port, parsed.destination);
         }
@@ -7186,8 +7186,14 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
         });
         failedVessels.push(item.name);
       }
+    };
 
-      if (i < vesselsInFilter.length - 1) await new Promise(r => setTimeout(r, 800));
+    for (let i = 0; i < vesselsInFilter.length; i += BATCH_SIZE) {
+      const batch = vesselsInFilter.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map(item => processOneVessel(item)));
+      if (i + BATCH_SIZE < vesselsInFilter.length) {
+        await new Promise(r => setTimeout(r, 250));
+      }
     }
 
     localStorage.setItem('hp_audit_failed_map', JSON.stringify(Array.from(vesselAuditFailedMap.entries())));
