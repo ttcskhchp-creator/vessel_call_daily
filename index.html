@@ -4183,7 +4183,59 @@ function hideTooltip() { if ($('shipTooltip')) $('shipTooltip').style.display = 
 async function exportConfigAsCSVProtected() {
   if (await verifyAdminPinPrompt('xuất báo cáo Excel/CSV')) exportConfigAsCSV();
 }
+function exportConfigAsCSV() {
+  const list = typeof getFilteredCalls === 'function' ? getFilteredCalls() : (allCalls || []);
+  if (!list.length) {
+    alert(currentLang === 'vi' ? 'Không có dữ liệu tàu để xuất!' : 'No vessel data to export!');
+    return;
+  }
 
+  const headers = [
+    "STT", "Tên tàu", "Loại tàu", "Năm SX", "Hãng / Đại lý",
+    "LOA (m)", "Beam (m)", "Sức chở", "Đơn vị", "DWT",
+    "Cảng trước", "Cảng đến", "Terminal", "Bến", "ETB", "ETD"
+  ];
+
+  const escapeCsv = val => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+  const rows = list.map((raw, idx) => {
+    const specs = typeof getVesselEnrichedSpecs === 'function'
+      ? getVesselEnrichedSpecs(raw.vessel, raw)
+      : raw;
+    return [
+      idx + 1,
+      raw.vessel || '',
+      specs.vessel_type || raw.vessel_type || 'Container',
+      specs.year_built || '',
+      raw.operator || specs.operator || '',
+      specs.loa || raw.loa || '',
+      specs.beam || '',
+      specs.teu || '',
+      specs.capacity_unit || '',
+      raw.dwt || specs.dwt || '',
+      specs.last_port || '',
+      specs.destination || '',
+      raw.terminal || '',
+      raw.berth || '',
+      raw.etb || '',
+      raw.etd || ''
+    ].map(escapeCsv).join(',');
+  });
+
+  const csvContent = '\ufeff' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const todayStr = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `Lich_Tau_Cang_Hai_Phong_${todayStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 500);
+}
 
 async function triggerImportConfig() {
   if (await verifyAdminPinPrompt('nạp dữ liệu từ file')) $('importFileInput')?.click();
@@ -6120,7 +6172,30 @@ function updateVesselAgePreview() {
   badge.textContent = age !== null ? `(${age} tuổi)` : '';
 }
 
-function onVesselTypeChangeUpdateCapacity() {
+function ensureVesselTypeSelectOptions() {
+  const sel = $('editVesselType');
+  if (!sel) return;
+  const standardTypes = [
+    "Container",
+    "Feeder / General Cargo",
+    "Hàng rời / tổng hợp",
+    "Ô tô (PCTC)",
+    "Tàu dầu / Hóa chất",
+    "Tàu khí (LPG / LNG)",
+    "Tàu chở khách (Passenger/Cruise)",
+    "Tàu thiết bị / Project",
+    "Khác"
+  ];
+  const currentVal = sel.value;
+  if (sel.options.length < standardTypes.length) {
+    sel.innerHTML = standardTypes
+      .map(t => `<option value="${esc(t)}">${esc(t)}</option>`)
+      .join('');
+    if (currentVal) sel.value = currentVal;
+  }
+}
+  
+  function onVesselTypeChangeUpdateCapacity() {
   ensureVesselTypeSelectOptions();
   let vType = $('editVesselType')?.value || 'Container';
   let defaultUnit = getDefaultCapacityUnitByType(vType);
