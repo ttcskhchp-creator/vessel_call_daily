@@ -8307,6 +8307,7 @@ function classifyPortGeography(rawPortName) {
   if (
     p.includes('TÂN VŨ') || p.includes('TAN VU') ||
     p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV') ||
+    p.includes('XĂNG DẦU') || p.includes('XANG DAU') ||
     p.includes('VIP GREEN') || p.includes('VGP') ||
     p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV') ||
     p.includes('ĐÌNH VŨ') || p.includes('DINH VU') ||
@@ -8317,6 +8318,7 @@ function classifyPortGeography(rawPortName) {
   ) {
     let order = 29;
     if (p.includes('TÂN VŨ') || p.includes('TAN VU')) order = 21;
+    else if (p.includes('XĂNG DẦU') || p.includes('XANG DAU')) order = 21.5;
     else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) order = 22;
     else if (p.includes('VIP GREEN') || p.includes('VGP')) order = 23;
     else if (p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV')) order = 24;
@@ -9874,6 +9876,7 @@ setTimeout(() => {
     'HHIT': ['B5', 'B6'],                              // 2 bến số 5 & 6
     'HICT': ['B1', 'B2'],                              // 2 bến số 1 & 2 Lạch Huyện
     'ĐÌNH VŨ': ['B1', 'B2'],                           // 2 bến (DVP)
+    'XĂNG DẦU NAM ĐÌNH VŨ': ['B1'],                    // Cảng xăng dầu Nam Đình Vũ (cầu riêng)
     'NAM ĐÌNH VŨ': ['B1', 'B2', 'B3', 'B4'],           // 4 bến
     'EURO ĐÌNH VŨ': ['B1', 'B2', 'B3'],                // 3 bến
     'CHÙA VẼ': ['B1', 'B2', 'B3', 'B4', 'B5'],         // 5 bến
@@ -9893,6 +9896,8 @@ setTimeout(() => {
   function normTerminalName(raw) {
     const s = String(raw || 'KHÁC').trim().toUpperCase();
     if (s.includes('TAN VU') || s.includes('TÂN VŨ')) return 'TÂN VŨ';
+    // Cảng xăng dầu phải được nhận diện trước cảng Nam Đình Vũ thông thường.
+    if (s.includes('XANG DAU') || s.includes('XĂNG DẦU')) return 'XĂNG DẦU NAM ĐÌNH VŨ';
     if (s.includes('NAM DINH VU') || s.includes('NAM ĐÌNH VŨ')) return 'NAM ĐÌNH VŨ';
     if (s.includes('EURO')) return 'EURO ĐÌNH VŨ';
     if (s.includes('NAM HAI DINH VU') || s.includes('NHDV')) return 'NAM HẢI ĐÌNH VŨ';
@@ -10687,7 +10692,7 @@ setTimeout(() => {
     const searchQuery = (document.getElementById('planningSearch')?.value || '').toLowerCase();
 
     const PORT_DISPLAY_ORDER = [
-      'TÂN VŨ', 'HTIT', 'HHIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
+      'TÂN VŨ', 'HTIT', 'HHIT', 'HICT', 'ĐÌNH VŨ', 'XĂNG DẦU NAM ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
       'VIP GREENPORT', 'GREENPORT', 'NAM HẢI ĐÌNH VŨ', 'CHÙA VẼ', 'HOÀNG DIỆU',
       'MIPEC', 'ĐOẠN XÁ', 'NAM HẢI', 'PTS ĐÌNH VŨ', 'HẢI AN', 'TÂN CẢNG 189', 'CẢNG 128'
     ];
@@ -12749,6 +12754,7 @@ if (!pinCheck.ok) {
     if (t.includes('CHÙA VẼ') || t.includes('CHUA VE')) {
       return isBulk ? ['B1', 'B2', 'B3', 'B4', 'B5'] : ['B4', 'B5', 'B1', 'B2', 'B3'];
     }
+    if (t.includes('XĂNG DẦU') || t.includes('XANG DAU')) return ['B1'];
     if (t.includes('NAM ĐÌNH VŨ') || t.includes('NAM DINH VU')) return ['B1', 'B2', 'B3', 'B4'];
     if ((t.includes('ĐÌNH VŨ') || t.includes('DINH VU')) && !t.includes('NAM') && !t.includes('EURO')) {
       return (isBulk || isRoRo) ? ['B1', 'B2', 'B3', 'B4', 'B5'] : ['B2', 'B3', 'B4', 'B5', 'B1'];
@@ -13198,7 +13204,7 @@ if (!pinCheck.ok) {
     while (prev && steps < 40) {
       if (!prev.classList.contains('gantt-row')) {
         const txt = (prev.textContent || '').trim();
-        if (/CẢNG\s+/i.test(txt) || /HTIT|HHIT|HICT|TÂN VŨ|TAN VU|ĐÌNH VŨ|DINH VU|CHÙA VẼ|CHUA VE|HOÀNG DIỆU|GREEN|MIPEC|PTSC|VẬT CÁCH/i.test(txt)) {
+        if (/CẢNG\s+/i.test(txt) || /XĂNG DẦU|XANG DAU|HTIT|HHIT|HICT|TÂN VŨ|TAN VU|ĐÌNH VŨ|DINH VU|CHÙA VẼ|CHUA VE|HOÀNG DIỆU|GREEN|MIPEC|PTSC|VẬT CÁCH/i.test(txt)) {
           return { terminal: cleanPortHeaderText(txt), berth };
         }
       }
