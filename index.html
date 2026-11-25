@@ -7018,14 +7018,43 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
   }
 }
 
+async function fetchVesselFinderPageSmart(targetUrl, useHtmlHeader = true, timeoutMs = 6500) {
+  const tryFetch = async (url, opts = {}) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...opts, signal: ctrl.signal });
+      if (!res.ok) return '';
+      const txt = await res.text();
+      return (txt && txt.length > 200) ? txt : '';
+    } catch (e) {
+      return '';
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  // Nguồn 1: r.jina.ai
+  const jinaOpts = useHtmlHeader ? { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } } : {};
+  let content = await tryFetch(`https://r.jina.ai/${targetUrl}`, jinaOpts);
+  if (content) return content;
+
+  // Nguồn 2 (Dự phòng ngay khi r.jina.ai bị lỗi 503): AllOrigins Raw
+  content = await tryFetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
+  if (content) return content;
+
+  // Nguồn 3 (Dự phòng): CorsProxy
+  content = await tryFetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+  return content;
+}
+
 async function querySingleVesselFromVF(searchName, explicitImo) {
   let targetImo = String(explicitImo || '').replace(/\D/g, '');
   let searchMatchedType = '';
 
   if (targetImo.length !== 7 && searchName) {
-    let searchUrl = `https://r.jina.ai/https://www.vesselfinder.com/vessels?name=${encodeURIComponent(searchName)}`;
-    let sText = await fetchWithTimeout(searchUrl, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } }, 6500);
-    if (!sText) sText = await fetchWithTimeout(searchUrl, {}, 6500);
+    let searchUrl = `https://www.vesselfinder.com/vessels?name=${encodeURIComponent(searchName)}`;
+    let sText = await fetchVesselFinderPageSmart(searchUrl, true, 6000);
 
     if (sText) {
       let bestCand = selectBestVesselFromSearchHtml(sText, searchName);
@@ -7042,17 +7071,9 @@ async function querySingleVesselFromVF(searchName, explicitImo) {
   if (targetImo.length !== 7) return null;
 
   let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
-  // Chỉ gọi 1 request HTML (đã bao gồm cả hành trình .vi__sbt/.vi__stp và thông số kỹ thuật)
-  let rawContent = await fetchWithTimeout(`https://r.jina.ai/${detailUrl}`, {
-    headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' }
-  }, 7500);
+  let rawContent = await fetchVesselFinderPageSmart(detailUrl, true, 7000);
 
-  // Chỉ gọi dự phòng Markdown nếu HTML bị rỗng
-  if (!rawContent || rawContent.length < 100) {
-    rawContent = await fetchWithTimeout(`https://r.jina.ai/${detailUrl}`, {}, 7500);
-  }
-
-  if (!rawContent || rawContent.length < 100) return null;
+  if (!rawContent || rawContent.length < 150) return null;
 
   let parsed = parseVesselFinderContent(rawContent);
   if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
@@ -7103,14 +7124,22 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
 
    let newAddedCount = 0, updatedVesselCount = 0, checkedCount = 0, failedVessels = [], detailReport = [];
     let processedCount = 0;
-    const BATCH_SIZE = 4; // Quét đồng thời 4 tàu cùng lúc (tăng tốc ~4-5 lần)
+   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    const targetDateKey = $('fromDate')?.value || getTodayString();
+    const pendingVessels = vesselsInFilter.filter(item => {
+      const routeEntry = vesselVoyageRoutesMap.get(`${item.coreName}|${targetDateKey}`);
+      const hasFreshRoute = routeEntry && (routeEntry.last_port || routeEntry.destination) && (Date.now() - (routeEntry.updatedAt || 0) < TWO_HOURS_MS);
+      return !hasFreshRoute;
+    });
+    const scanQueue = pendingVessels.length > 0 ? pendingVessels : vesselsInFilter;
+
+    const BATCH_SIZE = 2; // Quét đồng thời 2 tàu/nhịp để tránh r.jina.ai báo lỗi 503
 
     const processOneVessel = async (item) => {
       let parsed = null;
       try {
         parsed = await querySingleVesselFromVF(item.coreName, item.imo);
 
-        // Chỉ quét lại Lần 2 khi danh mục thủ công có IMO khác với IMO vừa thử
         if (!parsed) {
           let fbRetry = lookupManualVesselFallback(item.name, item.imo);
           if (fbRetry.foundImo && fbRetry.foundImo !== item.imo) {
@@ -7124,7 +7153,7 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
       }
 
       processedCount++;
-      let progressMsg = `⚡ (${processedCount}/${vesselsInFilter.length}) Đã quét ${item.name}...`;
+      let progressMsg = `⚡ (${processedCount}/${scanQueue.length}) Đang quét ${item.name}...`;
       if (badge) { badge.textContent = progressMsg; badge.style.color = '#d97706'; }
       if (syncBtn) syncBtn.textContent = progressMsg;
       if (vfStatus) { vfStatus.textContent = progressMsg; vfStatus.style.color = '#d97706'; }
@@ -7188,11 +7217,11 @@ async function runEndOfDayVesselAudit(isSilentAuto = false) {
       }
     };
 
-    for (let i = 0; i < vesselsInFilter.length; i += BATCH_SIZE) {
-      const batch = vesselsInFilter.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < scanQueue.length; i += BATCH_SIZE) {
+      const batch = scanQueue.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(batch.map(item => processOneVessel(item)));
-      if (i + BATCH_SIZE < vesselsInFilter.length) {
-        await new Promise(r => setTimeout(r, 250));
+      if (i + BATCH_SIZE < scanQueue.length) {
+        await new Promise(r => setTimeout(r, 450));
       }
     }
 
