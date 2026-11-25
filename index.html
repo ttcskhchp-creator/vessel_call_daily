@@ -8650,9 +8650,10 @@ function classifyPortGeography(rawPortName) {
     };
   }
 
-  // VÙNG 2: KHU VỰC BÁN ĐẢO ĐÌNH VŨ – TÂN VŨ (TÂN CẢNG 189 NẰM NGAY CẠNH MIPEC)
+  // VÙNG 2: KHU VỰC BÁN ĐẢO ĐÌNH VŨ – TÂN VŨ (TÁCH RIÊNG CẢNG XĂNG DẦU NAM ĐÌNH VŨ)
   if (
     p.includes('TÂN VŨ') || p.includes('TAN VU') ||
+    p.includes('XĂNG DẦU NAM ĐÌNH VŨ') || p.includes('XANG DAU NAM DINH VU') ||
     p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV') ||
     p.includes('VIP GREEN') || p.includes('VGP') ||
     p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV') ||
@@ -8663,23 +8664,31 @@ function classifyPortGeography(rawPortName) {
     p.includes('DAP') || p.includes('EURO')
   ) {
     let order = 29;
+    let cleanPortName = p;
     if (p.includes('TÂN VŨ') || p.includes('TAN VU')) order = 21;
-    else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) order = 22;
+    else if (/(XANG\s*DAU|XĂNG\s*DẦU|XD\s*NAM|PETRO).*NAM\s*(DINH|ĐÌNH)\s*VU/i.test(p)) {
+      order = 22.5;
+      cleanPortName = 'XĂNG DẦU NAM ĐÌNH VŨ';
+    }
+    else if (p.includes('NAM ĐÌNH VŨ') || p.includes('NAM DINH VU') || p.includes('NDV')) {
+      order = 22;
+      cleanPortName = 'NAM ĐÌNH VŨ';
+    }
     else if (p.includes('VIP GREEN') || p.includes('VGP')) order = 23;
     else if (p.includes('NAM HẢI ĐÌNH VŨ') || p.includes('NAM HAI DINH VU') || p.includes('NHDV')) order = 24;
     else if (p.includes('ĐÌNH VŨ') || p.includes('DINH VU')) order = 25;
     else if (p.includes('PTSC')) order = 26;
     else if (p.includes('HẢI AN') || p.includes('HAI AN')) order = 27;
     else if (p.includes('MIPEC') || p.includes('MPC')) order = 28.0;
-    else if (p.includes('TÂN CẢNG 189') || p.includes('TAN CANG 189') || p.includes('189')) order = 28.2; // Nằm ngay cạnh MIPEC
+    else if (p.includes('TÂN CẢNG 189') || p.includes('TAN CANG 189') || p.includes('189')) order = 28.2;
 
     return {
       zoneId: 2,
       zoneCode: 'ZONE_2',
-      zoneName: '2. Khu vực Bán đảo Đình Vũ – Tân Vũ (Tân Vũ · NĐV · VGP · NHDV · Đình Vũ · MIPEC · Tân Cảng 189...)',
+      zoneName: '2. Khu vực Bán đảo Đình Vũ – Tân Vũ (Tân Vũ · NĐV · XD NĐV · VGP · NHDV · Đình Vũ · MIPEC...)',
       zoneShort: 'Khu vực Đình Vũ – Tân Vũ',
       portOrder: order,
-      portName: p
+      portName: cleanPortName
     };
   }
 
@@ -10222,6 +10231,7 @@ setTimeout(() => {
     'HICT': ['B1', 'B2'],                              // 2 bến số 1 & 2 Lạch Huyện
     'ĐÌNH VŨ': ['B1', 'B2'],                           // 2 bến (DVP)
     'NAM ĐÌNH VŨ': ['B1', 'B2', 'B3', 'B4'],           // 4 bến
+    'XĂNG DẦU NAM ĐÌNH VŨ': ['B1'],                    // 1 cầu bến chuyên dùng xăng dầu
     'EURO ĐÌNH VŨ': ['B1', 'B2', 'B3'],                // 3 bến
     'CHÙA VẼ': ['B1', 'B2', 'B3', 'B4', 'B5'],         // 5 bến
     'HOÀNG DIỆU': ['B1', 'B2', 'B3', 'B4', 'B5'],      // 5 bến
@@ -10240,6 +10250,10 @@ setTimeout(() => {
   function normTerminalName(raw) {
     const s = String(raw || 'KHÁC').trim().toUpperCase();
     if (s.includes('TAN VU') || s.includes('TÂN VŨ')) return 'TÂN VŨ';
+    // Tách riêng Cảng Xăng dầu Nam Đình Vũ (phải đặt trước NAM ĐÌNH VŨ)
+    if (/(XANG\s*DAU|XĂNG\s*DẦU|XD\s*NAM|PETRO).*NAM\s*(DINH|ĐÌNH)\s*VU/i.test(s) || s.includes('XĂNG DẦU NAM ĐÌNH VŨ') || s.includes('XANG DAU NAM DINH VU')) {
+      return 'XĂNG DẦU NAM ĐÌNH VŨ';
+    }
     if (s.includes('NAM DINH VU') || s.includes('NAM ĐÌNH VŨ')) return 'NAM ĐÌNH VŨ';
     if (s.includes('EURO')) return 'EURO ĐÌNH VŨ';
     if (s.includes('NAM HAI DINH VU') || s.includes('NHDV')) return 'NAM HẢI ĐÌNH VŨ';
@@ -11039,7 +11053,7 @@ setTimeout(() => {
     const searchQuery = (document.getElementById('planningSearch')?.value || '').toLowerCase();
 
     const PORT_DISPLAY_ORDER = [
-      'TÂN VŨ', 'HTIT', 'HHIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
+      'TÂN VŨ', 'HTIT', 'HHIT', 'HICT', 'ĐÌNH VŨ', 'NAM ĐÌNH VŨ', 'XĂNG DẦU NAM ĐÌNH VŨ', 'EURO ĐÌNH VŨ',
       'VIP GREENPORT', 'GREENPORT', 'NAM HẢI ĐÌNH VŨ', 'CHÙA VẼ', 'HOÀNG DIỆU',
       'MIPEC', 'ĐOẠN XÁ', 'NAM HẢI', 'PTS ĐÌNH VŨ', 'HẢI AN', 'TÂN CẢNG 189', 'CẢNG 128'
     ];
@@ -13103,6 +13117,7 @@ if (!pinCheck.ok) {
     if (t.includes('CHÙA VẼ') || t.includes('CHUA VE')) {
       return isBulk ? ['B1', 'B2', 'B3', 'B4', 'B5'] : ['B4', 'B5', 'B1', 'B2', 'B3'];
     }
+    if (/(XANG\s*DAU|XĂNG\s*DẦU|XD\s*NAM|PETRO).*NAM\s*(DINH|ĐÌNH)\s*VU/i.test(t)) return ['B1'];
     if (t.includes('NAM ĐÌNH VŨ') || t.includes('NAM DINH VU')) return ['B1', 'B2', 'B3', 'B4'];
     if ((t.includes('ĐÌNH VŨ') || t.includes('DINH VU')) && !t.includes('NAM') && !t.includes('EURO')) {
       return (isBulk || isRoRo) ? ['B1', 'B2', 'B3', 'B4', 'B5'] : ['B2', 'B3', 'B4', 'B5', 'B1'];
