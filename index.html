@@ -6008,6 +6008,10 @@ async function loadData() {
       let parsedCache = JSON.parse(cachedRaw);
       if (Array.isArray(parsedCache) && parsedCache.length > 0) {
         allCalls = filterAndDeduplicateCalls(parsedCache);
+        if (!window._hasInitialDateReset) {
+  resetDateFilterToToday();
+  window._hasInitialDateReset = true;
+}
         renderAll();
       }
     }
@@ -14076,6 +14080,25 @@ if (!pinCheck.ok) {
     bootRestore();
   }
 })();
+
+/* ==================== TỰ ĐỘNG ĐẶT BỘ LỌC VỀ ĐÚNG NGÀY HIỆN TẠI KHI RELOAD TRANG ==================== */
+function resetDateFilterToToday() {
+  const fromEl = document.getElementById('fromDate');
+  const toEl = document.getElementById('toDate');
+  if (!fromEl || !toEl) return;
+
+  const today = getTodayString(); // Ngày hiện tại chuẩn múi giờ Việt Nam (YYYY-MM-DD)
+  fromEl.value = today;
+  toEl.value = today;
+
+  try {
+    localStorage.removeItem('hp_from_date');
+    localStorage.removeItem('hp_to_date');
+  } catch (e) {}
+}
+
+// Chạy ngay khi mở hoặc Reload (F5) trang
+document.addEventListener('DOMContentLoaded', resetDateFilterToToday);
 </script>
 </body>
 </html>
