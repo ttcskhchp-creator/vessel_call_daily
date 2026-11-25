@@ -13795,7 +13795,7 @@ if (!pinCheck.ok) {
 
   const FORM_FIELD_IDS = [
     // Bộ lọc chung & từng màn hình
-    'fromDate', 'toDate', 'planningSearch', 'days', 'search', 'catalogFilterInput',
+     'planningSearch', 'days', 'search', 'catalogFilterInput',
     // Form Bổ sung & Sửa tàu
     'editVesselImo', 'editVesselName', 'editVesselType', 'editVesselYearBuilt',
     'editVesselOperator', 'editVesselLastPort', 'editVesselDestination',
@@ -13912,9 +13912,14 @@ if (!pinCheck.ok) {
       return;
     }
 
-    // 1. Khôi phục toàn bộ giá trị ô nhập liệu & bộ lọc
+    // 1. Luôn đặt bộ lọc Từ/Đến về ngày hiện tại khi reload, chỉ khôi phục các ô nhập liệu khác
+    const todayStr = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().split('T')[0];
+    if (document.getElementById('fromDate')) document.getElementById('fromDate').value = todayStr;
+    if (document.getElementById('toDate')) document.getElementById('toDate').value = todayStr;
+
     if (saved.fields && typeof saved.fields === 'object') {
       Object.entries(saved.fields).forEach(([id, val]) => {
+        if (id === 'fromDate' || id === 'toDate') return; // Bỏ qua ngày cũ trong sessionStorage
         const el = document.getElementById(id);
         if (!el || val === undefined || val === null) return;
         if (el.type === 'checkbox') el.checked = Boolean(val);
@@ -14099,6 +14104,9 @@ function resetDateFilterToToday() {
 
 // Chạy ngay khi mở hoặc Reload (F5) trang
 document.addEventListener('DOMContentLoaded', resetDateFilterToToday);
+// Chạy ngay khi mở hoặc Reload (F5) trang (bao gồm cả lúc trình duyệt autofill)
+document.addEventListener('DOMContentLoaded', resetDateFilterToToday);
+window.addEventListener('pageshow', resetDateFilterToToday);
 </script>
 </body>
 </html>
