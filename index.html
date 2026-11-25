@@ -6500,25 +6500,34 @@ function parseVesselFinderContent(rawText) {
       if (mapped) res.type = mapped;
     }
     if (!res.destination && /^Destination\b/i.test(line)) {
-      let sameLinePort = line.replace(/^Destination\s*[:\-]?\s*/i, '').trim();
-      let pName = sameLinePort || rawLines[i + 1] || '';
-      let nextLine = sameLinePort ? (rawLines[i + 1] || '') : (rawLines[i + 2] || '');
-      if (pName && pName !== '-' && !/^(Predicted|Remaining|Distance|Course|Current|Navigation|Position|IMO|Callsign|AIS|Length|Last Port)/i.test(pName)) {
+      // Bỏ dấu gạch đứng bảng Markdown "|" ở đầu dòng nếu có
+    let cleanRow = line.replace(/^[\|\s\*\_]+/, '').trim();
+
+    if (!res.type && /^Ship\s*Type\b/i.test(cleanRow)) {
+      let sameLineVal = cleanRow.replace(/^Ship\s*Type\s*[:\|\-]?\s*/i, '').replace(/\|.*$/, '').trim();
+      let mapped = mapVesselFinderShipType(sameLineVal || rawLines[i + 1] || '');
+      if (mapped) res.type = mapped;
+    }
+
+    if (!res.destination && /^Destination\b/i.test(cleanRow)) {
+      let parts = cleanRow.replace(/^Destination\s*[:\|\-]?\s*/i, '').split('|').map(x => x.trim()).filter(Boolean);
+      let pName = parts[0] || (rawLines[i + 1] || '').replace(/^[\|\s]+|[\|\s]+$/g, '').trim();
+      let nextLine = parts[1] || (rawLines[i + 1] || '').replace(/^[\|\s]+|[\|\s]+$/g, '').trim();
+      if (pName && pName !== '-' && !/^(Predicted|Remaining|Distance|Course|Current|Navigation|Position|IMO|Callsign|AIS|Length|Last Port|ETA)/i.test(pName)) {
         let cleanEta = /^(ETA|ATA)\s*:/i.test(nextLine) ? nextLine.replace(/\s*\([^\)]*\)\s*/g, '').trim() : '';
         res.destination = cleanEta ? `${pName} (${cleanEta})` : pName;
       }
     }
-    if (!res.last_port && /^Last\s*Port\b/i.test(line)) {
-      let sameLinePort = line.replace(/^Last\s*Port\s*[:\-]?\s*/i, '').trim();
-      let pName = sameLinePort || rawLines[i + 1] || '';
-      let nextLine = sameLinePort ? (rawLines[i + 1] || '') : (rawLines[i + 2] || '');
-      if (pName && pName !== '-' && !/^(Have an AIS|Vessel|Management|Particulars|Year|Length|Become)/i.test(pName)) {
+
+    if (!res.last_port && /^Last\s*Port\b/i.test(cleanRow)) {
+      let parts = cleanRow.replace(/^Last\s*Port\s*[:\|\-]?\s*/i, '').split('|').map(x => x.trim()).filter(Boolean);
+      let pName = parts[0] || (rawLines[i + 1] || '').replace(/^[\|\s]+|[\|\s]+$/g, '').trim();
+      let nextLine = parts[1] || (rawLines[i + 1] || '').replace(/^[\|\s]+|[\|\s]+$/g, '').trim();
+      if (pName && pName !== '-' && !/^(Have an AIS|Vessel|Management|Particulars|Year|Length|Become|ATD|ATA)/i.test(pName)) {
         let cleanAtd = /^(ATD|ATA)\s*:/i.test(nextLine) ? nextLine.replace(/\s*\([^\)]*\)\s*/g, '').trim() : '';
         res.last_port = cleanAtd ? `${pName} (${cleanAtd})` : pName;
       }
     }
-  }
-
   let lineText = rawLines.join('\n');
   let clean = rawLines.join(' ');
 
@@ -11973,27 +11982,19 @@ if (!pinCheck.ok) {
     }
 
     // Điền thêm Năm SX / Tuổi tàu & Hành trình nếu có
+   // Luôn lấy từ selectedShipForReport (đã được getVesselEnrichedSpecs đối chiếu đầy đủ)
+    const enriched = (typeof selectedShipForReport !== 'undefined' && selectedShipForReport) ? selectedShipForReport : s;
+
     if ($('ttYearAge')) {
-      $('ttYearAge').textContent = s.year_built
-        ? `${s.year_built}${s.vessel_age !== null && s.vessel_age !== undefined ? ` (${s.vessel_age}t)` : ''}`
+      $('ttYearAge').textContent = enriched.year_built
+        ? `${enriched.year_built}${enriched.vessel_age !== null && enriched.vessel_age !== undefined ? ` (${enriched.vessel_age}t)` : ''}`
         : '—';
     }
     if ($('ttRoute')) {
-      $('ttRoute').textContent = (s.last_port || s.destination)
-        ? `${s.last_port || '—'} → ${s.destination || '—'}`
-        : '—';
+      $('ttRoute').textContent = (enriched.last_port || enriched.destination)
+        ? `${enriched.last_port || '—'} → ${enriched.destination || '—'}`
+        : 'Chưa có dữ liệu AIS';
     }
-
-    const tt = document.getElementById('shipTooltip');
-    if (tt && e) {
-      tt.style.display = 'block';
-      const rect = tt.getBoundingClientRect();
-      const left = Math.max(8, Math.min(e.clientX + 10, window.innerWidth - rect.width - 12));
-      const top = Math.max(8, Math.min(e.clientY + 10, window.innerHeight - rect.height - 12));
-      tt.style.left = left + 'px';
-      tt.style.top = top + 'px';
-    }
-  };
 
   // Gắn sự kiện rê chuột vào / ra khỏi chính Popup (#shipTooltip)
   const ttEl = document.getElementById('shipTooltip');
@@ -13410,6 +13411,18 @@ if (!pinCheck.ok) {
         allCalls = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
         if (typeof window.renderAll === 'function') window.renderAll();
         if (typeof window.renderGantt === 'function') window.renderGantt();
+        if (typeof allCalls !== 'undefined' && Array.isArray(allCalls)) {
+        let merged = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
+        if (typeof window.getVesselEnrichedSpecs === 'function') {
+          merged = merged.map(c => {
+            const sp = window.getVesselEnrichedSpecs(c.vessel, c);
+            return { ...c, ...sp, operator: c.operator || sp.operator, dwt: sp.dwt || c.dwt, loa: sp.loa || c.loa };
+          });
+        }
+        allCalls = merged;
+        if (typeof window.renderAll === 'function') window.renderAll();
+        if (typeof window.renderGantt === 'function') window.renderGantt();
+      }
       }
     }
   };
