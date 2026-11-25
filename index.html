@@ -5473,34 +5473,52 @@ function estimateStandardCapacityByDesign(params) {
 function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let vKey = String(vesselName || '').trim().toUpperCase();
   let ov = (typeof vesselOverridesMap !== 'undefined' && vesselOverridesMap.get(vKey)) || {};
-  let cat = (vesselCatalogMap && vesselCatalogMap.get(vKey)) || {};
+  let cat = (typeof vesselCatalogMap !== 'undefined' && vesselCatalogMap.get(vKey)) || {};
 
-  let loa = Number(ov.loa || rawCall.loa || cat.loa || 0);
-  let beam = Number(ov.beam || rawCall.beam || cat.beam || 0);
+  // Hàm kiểm tra giá trị hợp lệ (bỏ qua 0, '0', '—', rỗng)
+  const pickValid = (...vals) => {
+    for (let v of vals) {
+      if (v !== undefined && v !== null) {
+        let s = String(v).trim();
+        if (s !== '' && s !== '0' && s !== '—' && s !== '-' && s.toLowerCase() !== 'null') {
+          return v;
+        }
+      }
+    }
+    return '';
+  };
+
+  let loa = Number(pickValid(ov.loa, rawCall.loa, cat.loa, 0)) || 0;
+  let beam = Number(pickValid(ov.beam, rawCall.beam, cat.beam, 0)) || 0;
   if (!beam && loa > 0) {
     beam = loa >= 350 ? 59.0 : (loa >= 290 ? 48.2 : (loa >= 200 ? 32.2 : (loa >= 170 ? 27.6 : (loa >= 140 ? 25.0 : 20.0))));
   }
 
-  let dwt = ov.dwt || rawCall.dwt || cat.dwt || '';
-  let gt = ov.gt || rawCall.gt || cat.gt || '';
-  let imo = ov.imo || rawCall.imo || cat.imo || '';
-  let operator = ov.operator || rawCall.operator || cat.agent || '';
-  let yearBuilt = ov.year_built || rawCall.year_built || cat.year_built || '';
-  let lastPort = ov.last_port || rawCall.last_port || cat.last_port || '';
-  let destination = ov.destination || rawCall.destination || cat.destination || '';
+  // Tự động đối chiếu & điền đầy đủ DWT, GT, IMO, Hãng, Năm SX từ danh mục đã lưu thủ công
+  let dwt = pickValid(ov.dwt, cat.dwt, rawCall.dwt);
+  let gt = pickValid(ov.gt, cat.gt, rawCall.gt);
+  let imo = pickValid(ov.imo, cat.imo, rawCall.imo);
+  let operator = pickValid(ov.operator, rawCall.operator, cat.agent);
+  let yearBuilt = pickValid(ov.year_built, cat.year_built, rawCall.year_built);
 
-  let ovType = (ov.vessel_type && String(ov.vessel_type).trim()) || '';
-  let catType = (cat.vessel_type && String(cat.vessel_type).trim()) || (cat.type && String(cat.type).trim()) || '';
-  let rawType = (rawCall.vessel_type && String(rawCall.vessel_type).trim()) || '';
+  // QUAN TRỌNG: Chỉ lấy Last Port & Destination nếu trùng đúng ngày cập (ETB) của chuyến đã lưu
+  // Nếu là chuyến mới ở ngày khác -> không lấy hành trình cũ tránh sai lệch
+  let callEtbDate = rawCall.etb ? String(rawCall.etb).split('T')[0] : '';
+  let ovEtbDate = ov.etb ? String(ov.etb).split('T')[0] : '';
+  let isSameVoyage = Boolean(callEtbDate && ovEtbDate && callEtbDate === ovEtbDate);
+
+  let lastPort = isSameVoyage ? pickValid(rawCall.last_port, ov.last_port) : pickValid(rawCall.last_port);
+  let destination = isSameVoyage ? pickValid(rawCall.destination, ov.destination) : pickValid(rawCall.destination);
+
+  let ovType = pickValid(ov.vessel_type);
+  let catType = pickValid(cat.vessel_type, cat.type);
+  let rawType = pickValid(rawCall.vessel_type);
   let vType = (ovType && !(ovType === 'Container' && catType && catType !== 'Container'))
     ? ovType
     : (catType || rawType || ovType || 'Container');
 
-let allowedUnits = getAllowedCapacityUnitsByType(vType);
-  let rawSavedUnit =
-    (ov.capacity_unit && String(ov.capacity_unit).trim()) ||
-    (cat.capacity_unit && String(cat.capacity_unit).trim()) ||
-    (rawCall.capacity_unit && String(rawCall.capacity_unit).trim()) || '';
+  let allowedUnits = getAllowedCapacityUnitsByType(vType);
+  let rawSavedUnit = pickValid(ov.capacity_unit, cat.capacity_unit, rawCall.capacity_unit);
 
   let capUnit = '';
   let rawCap = 0;
@@ -5508,7 +5526,7 @@ let allowedUnits = getAllowedCapacityUnitsByType(vType);
   if (allowedUnits.length > 0) {
     let isUnitValid = allowedUnits.includes(rawSavedUnit);
     capUnit = isUnitValid ? rawSavedUnit : allowedUnits[0];
-    rawCap = isUnitValid ? (Number(ov.teu) || Number(cat.teu) || Number(rawCall.teu) || 0) : 0;
+    rawCap = isUnitValid ? (Number(pickValid(ov.teu, cat.teu, rawCall.teu, 0)) || 0) : 0;
 
     let dwtNum = parseInt(String(dwt).replace(/\D/g, ''), 10) || 0;
     let isBuggyDwtCopy = (rawCap > 0 && dwtNum > 0 && rawCap === dwtNum && capUnit === 'TEU');
@@ -6613,8 +6631,9 @@ function populateEditForm(vesselOrName) {
   updateVesselAgePreview();
 
   if ($('editVesselOperator')) $('editVesselOperator').value = specs.operator || '';
-  if ($('editVesselLastPort')) $('editVesselLastPort').value = specs.last_port || '';
-  if ($('editVesselDestination')) $('editVesselDestination').value = specs.destination || '';
+ let isSameVoyageForm = Boolean(item.etb && ov.etb && String(item.etb).split('T')[0] === String(ov.etb).split('T')[0]);
+  if ($('editVesselLastPort')) $('editVesselLastPort').value = isSameVoyageForm ? (item.last_port || ov.last_port || '') : (item.last_port || '');
+  if ($('editVesselDestination')) $('editVesselDestination').value = isSameVoyageForm ? (item.destination || ov.destination || '') : (item.destination || '');
   if ($('editVesselTerminal')) $('editVesselTerminal').value = ov.terminal || item.terminal || '';
   if ($('editVesselBerth')) $('editVesselBerth').value = ov.berth || item.berth || '';
   if ($('editVesselLoa')) $('editVesselLoa').value = specs.loa || '';
@@ -7122,17 +7141,32 @@ function renderOverrideTable() {
 
 function showTooltip(e, s) {
   if (tooltipHideTimeout) { clearTimeout(tooltipHideTimeout); tooltipHideTimeout = null; }
+  
+  // Luôn đối chiếu lại mới nhất từ Danh mục tàu đã lưu thủ công (Override & Catalog)
   let specs = getVesselEnrichedSpecs(s.vessel, s);
   selectedShipForReport = { ...s, ...specs };
+  
   let tt = $('shipTooltip');
   $('ttName').textContent = s.vessel;
   $('ttOperator').textContent = specs.operator || s.operator || '—';
   if ($('ttVesselType')) $('ttVesselType').textContent = specs.vessel_type || 'Container';
   $('ttLoa').textContent = `${specs.loa || '—'}m × ${specs.beam ? Number(specs.beam).toFixed(1) + 'm' : '—'}`;
+  
+  // Hiển thị Sức chở & DWT đã đối chiếu (định dạng dấu phân cách hàng nghìn)
   let capPart = (specs.teu > 0 && specs.capacity_unit) ? `${Number(specs.teu).toLocaleString('vi-VN')} ${specs.capacity_unit} · ` : '';
-  $('ttDwt').textContent = capPart + (specs.dwt ? `${specs.dwt} T` : '—');
+  let dwtClean = String(specs.dwt || '').replace(/\D/g, '');
+  let dwtFormatted = dwtClean ? `${Number(dwtClean).toLocaleString('vi-VN')} T` : (specs.dwt ? `${specs.dwt} T` : '—');
+  $('ttDwt').textContent = capPart + dwtFormatted;
+
   if ($('ttYearAge')) $('ttYearAge').textContent = specs.year_built ? `${specs.year_built} (${specs.vessel_age} tuổi)` : 'Chưa rõ';
-  if ($('ttRoute')) $('ttRoute').textContent = (specs.last_port || specs.destination) ? `${specs.last_port || '—'} ➔ ${specs.destination || '—'}` : '—';
+  
+  // Hành trình: Chỉ hiển thị nếu là của đúng chuyến này, không lấy hành trình cũ của chuyến trước
+  if ($('ttRoute')) {
+    $('ttRoute').textContent = (specs.last_port || specs.destination) 
+      ? `${specs.last_port || '—'} ➔ ${specs.destination || '—'}` 
+      : 'Chưa cập nhật chuyến này';
+  }
+  
   $('ttEtb').textContent = dt(s.etb);
   $('ttEtd').textContent = dt(s.etd);
 
