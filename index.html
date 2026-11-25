@@ -6499,8 +6499,8 @@ function parseVesselFinderContent(rawText) {
       let mapped = mapVesselFinderShipType(sameLineVal || rawLines[i + 1] || '');
       if (mapped) res.type = mapped;
     }
-    if (!res.destination && /^Destination\b/i.test(line)) {
-      // Bỏ dấu gạch đứng bảng Markdown "|" ở đầu dòng nếu có
+
+    // Bỏ dấu gạch đứng bảng Markdown "|" ở đầu dòng nếu có
     let cleanRow = line.replace(/^[\|\s\*\_]+/, '').trim();
 
     if (!res.type && /^Ship\s*Type\b/i.test(cleanRow)) {
@@ -6528,6 +6528,8 @@ function parseVesselFinderContent(rawText) {
         res.last_port = cleanAtd ? `${pName} (${cleanAtd})` : pName;
       }
     }
+  }
+
   let lineText = rawLines.join('\n');
   let clean = rawLines.join(' ');
 
@@ -11981,8 +11983,7 @@ if (!pinCheck.ok) {
       origShowTooltip(e, s);
     }
 
-    // Điền thêm Năm SX / Tuổi tàu & Hành trình nếu có
-   // Luôn lấy từ selectedShipForReport (đã được getVesselEnrichedSpecs đối chiếu đầy đủ)
+    // Luôn lấy từ selectedShipForReport (đã được getVesselEnrichedSpecs đối chiếu đầy đủ)
     const enriched = (typeof selectedShipForReport !== 'undefined' && selectedShipForReport) ? selectedShipForReport : s;
 
     if ($('ttYearAge')) {
@@ -11995,6 +11996,17 @@ if (!pinCheck.ok) {
         ? `${enriched.last_port || '—'} → ${enriched.destination || '—'}`
         : 'Chưa có dữ liệu AIS';
     }
+
+    const tt = document.getElementById('shipTooltip');
+    if (tt && e) {
+      tt.style.display = 'block';
+      const rect = tt.getBoundingClientRect();
+      const left = Math.max(8, Math.min(e.clientX + 10, window.innerWidth - rect.width - 12));
+      const top = Math.max(8, Math.min(e.clientY + 10, window.innerHeight - rect.height - 12));
+      tt.style.left = left + 'px';
+      tt.style.top = top + 'px';
+    }
+  };
 
   // Gắn sự kiện rê chuột vào / ra khỏi chính Popup (#shipTooltip)
   const ttEl = document.getElementById('shipTooltip');
@@ -13407,11 +13419,7 @@ if (!pinCheck.ok) {
       window._cangVuShiftingRows = collected;
       window._cangVuArrivals = collectedArr;
       window._cangVuDepartures = collectedDep;
-      if (typeof allCalls !== 'undefined' && Array.isArray(allCalls)) {
-        allCalls = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
-        if (typeof window.renderAll === 'function') window.renderAll();
-        if (typeof window.renderGantt === 'function') window.renderGantt();
-        if (typeof allCalls !== 'undefined' && Array.isArray(allCalls)) {
+     if (typeof allCalls !== 'undefined' && Array.isArray(allCalls)) {
         let merged = mergeShiftingIntoCalls(allCalls.filter(c => !c._fromShifting));
         if (typeof window.getVesselEnrichedSpecs === 'function') {
           merged = merged.map(c => {
@@ -13422,7 +13430,6 @@ if (!pinCheck.ok) {
         allCalls = merged;
         if (typeof window.renderAll === 'function') window.renderAll();
         if (typeof window.renderGantt === 'function') window.renderGantt();
-      }
       }
     }
   };
