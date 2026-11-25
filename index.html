@@ -5479,17 +5479,27 @@ function saveVoyageRouteRecord(vesselName, etbStr, lastPort, destination) {
   let coreName = typeof normalizeVesselNameForMatch === 'function'
     ? normalizeVesselNameForMatch(vesselName)
     : String(vesselName || '').trim().toUpperCase();
-  let dateKey = etbStr ? String(etbStr).split('T')[0] : getTodayString();
   if (!coreName || (!lastPort && !destination)) return;
 
-  let routeKey = `${coreName}|${dateKey}`;
-  vesselVoyageRoutesMap.set(routeKey, {
+  const payload = {
     last_port: lastPort || '',
     destination: destination || '',
     updatedAt: Date.now()
-  });
+  };
 
-  if (vesselVoyageRoutesMap.size > 500) {
+  let dateKey = etbStr ? String(etbStr).split('T')[0] : getTodayString();
+  vesselVoyageRoutesMap.set(`${coreName}|${dateKey}`, payload);
+
+  // Lưu thêm khóa theo ngày đang lọc (nếu khác ngày ETB, VD tàu cập 23:30 hôm qua)
+  let filterDate = ($('fromDate')?.value || getTodayString());
+  if (filterDate && filterDate !== dateKey) {
+    vesselVoyageRoutesMap.set(`${coreName}|${filterDate}`, payload);
+  }
+
+  // Lưu khóa mới nhất trong 48h của tàu đó
+  vesselVoyageRoutesMap.set(`${coreName}|LATEST`, payload);
+
+  if (vesselVoyageRoutesMap.size > 800) {
     let firstKey = vesselVoyageRoutesMap.keys().next().value;
     vesselVoyageRoutesMap.delete(firstKey);
   }
@@ -5530,20 +5540,31 @@ function getVesselEnrichedSpecs(vesselName, rawCall = {}) {
   let operator = pickValid(ov.operator, rawCall.operator, cat.agent);
   let yearBuilt = pickValid(ov.year_built, cat.year_built, rawCall.year_built);
 
-  // Lấy hành trình mới nhất của đúng chuyến này (không lấy nhầm hành trình chuyến cũ)
-  let callEtbDate = rawCall.etb ? String(rawCall.etb).split('T')[0] : '';
-  let savedRoute = callEtbDate ? vesselVoyageRoutesMap.get(`${vCore}|${callEtbDate}`) : null;
+ let callEtbDate = rawCall.etb ? String(rawCall.etb).split('T')[0] : '';
+  let filterDate = ($('fromDate')?.value || '');
+  let savedRoute = (callEtbDate && vesselVoyageRoutesMap.get(`${vCore}|${callEtbDate}`))
+    || (filterDate && vesselVoyageRoutesMap.get(`${vCore}|${filterDate}`))
+    || null;
+
+  // Nếu chưa khớp ngày chính xác, kiểm tra bản ghi LATEST nếu mới quét trong vòng 36 tiếng gần nhất
+  if (!savedRoute) {
+    let latestRec = vesselVoyageRoutesMap.get(`${vCore}|LATEST`);
+    if (latestRec && (Date.now() - (latestRec.updatedAt || 0) < 36 * 3600000)) {
+      savedRoute = latestRec;
+    }
+  }
+
   let ovEtbDate = ov.etb ? String(ov.etb).split('T')[0] : '';
   let isSameVoyage = Boolean(callEtbDate && ovEtbDate && callEtbDate === ovEtbDate);
 
   let lastPort = pickValid(
-    rawCall.last_port,
     savedRoute && savedRoute.last_port,
+    rawCall.last_port,
     isSameVoyage ? ov.last_port : ''
   );
   let destination = pickValid(
-    rawCall.destination,
     savedRoute && savedRoute.destination,
+    rawCall.destination,
     isSameVoyage ? ov.destination : ''
   );
 
@@ -10821,6 +10842,11 @@ setTimeout(() => {
     if (!tt) return;
 
     const cleanName = String(s.vessel || '').trim().toUpperCase();
+    if (typeof getVesselEnrichedSpecs === 'function') {
+      const freshSpecs = getVesselEnrichedSpecs(cleanName, s);
+      s = { ...s, ...freshSpecs };
+      selectedShipForReport = s;
+    }
     const normTerm = normTerminalName(s.terminal || '');
     const ep = (normTerm === 'TÂN VŨ') ? (rawStore[cleanName] || s._eport || null) : null;
     const isBarge = checkIsBarge(cleanName, ep);
