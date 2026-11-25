@@ -7157,8 +7157,17 @@ function renderAuditMissingAlerts() {
         border-left: 4px solid #d97706; border-radius: 7px; padding: 6px 10px;
         margin: 0 0 8px 0; font-size: 11px; color: var(--ink);
       `;
-      let panelEl = pageEl.querySelector('.panel');
-      if (panelEl) pageEl.insertBefore(alertBox, panelEl);
+
+      // Chèn ngay sau .page-head hoặc trước con trực tiếp đầu tiên có class .panel
+      const pageHead = pageEl.querySelector(':scope > .page-head');
+      const directPanel = pageEl.querySelector(':scope > .panel');
+      if (pageHead && pageHead.parentNode === pageEl) {
+        pageHead.insertAdjacentElement('afterend', alertBox);
+      } else if (directPanel && directPanel.parentNode === pageEl) {
+        pageEl.insertBefore(alertBox, directPanel);
+      } else {
+        pageEl.prepend(alertBox);
+      }
     }
 
     let shipBadges = missingList.map(m => `
