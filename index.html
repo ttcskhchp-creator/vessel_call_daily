@@ -6770,6 +6770,16 @@ async function saveVesselOverrideProtected() {
   vesselOverridesMap.set(vName, fullOverrideRecord);
   vesselCatalogMap.set(vName, catalogRecord);
 
+  // Ghi nhận hành trình thủ công vào bộ nhớ chuyến để hiển thị ngay tại Kế hoạch cầu
+  if ((lastPortVal && lastPortVal !== 'CHƯA CÓ TRÊN AIS') || (destVal && destVal !== 'CHƯA CÓ TRÊN AIS')) {
+    const cleanLast = lastPortVal === 'CHƯA CÓ TRÊN AIS' ? '' : lastPortVal;
+    const cleanDest = destVal === 'CHƯA CÓ TRÊN AIS' ? '' : destVal;
+    const activeDate = etbIso ? etbIso.split('T')[0] : ($('fromDate')?.value || getTodayString());
+    if (typeof saveVoyageRouteRecord === 'function') {
+      saveVoyageRouteRecord(vName, activeDate, cleanLast, cleanDest);
+    }
+  }
+
   const catalogObj = Object.fromEntries(vesselCatalogMap);
   try {
     localStorage.setItem('hp_vessel_catalog', JSON.stringify(catalogObj));
@@ -7019,18 +7029,35 @@ async function querySingleVesselFromVF(searchName, explicitImo) {
   if (targetImo.length !== 7) return null;
 
   let detailUrl = `https://www.vesselfinder.com/vessels/details/${targetImo}`;
-  let rawHtml = '';
-  let rHtml = await fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } });
-  if (rHtml.ok) rawHtml = await rHtml.text();
-  else {
-    let rMd = await fetch(`https://r.jina.ai/${detailUrl}`);
-    if (rMd.ok) rawHtml = await rMd.text();
-  }
+  let rawHtml = '', jinaText = '';
 
-  if (!rawHtml || rawHtml.length < 100) return null;
-  let parsed = parseVesselFinderContent(rawHtml);
-  if (!parsed.type && searchMatchedType) parsed.type = searchMatchedType;
+  // Gọi đồng thời cả bản HTML và bản Markdown (y hệt nút Tự lấy dữ liệu thủ công)
+  const [resHtml, resMd] = await Promise.allSettled([
+    fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-Return-Format': 'html', 'X-No-Cache': 'true' } }).then(r => r.ok ? r.text() : ''),
+    fetch(`https://r.jina.ai/${detailUrl}`, { headers: { 'X-No-Cache': 'true' } }).then(r => r.ok ? r.text() : '')
+  ]);
+
+  if (resHtml.status === 'fulfilled') rawHtml = resHtml.value || '';
+  if (resMd.status === 'fulfilled') jinaText = resMd.value || '';
+
+  if ((!rawHtml || rawHtml.length < 100) && (!jinaText || jinaText.length < 100)) return null;
+
+  let parsedHtml = rawHtml ? parseVesselFinderContent(rawHtml) : {};
+  let parsedJina = jinaText ? parseVesselFinderContent(jinaText) : {};
+  let parsed = { ...parsedJina, ...parsedHtml };
+
+  parsed.type = parsedHtml.type || parsedJina.type || searchMatchedType || '';
+  parsed.destination = parsedHtml.destination || parsedJina.destination || '';
+  parsed.last_port = parsedHtml.last_port || parsedJina.last_port || '';
+  parsed.year_built = parsedHtml.year_built || parsedJina.year_built || '';
+  parsed.loa = parsedHtml.loa || parsedJina.loa || 0;
+  parsed.beam = parsedHtml.beam || parsedJina.beam || 0;
+  parsed.dwt = parsedHtml.dwt || parsedJina.dwt || '';
+  parsed.gt = parsedHtml.gt || parsedJina.gt || '';
+  parsed.teu = parsedHtml.teu || parsedJina.teu || 0;
+  parsed.capacity_unit = parsedHtml.capacity_unit || parsedJina.capacity_unit || '';
   parsed.imo = parsed.imo || targetImo;
+
   return parsed;
 }
 
