@@ -14423,6 +14423,38 @@ window.addEventListener('pageshow', resetDateFilterToToday);
     return modal;
   }
 
+  // Hàm quy đổi chuẩn xác số lượng Container thực tế (1 Move = 1 Cont, không lấy nhầm TEU)
+  function getExactContainerCount(epObj, callRec) {
+    if (!epObj || typeof epObj !== 'object') return { done: 0, plan: 0 };
+
+    const parsePair = (str) => {
+      const m = String(str || '').match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+      if (m) {
+        return {
+          cont: parseInt(m[1].replace(/\D/g, ''), 10) || 0,
+          teu: parseInt(m[2].replace(/\D/g, ''), 10) || 0
+        };
+      }
+      return { cont: 0, teu: 0 };
+    };
+
+    const totalPair = parsePair(epObj.contTeuStr || epObj.total || '');
+    const donePair = parsePair(epObj.donePlanStr || epObj.done || '');
+
+    // Ưu tiên số Container (phần tử đứng trước dấu "/"), tuyệt đối không lấy TEU
+    let planCont = Number(epObj.totalCont) || totalPair.cont || Number(epObj.planNum) || 0;
+    let doneCont = (epObj.doneCont !== undefined && epObj.doneCont !== null && epObj.doneCont !== '')
+      ? Number(epObj.doneCont)
+      : (donePair.cont || Number(epObj.doneNum) || 0);
+
+    // Chặn lỗi nếu done/plan bị gán nhầm bằng TEU (lớn hơn sức chở thiết kế hoặc có cặp Cont/TEU rõ ràng)
+    if (totalPair.cont > 0 && planCont > totalPair.cont * 1.15) planCont = totalPair.cont;
+    if (donePair.cont > 0 && doneCont > donePair.cont * 1.15) doneCont = donePair.cont;
+    if (planCont > 0 && doneCont > planCont) doneCont = planCont;
+
+    return { done: doneCont, plan: planCont };
+  }
+
   // Hàm lấy giờ cập (ETB/ATB) & giờ rời (ETD) chuẩn xác nhất bằng cách hợp nhất ePort + Lịch tàu (allCalls)
   function resolveExactVesselTimes(vName, epObj) {
     const cleanName = String(vName || '').trim().toUpperCase();
@@ -14444,10 +14476,90 @@ window.addEventListener('pageshow', resetDateFilterToToday);
     const rawEtd = toMs(epObj && epObj.etd) || toMs(callRec.etd) || 0;
     const tEtd = (rawEtd > tAtb) ? rawEtd : 0;
 
-    return { tAtb, tEtd, berth: (epObj && epObj.berth) || callRec.berth || 'B1' };
+    return { tAtb, tEtd, berth: (epObj && epObj.berth) || callRec.berth || 'B1', callRec };
   }
 
-  // 3. Xây dựng chuỗi dữ liệu 24 giờ tính đúng theo phút cập tàu & tỷ lệ thời gian làm việc thực tế
+  // Hàm phân bổ sản lượng cho một danh sách các khung giờ liên tiếp (xuyên suốt qua đêm)
+  function distributeMovesOverSlots(slots, totalMoves, vName, berth, daySnapMap) {
+    if (!slots.length || totalMoves <= 0) return;
+
+    const totalHours = slots.reduce((s, x) => s + x.fraction, 0) || 1;
+
+    // Kiểm tra snapshot thực tế nếu có đủ dữ liệu hợp lệ
+    const validSnaps = slots.filter(s => {
+      const snapH = daySnapMap[s.dateKey] && daySnapMap[s.dateKey][vName] && daySnapMap[s.dateKey][vName].hours;
+      return snapH && snapH[s.hour] !== undefined && snapH[s.hour] <= totalMoves;
+    });
+
+    if (validSnaps.length >= 2) {
+      const tempVols = [];
+      let isRealistic = true;
+      const firstSnap = validSnaps[0];
+      const firstVal = daySnapMap[firstSnap.dateKey][vName].hours[firstSnap.hour];
+      const hrsUpToFirst = slots.slice(0, slots.indexOf(firstSnap) + 1).reduce((a, b) => a + b.fraction, 0);
+      const estBefore = hrsUpToFirst > 0 ? Math.min(firstVal, Math.round(totalMoves * (hrsUpToFirst / totalHours))) : 0;
+      let runningCum = Math.max(0, firstVal - estBefore);
+
+      for (let i = 0; i < slots.length; i++) {
+        const sl = slots[i];
+        const snapH = daySnapMap[sl.dateKey] && daySnapMap[sl.dateKey][vName] && daySnapMap[sl.dateKey][vName].hours;
+        let vol = 0;
+
+        if (snapH && snapH[sl.hour] !== undefined) {
+          vol = Math.max(0, snapH[sl.hour] - runningCum);
+          runningCum = snapH[sl.hour];
+        } else {
+          const nextSnapIdx = slots.findIndex((x, idx) => idx > i && daySnapMap[x.dateKey]?.[vName]?.hours?.[x.hour] !== undefined);
+          if (nextSnapIdx !== -1) {
+            const nextSl = slots[nextSnapIdx];
+            const nextCum = daySnapMap[nextSl.dateKey][vName].hours[nextSl.hour];
+            const remFrac = slots.slice(i, nextSnapIdx + 1).reduce((a, b) => a + b.fraction, 0);
+            vol = Math.round(Math.max(0, nextCum - runningCum) * (sl.fraction / Math.max(0.1, remFrac)));
+            runningCum += vol;
+          } else {
+            vol = Math.round((totalMoves / totalHours) * sl.fraction);
+          }
+        }
+
+        const rate = Math.round(vol / Math.max(0.15, sl.fraction));
+        if (rate > 110) { isRealistic = false; break; }
+        tempVols.push({ sl, vol, rate });
+      }
+
+      if (isRealistic) {
+        tempVols.forEach(({ sl, vol, rate }) => {
+          sl.bucket.volume += vol;
+          sl.bucket.rate += rate;
+          sl.bucket.activeShips.push(`${vName} (${berth}: ${vol} Cont · ${rate} Moves/h)`);
+        });
+        return;
+      }
+    }
+
+    // Phân bổ theo đường cong nhịp độ xếp dỡ thực tế xuyên suốt toàn thời gian ở cầu
+    const weights = slots.map((sl, idx) => {
+      const wave = slots.length <= 2 ? 1.0 : (0.90 + 0.20 * Math.sin((idx / (slots.length - 1)) * Math.PI));
+      return sl.fraction * wave;
+    });
+    const sumW = weights.reduce((a, b) => a + b, 0) || 1;
+    let allocated = 0;
+
+    slots.forEach((sl, idx) => {
+      const vol = (idx === slots.length - 1)
+        ? Math.max(0, totalMoves - allocated)
+        : Math.round((totalMoves * weights[idx]) / sumW);
+      allocated += vol;
+
+      const rate = Math.round(vol / Math.max(0.15, sl.fraction));
+      sl.bucket.volume += vol;
+      sl.bucket.rate += rate;
+      sl.bucket.activeShips.push(`${vName} (${berth}: ${vol} Cont · ${rate} Moves/h)`);
+    });
+  }
+
+  // 3. Xây dựng chuỗi dữ liệu:
+  // - Chọn "ALL": Hiển thị 24h (00h -> 23h) của ngày đang lọc
+  // - Chọn 1 tàu cụ thể: Hiển thị XUYÊN SUỐT toàn bộ thời gian tàu ở cầu từ lúc cập (ATB) đến lúc rời (ETD), kể cả vắt qua 2-3 ngày
   function buildHourlySeries(vesselFilter = 'ALL') {
     const now = new Date();
     const nowMs = now.getTime();
@@ -14458,7 +14570,6 @@ window.addEventListener('pageshow', resetDateFilterToToday);
 
     let db = {};
     try { db = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '{}') || {}; } catch (e) {}
-    const daySnap = db[selectedDate] || {};
 
     const store = window.eportTanVuJobsMap || {};
     const renderedMap = window._tanVuRenderedMap || new Map();
@@ -14468,39 +14579,117 @@ window.addEventListener('pageshow', resetDateFilterToToday);
       const ep = store[k];
       if (!ep || typeof ep !== 'object') return;
       const upName = k.trim().toUpperCase();
-      const times = resolveExactVesselTimes(upName, ep);
+      const info = resolveExactVesselTimes(upName, ep);
+      const counts = getExactContainerCount(ep, info.callRec);
       vessels.set(upName, {
         name: upName,
-        berth: times.berth,
-        tAtb: times.tAtb,
-        tEtd: times.tEtd,
-        done: Number(ep.doneNum) || Number(ep.doneCont) || 0,
-        plan: Number(ep.planNum) || Number(ep.totalCont) || 0
+        berth: info.berth,
+        tAtb: info.tAtb,
+        tEtd: info.tEtd,
+        done: counts.done,
+        plan: counts.plan
       });
     });
 
     renderedMap.forEach((c, k) => {
       const upName = String(k || '').trim().toUpperCase();
       if (!vessels.has(upName)) {
-        const times = resolveExactVesselTimes(upName, c._eport);
+        const info = resolveExactVesselTimes(upName, c._eport);
+        const counts = getExactContainerCount(c._eport, c);
         vessels.set(upName, {
           name: upName,
-          berth: times.berth,
-          tAtb: times.tAtb,
-          tEtd: times.tEtd,
-          done: Number(c._eport?.doneNum) || 0,
-          plan: Number(c._eport?.planNum) || 0
+          berth: info.berth,
+          tAtb: info.tAtb,
+          tEtd: info.tEtd,
+          done: counts.done,
+          plan: counts.plan
         });
       }
     });
 
-    const targetList = Array.from(vessels.values()).filter(v => vesselFilter === 'ALL' || v.name === vesselFilter);
+    const formatDateKeyVN = (ms) => {
+      const d = new Date(ms + 7 * 3600000);
+      return d.toISOString().split('T')[0];
+    };
+
+    const formatShortDate = (dateKey) => {
+      const p = dateKey.split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}` : dateKey;
+    };
+
+    // CHẾ ĐỘ 1: XEM THEO TỪNG TÀU -> XUYÊN SUỐT TOÀN THỜI GIAN Ở CẦU (ATB -> ETD)
+    if (vesselFilter !== 'ALL' && vessels.has(vesselFilter)) {
+      const v = vessels.get(vesselFilter);
+      const dayStartMs = new Date(`${selectedDate}T00:00:00+07:00`).getTime();
+      const tStart = v.tAtb > 0 ? v.tAtb : (dayStartMs + 6 * 3600000);
+      const tEndLimit = v.tEtd > tStart ? Math.min(v.tEtd, nowMs) : nowMs;
+      const safeEnd = Math.max(tStart + 1800000, tEndLimit);
+
+      // Tạo dải khung giờ liên tục từ giờ tàu cập đến giờ tàu rời (tối đa 72 tiếng)
+      const firstHourFloor = Math.floor((tStart + 7 * 3600000) / 3600000) * 3600000 - 7 * 3600000;
+      const lastHourFloor = Math.floor((safeEnd - 1 + 7 * 3600000) / 3600000) * 3600000 - 7 * 3600000;
+
+      const continuousBuckets = [];
+      const activeSlots = [];
+      let prevDateKey = '';
+
+      for (let hMs = firstHourFloor; hMs <= lastHourFloor && continuousBuckets.length < 72; hMs += 3600000) {
+        const dVn = new Date(hMs + 7 * 3600000);
+        const h = dVn.getUTCHours();
+        const dKey = dVn.toISOString().split('T')[0];
+        const isNewDay = dKey !== prevDateKey;
+        prevDateKey = dKey;
+
+        const bucket = {
+          hour: h,
+          dateKey: dKey,
+          label: `${String(h).padStart(2, '0')}h`,
+          subDateLabel: isNewDay ? formatShortDate(dKey) : '',
+          fullRangeLabel: `${formatShortDate(dKey)} ${String(h).padStart(2, '0')}h–${String((h + 1) % 24).padStart(2, '0')}h`,
+          volume: 0,
+          rate: 0,
+          activeShips: []
+        };
+        continuousBuckets.push(bucket);
+
+        const overlapStart = Math.max(tStart, hMs);
+        const overlapEnd = Math.min(safeEnd, hMs + 3600000);
+        if (overlapEnd > overlapStart) {
+          activeSlots.push({
+            hour: h,
+            dateKey: dKey,
+            fraction: (overlapEnd - overlapStart) / 3600000,
+            bucket
+          });
+        }
+      }
+
+      const totalEffectiveHours = activeSlots.reduce((s, x) => s + x.fraction, 0);
+      distributeMovesOverSlots(activeSlots, v.done, v.name, v.berth, db);
+
+      const startFmt = `${formatShortDate(formatDateKeyVN(tStart))} ${String(new Date(tStart).getHours()).padStart(2, '0')}:${String(new Date(tStart).getMinutes()).padStart(2, '0')}`;
+      const endFmt = `${formatShortDate(formatDateKeyVN(safeEnd))} ${String(new Date(safeEnd).getHours()).padStart(2, '0')}:${String(new Date(safeEnd).getMinutes()).padStart(2, '0')}`;
+
+      return {
+        series: continuousBuckets,
+        shipCount: v.done > 0 ? 1 : 0,
+        totalEffectiveHours,
+        allVessels: Array.from(vessels.values()),
+        selectedDate,
+        isContinuousVoyage: true,
+        voyageRangeText: `Xuyên suốt chuyến ${v.name}: ${startFmt} ➔ ${endFmt} (${totalEffectiveHours.toFixed(1)}h ở cầu)`
+      };
+    }
+
+    // CHẾ ĐỘ 2: TOÀN CẢNG TÂN VŨ -> TRỤC 24 GIỜ CỦA NGÀY ĐANG CHỌN
     const hourlyBuckets = Array.from({ length: 24 }, (_, h) => ({
       hour: h,
+      dateKey: selectedDate,
       label: `${String(h).padStart(2, '0')}h`,
+      subDateLabel: '',
+      fullRangeLabel: `${formatShortDate(selectedDate)} ${String(h).padStart(2, '0')}h–${String((h + 1) % 24).padStart(2, '0')}h`,
       volume: 0,
       rate: 0,
-      activeHoursSum: 0,
       activeShips: []
     }));
 
@@ -14508,16 +14697,18 @@ window.addEventListener('pageshow', resetDateFilterToToday);
     const dayEndMs = dayStartMs + 24 * 3600000;
     let totalEffectiveHours = 0;
 
-    targetList.forEach(v => {
+    Array.from(vessels.values()).forEach(v => {
       if (v.done <= 0) return;
 
       const tStart = v.tAtb > 0 ? v.tAtb : (dayStartMs + maxHourToShow * 3600000);
       const tEndLimit = Math.min(
         isToday ? nowMs : dayEndMs,
-        v.tEtd > tStart ? v.tEtd : dayEndMs
+        v.tEtd > tStart ? v.tEtd : (isToday ? nowMs : dayEndMs)
       );
-
       if (tEndLimit <= tStart) return;
+
+      const totalVoyageEndMs = v.tEtd > tStart ? Math.min(v.tEtd, isToday ? nowMs : v.tEtd) : (isToday ? nowMs : dayEndMs);
+      const totalVoyageHours = Math.max(0.25, (totalVoyageEndMs - tStart) / 3600000);
 
       const activeSlots = [];
       for (let h = 0; h <= maxHourToShow; h++) {
@@ -14527,76 +14718,45 @@ window.addEventListener('pageshow', resetDateFilterToToday);
         const overlapEnd = Math.min(tEndLimit, hEnd);
 
         if (overlapEnd > overlapStart) {
-          const fractionHour = (overlapEnd - overlapStart) / 3600000;
-          activeSlots.push({ hour: h, fraction: fractionHour });
+          activeSlots.push({
+            hour: h,
+            dateKey: selectedDate,
+            fraction: (overlapEnd - overlapStart) / 3600000,
+            bucket: hourlyBuckets[h]
+          });
         }
       }
 
       if (activeSlots.length === 0) return;
 
-      const shipTotalWorkHours = activeSlots.reduce((s, x) => s + x.fraction, 0);
-      totalEffectiveHours += shipTotalWorkHours;
+      const dayWorkHours = activeSlots.reduce((s, x) => s + x.fraction, 0);
+      totalEffectiveHours += dayWorkHours;
 
-      const snapHours = (daySnap[v.name] && daySnap[v.name].hours) || {};
-      const validSnapKeys = Object.keys(snapHours)
-        .map(Number)
-        .filter(h => (dayStartMs + (h + 1) * 3600000) > tStart && h <= maxHourToShow)
-        .sort((a, b) => a - b);
+      const dayShareRatio = Math.min(1, dayWorkHours / totalVoyageHours);
+      const targetDayMoves = Math.round(v.done * dayShareRatio);
 
-      if (validSnapKeys.length >= 2) {
-        let prevCum = 0;
-        activeSlots.forEach((slot, idx) => {
-          let volInHour = 0;
-          if (snapHours[slot.hour] !== undefined) {
-            volInHour = idx === 0 ? snapHours[slot.hour] : Math.max(0, snapHours[slot.hour] - prevCum);
-            prevCum = snapHours[slot.hour];
-          } else {
-            volInHour = Math.round((v.done * slot.fraction) / shipTotalWorkHours);
-          }
-          const slotRate = Math.round(volInHour / Math.max(0.1, slot.fraction));
-          hourlyBuckets[slot.hour].volume += volInHour;
-          hourlyBuckets[slot.hour].rate += slotRate;
-          hourlyBuckets[slot.hour].activeShips.push(`${v.name} (${v.berth}: ${volInHour} Mv · ${slotRate} Mv/h)`);
-        });
-      } else {
-        const weights = activeSlots.map((slot, idx) => {
-          const wave = activeSlots.length <= 2 ? 1.0 : (0.85 + 0.30 * Math.sin((idx / (activeSlots.length - 1)) * Math.PI));
-          return slot.fraction * wave;
-        });
-        const sumW = weights.reduce((a, b) => a + b, 0) || 1;
-        let allocated = 0;
-
-        activeSlots.forEach((slot, idx) => {
-          const vol = (idx === activeSlots.length - 1)
-            ? Math.max(0, v.done - allocated)
-            : Math.round((v.done * weights[idx]) / sumW);
-          allocated += vol;
-
-          const slotRate = Math.round(vol / Math.max(0.1, slot.fraction));
-          hourlyBuckets[slot.hour].volume += vol;
-          hourlyBuckets[slot.hour].rate += slotRate;
-          hourlyBuckets[slot.hour].activeShips.push(`${v.name} (${v.berth}: ${vol} Mv · ${slotRate} Mv/h)`);
-        });
-      }
+      distributeMovesOverSlots(activeSlots, targetDayMoves, v.name, v.berth, db);
     });
 
     return {
       series: hourlyBuckets,
-      shipCount: targetList.filter(v => v.done > 0).length,
+      shipCount: Array.from(vessels.values()).filter(v => v.done > 0).length,
       totalEffectiveHours,
       allVessels: Array.from(vessels.values()),
-      selectedDate
+      selectedDate,
+      isContinuousVoyage: false,
+      voyageRangeText: `Ngày ${formatShortDate(selectedDate)} · Toàn Cảng Tân Vũ · 1 Move = 1 Cont`
     };
   }
 
-  // 4. Vẽ biểu đồ SVG Cột (Sản lượng) + Đường thẳng (Năng suất Moves/h)
+  // 4. Vẽ biểu đồ SVG Cột (Số Cont/Moves) + Đường thẳng (Năng suất Moves/h)
   window.renderTanVuComboChartSVG = function () {
     const wrap = document.getElementById('tvComboChartSvgWrap');
     const sel = document.getElementById('tvChartVesselSelect');
     if (!wrap) return;
 
     const filterVal = sel ? sel.value : 'ALL';
-    const { series, shipCount, totalEffectiveHours, selectedDate } = buildHourlySeries(filterVal);
+    const { series, shipCount, totalEffectiveHours, voyageRangeText } = buildHourlySeries(filterVal);
 
     const activePoints = series.filter(s => s.volume > 0);
     const totalVol = series.reduce((sum, s) => sum + s.volume, 0);
@@ -14605,21 +14765,23 @@ window.addEventListener('pageshow', resetDateFilterToToday);
 
     if (document.getElementById('tvc_totalVol')) document.getElementById('tvc_totalVol').textContent = `${totalVol.toLocaleString('vi-VN')} Moves`;
     if (document.getElementById('tvc_avgRate')) document.getElementById('tvc_avgRate').textContent = `${avgRate.toLocaleString('vi-VN')} Moves/h`;
-    if (document.getElementById('tvc_peakHour')) document.getElementById('tvc_peakHour').textContent = peakItem ? `${peakItem.label} (${peakItem.rate} Mv/h)` : '—';
+    if (document.getElementById('tvc_peakHour')) document.getElementById('tvc_peakHour').textContent = peakItem ? `${peakItem.fullRangeLabel.split('–')[0]} (${peakItem.rate} Mv/h)` : '—';
     if (document.getElementById('tvc_shipCount')) document.getElementById('tvc_shipCount').textContent = `${shipCount} tàu/sà lan`;
     if (document.getElementById('tvChartSubTitle')) {
-      document.getElementById('tvChartSubTitle').textContent = `Ngày ${selectedDate} · Cột xanh: Sản lượng trong giờ (Moves) · Đường cam: Năng suất (Moves/h)`;
+      document.getElementById('tvChartSubTitle').textContent = `${voyageRangeText} · Cột xanh: Sản lượng (Moves) · Đường cam: Năng suất (Moves/h)`;
     }
 
-    const W = 820, H = 290;
-    const padL = 44, padR = 44, padT = 26, padB = 34;
+    const colCount = Math.max(12, series.length);
+    const W = Math.max(820, colCount * 36 + 90);
+    const H = 305;
+    const padL = 44, padR = 44, padT = 26, padB = 42;
     const plotW = W - padL - padR;
     const plotH = H - padT - padB;
     const maxVal = Math.max(80, ...series.map(s => Math.max(s.volume, s.rate)));
     const yMax = Math.ceil(maxVal / 20) * 20;
 
     const getY = (val) => padT + plotH - (val / yMax) * plotH;
-    const stepX = plotW / 24;
+    const stepX = plotW / series.length;
 
     let gridHtml = '';
     for (let step = 0; step <= 4; step++) {
@@ -14647,10 +14809,16 @@ window.addEventListener('pageshow', resetDateFilterToToday);
 
     series.forEach((pt, idx) => {
       const cx = padL + idx * stepX + stepX / 2;
-      const barW = Math.max(12, stepX * 0.56);
+      const barW = Math.min(26, Math.max(12, stepX * 0.56));
       const barH = Math.max(0, (pt.volume / yMax) * plotH);
       const barY = padT + plotH - barH;
       const rateY = getY(pt.rate);
+
+      // Đường phân cách dọc khi bước sang ngày mới
+      if (pt.subDateLabel && idx > 0) {
+        const sepX = padL + idx * stepX;
+        xLabelsHtml += `<line x1="${sepX}" y1="${padT}" x2="${sepX}" y2="${padT + plotH + 22}" stroke="#0284c7" stroke-width="1.2" stroke-dasharray="3,3"/>`;
+      }
 
       const barColor = pt.rate >= 60 ? '#059669' : (pt.volume > 0 ? '#0284c7' : 'rgba(148,163,184,0.18)');
 
@@ -14671,7 +14839,10 @@ window.addEventListener('pageshow', resetDateFilterToToday);
         `;
       }
 
-      xLabelsHtml += `<text x="${cx}" y="${H - 12}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#475569">${pt.label}</text>`;
+      xLabelsHtml += `
+        <text x="${cx}" y="${H - 22}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#475569">${pt.label}</text>
+        ${pt.subDateLabel ? `<text x="${cx}" y="${H - 9}" text-anchor="middle" font-size="8.5" font-weight="850" fill="#0284c7">${pt.subDateLabel}</text>` : ''}
+      `;
     });
 
     const polyLineHtml = lineCoords.length > 1
@@ -14679,8 +14850,8 @@ window.addEventListener('pageshow', resetDateFilterToToday);
       : '';
 
     wrap.innerHTML = `
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:680px;height:auto;display:block;font-family:inherit;">
-        <text x="${padL}" y="14" font-size="9.5" font-weight="800" fill="#0284c7">▲ Sản lượng (Moves)</text>
+      <svg viewBox="0 0 ${W} ${H}" style="width:${W > 820 ? W + 'px' : '100%'};min-width:680px;height:auto;display:block;font-family:inherit;">
+        <text x="${padL}" y="14" font-size="9.5" font-weight="800" fill="#0284c7">▲ Sản lượng (Moves = Cont)</text>
         <text x="${W - padR}" y="14" text-anchor="end" font-size="9.5" font-weight="800" fill="#d97706">Năng suất (Moves/h) ▲</text>
         ${gridHtml}
         ${targetLineHtml}
@@ -14697,13 +14868,14 @@ window.addEventListener('pageshow', resetDateFilterToToday);
     const box = document.getElementById('tvChartHoverDetail');
     if (!pt || !box) return;
 
+    const rangeLabel = pt.fullRangeLabel || `${pt.label} – ${String((pt.hour + 1) % 24).padStart(2, '0')}h`;
     if (pt.volume <= 0) {
-      box.innerHTML = `🕒 Khung giờ <b>${pt.label} – ${String((hourIdx + 1) % 24).padStart(2, '0')}h</b>: Chưa phát sinh sản lượng xếp dỡ.`;
+      box.innerHTML = `🕒 Khung giờ <b>${rangeLabel}</b>: Chưa phát sinh sản lượng xếp dỡ.`;
       return;
     }
     const statusTxt = pt.rate >= 60 ? '<span style="color:#059669;">Đạt vượt định mức (≥ 60 Moves/h)</span>' : '<span style="color:#d97706;">Dưới định mức 60 Moves/h</span>';
     box.innerHTML = `
-      🕒 Khung giờ <b>${pt.label} – ${String((hourIdx + 1) % 24).padStart(2, '0')}h</b>:
+      🕒 Khung giờ <b>${rangeLabel}</b>:
       Sản lượng đạt <b style="color:#0284c7;">${pt.volume.toLocaleString('vi-VN')} Moves</b> ·
       Năng suất: <b style="color:#d97706;">${pt.rate.toLocaleString('vi-VN')} Moves/h</b> (${statusTxt}) ·
       Phương tiện: <b>${pt.activeShips.join(', ') || '—'}</b>
