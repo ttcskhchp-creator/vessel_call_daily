@@ -14479,26 +14479,24 @@ window.addEventListener('pageshow', resetDateFilterToToday);
     return { tAtb, tEtd, berth: (epObj && epObj.berth) || callRec.berth || 'B1', callRec };
   }
 
-  // Hàm phân bổ sản lượng cho một danh sách các khung giờ liên tiếp (xuyên suốt qua đêm)
-  function distributeMovesOverSlots(slots, totalMoves, vName, berth, daySnapMap) {
+// Hàm phân bổ sản lượng từng giờ và tính Năng suất LŨY KẾ (Tổng Moves lũy kế / Tổng giờ ở bến tính đến mốc giờ đó)
+  function distributeMovesOverSlots(slots, totalMoves, vName, berth, daySnapMap, baseCumBefore = 0, baseHoursBefore = 0) {
     if (!slots.length || totalMoves <= 0) return;
 
     const totalHours = slots.reduce((s, x) => s + x.fraction, 0) || 1;
+    let hourlyVols = new Array(slots.length).fill(0);
 
-    // Kiểm tra snapshot thực tế nếu có đủ dữ liệu hợp lệ
+    // 1. Kiểm tra snapshot thực tế nếu có đủ dữ liệu hợp lệ
     const validSnaps = slots.filter(s => {
       const snapH = daySnapMap[s.dateKey] && daySnapMap[s.dateKey][vName] && daySnapMap[s.dateKey][vName].hours;
-      return snapH && snapH[s.hour] !== undefined && snapH[s.hour] <= totalMoves;
+      return snapH && snapH[s.hour] !== undefined && snapH[s.hour] <= (baseCumBefore + totalMoves);
     });
 
+    let usedRealSnap = false;
     if (validSnaps.length >= 2) {
       const tempVols = [];
       let isRealistic = true;
-      const firstSnap = validSnaps[0];
-      const firstVal = daySnapMap[firstSnap.dateKey][vName].hours[firstSnap.hour];
-      const hrsUpToFirst = slots.slice(0, slots.indexOf(firstSnap) + 1).reduce((a, b) => a + b.fraction, 0);
-      const estBefore = hrsUpToFirst > 0 ? Math.min(firstVal, Math.round(totalMoves * (hrsUpToFirst / totalHours))) : 0;
-      let runningCum = Math.max(0, firstVal - estBefore);
+      let runningCum = baseCumBefore;
 
       for (let i = 0; i < slots.length; i++) {
         const sl = slots[i];
@@ -14521,39 +14519,53 @@ window.addEventListener('pageshow', resetDateFilterToToday);
           }
         }
 
-        const rate = Math.round(vol / Math.max(0.15, sl.fraction));
-        if (rate > 110) { isRealistic = false; break; }
-        tempVols.push({ sl, vol, rate });
+        const singleHourRate = Math.round(vol / Math.max(0.15, sl.fraction));
+        if (singleHourRate > 110) { isRealistic = false; break; }
+        tempVols.push(vol);
       }
 
       if (isRealistic) {
-        tempVols.forEach(({ sl, vol, rate }) => {
-          sl.bucket.volume += vol;
-          sl.bucket.rate += rate;
-          sl.bucket.activeShips.push(`${vName} (${berth}: ${vol} Cont · ${rate} Moves/h)`);
-        });
-        return;
+        usedRealSnap = true;
+        hourlyVols = tempVols;
       }
     }
 
-    // Phân bổ theo đường cong nhịp độ xếp dỡ thực tế xuyên suốt toàn thời gian ở cầu
-    const weights = slots.map((sl, idx) => {
-      const wave = slots.length <= 2 ? 1.0 : (0.90 + 0.20 * Math.sin((idx / (slots.length - 1)) * Math.PI));
-      return sl.fraction * wave;
-    });
-    const sumW = weights.reduce((a, b) => a + b, 0) || 1;
-    let allocated = 0;
+    // 2. Nếu chưa có đủ snapshot, phân bổ sản lượng từng giờ theo tỷ lệ thời gian làm việc thực tế
+    if (!usedRealSnap) {
+      const weights = slots.map((sl, idx) => {
+        const wave = slots.length <= 2 ? 1.0 : (0.90 + 0.20 * Math.sin((idx / (slots.length - 1)) * Math.PI));
+        return sl.fraction * wave;
+      });
+      const sumW = weights.reduce((a, b) => a + b, 0) || 1;
+      let allocated = 0;
+
+      slots.forEach((sl, idx) => {
+        const vol = (idx === slots.length - 1)
+          ? Math.max(0, totalMoves - allocated)
+          : Math.round((totalMoves * weights[idx]) / sumW);
+        allocated += vol;
+        hourlyVols[idx] = vol;
+      });
+    }
+
+    // 3. Tính NĂNG SUẤT LŨY KẾ tại từng mốc giờ = Tổng sản lượng lũy kế / Tổng số giờ ở bến tính đến thời điểm đó
+    let cumMoves = baseCumBefore;
+    let cumBerthHours = baseHoursBefore;
 
     slots.forEach((sl, idx) => {
-      const vol = (idx === slots.length - 1)
-        ? Math.max(0, totalMoves - allocated)
-        : Math.round((totalMoves * weights[idx]) / sumW);
-      allocated += vol;
+      const vol = hourlyVols[idx];
+      cumMoves += vol;
+      cumBerthHours += sl.fraction;
 
-      const rate = Math.round(vol / Math.max(0.15, sl.fraction));
+      const cumProductivity = Math.round(cumMoves / Math.max(0.15, cumBerthHours));
+
       sl.bucket.volume += vol;
-      sl.bucket.rate += rate;
-      sl.bucket.activeShips.push(`${vName} (${berth}: ${vol} Cont · ${rate} Moves/h)`);
+      sl.bucket.cumVolume = (sl.bucket.cumVolume || 0) + cumMoves;
+      sl.bucket.cumHours = (sl.bucket.cumHours || 0) + cumBerthHours;
+      sl.bucket.rate += cumProductivity;
+      sl.bucket.activeShips.push(
+        `${vName} (${berth}: +${vol} Cont | Lũy kế: ${cumMoves} Cont / ${cumBerthHours.toFixed(1)}h = ${cumProductivity} Moves/h)`
+      );
     });
   }
 
@@ -14732,10 +14744,11 @@ window.addEventListener('pageshow', resetDateFilterToToday);
       const dayWorkHours = activeSlots.reduce((s, x) => s + x.fraction, 0);
       totalEffectiveHours += dayWorkHours;
 
-      const dayShareRatio = Math.min(1, dayWorkHours / totalVoyageHours);
-      const targetDayMoves = Math.round(v.done * dayShareRatio);
+      const hoursBeforeDayStart = Math.max(0, (dayStartMs - tStart) / 3600000);
+      const movesBeforeDayStart = Math.round(v.done * Math.min(1, hoursBeforeDayStart / totalVoyageHours));
+      const targetDayMoves = Math.max(0, v.done - movesBeforeDayStart);
 
-      distributeMovesOverSlots(activeSlots, targetDayMoves, v.name, v.berth, db);
+      distributeMovesOverSlots(activeSlots, targetDayMoves, v.name, v.berth, db, movesBeforeDayStart, hoursBeforeDayStart);
     });
 
     return {
